@@ -1,0 +1,9 @@
+{
+  "name": "monitoring-tunggakan-sabak",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aplikasi web monitoring saldo tunggakan Sabak.",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
