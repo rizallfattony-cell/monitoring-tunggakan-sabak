@@ -38,6 +38,11 @@ const els = {
   onlineButton: document.querySelector("#onlineButton"),
   onlinePanel: document.querySelector("#onlinePanel"),
   onlineStatus: document.querySelector("#onlineStatus"),
+  progressPanel: document.querySelector("#progressPanel"),
+  progressTitle: document.querySelector("#progressTitle"),
+  progressPercent: document.querySelector("#progressPercent"),
+  progressFill: document.querySelector("#progressFill"),
+  progressText: document.querySelector("#progressText"),
   loginForm: document.querySelector("#loginForm"),
   emailInput: document.querySelector("#emailInput"),
   passwordInput: document.querySelector("#passwordInput"),
@@ -210,6 +215,7 @@ async function loadCloudData(options = {}) {
     return;
   }
 
+  startProgress("Ambil Data Online", "Mengambil data dari Supabase...");
   setOnlineStatus("Mengambil data online...");
   const { data, error } = await state.supabaseClient
     .from("monitoring_app_state")
@@ -218,21 +224,27 @@ async function loadCloudData(options = {}) {
     .maybeSingle();
 
   if (error) {
+    failProgress(`Gagal ambil data online: ${error.message}`);
     setOnlineStatus(`Gagal ambil data online: ${error.message}`);
     return;
   }
 
   if (!data?.payload) {
+    finishProgress(options.silentIfEmpty ? "Login berhasil. Belum ada data online." : "Belum ada data online.");
     setOnlineStatus(options.silentIfEmpty ? "Login berhasil. Belum ada data online." : "Belum ada data online.");
     return;
   }
 
+  updateProgress(45, "Memuat DIL, saldo, dan stand meter...");
   state.dil = data.payload.dil || [];
   state.awal = data.payload.awal || [];
   state.akhir = data.payload.akhir || [];
   state.struk = data.payload.struk || [];
+  updateProgress(70, "Menyimpan data ke browser...");
   await saveStoredData();
+  updateProgress(85, "Menghitung ulang laporan...");
   recompute();
+  finishProgress(`Data online dimuat. Update terakhir: ${formatDateTime(data.updated_at)}.`);
   setOnlineStatus(`Data online dimuat. Update terakhir: ${formatDateTime(data.updated_at)}.`);
 }
 
@@ -334,10 +346,16 @@ function renderAdminHeader() {
   `;
 }
 
-async function saveCloudData() {
+async function saveCloudData(options = {}) {
   if (!ensureOnlineReady()) return;
   if (!ensureAdmin()) return;
 
+  const embeddedProgress = options.embeddedProgress === true;
+  if (embeddedProgress) {
+    updateProgress(68, "Menyimpan data utama ke Supabase...");
+  } else {
+    startProgress("Simpan ke Online", "Menyimpan data utama ke Supabase...");
+  }
   setOnlineStatus("Menyimpan data ke online...");
   const { error } = await state.supabaseClient
     .from("monitoring_app_state")
@@ -354,12 +372,16 @@ async function saveCloudData() {
     });
 
   if (error) {
+    failProgress(`Gagal simpan online: ${error.message}`);
     setOnlineStatus(`Gagal simpan online: ${error.message}`);
     return;
   }
 
+  updateProgress(embeddedProgress ? 74 : 35, "Mempublish data pelanggan tersisa...");
   await publishRemainingCustomers();
+  updateProgress(embeddedProgress ? 82 : 70, "Mempublish data stand meter struk...");
   await publishReceiptMeters();
+  if (!embeddedProgress) finishProgress(`Data online tersimpan: ${formatDateTime(new Date().toISOString())}.`);
   setOnlineStatus(`Data online tersimpan: ${formatDateTime(new Date().toISOString())}.`);
 }
 
@@ -434,9 +456,9 @@ async function publishReceiptMeters() {
   }
 }
 
-async function autoSaveCloudData() {
+async function autoSaveCloudData(options = {}) {
   if (!state.supabaseClient || !state.user) return;
-  await saveCloudData();
+  await saveCloudData(options);
 }
 
 function ensureOnlineReady() {
@@ -490,17 +512,58 @@ function setOnlineStatus(message) {
   if (els.onlineStatus) els.onlineStatus.textContent = message;
 }
 
+function startProgress(title, text = "Menyiapkan proses.") {
+  if (!els.progressPanel) return;
+  els.progressPanel.hidden = false;
+  updateProgress(0, text, title);
+}
+
+function updateProgress(percent, text, title) {
+  if (!els.progressPanel) return;
+  const value = Math.max(0, Math.min(100, Math.round(percent)));
+  if (title) els.progressTitle.textContent = title;
+  els.progressPercent.textContent = `${value}%`;
+  els.progressFill.style.width = `${value}%`;
+  if (text) els.progressText.textContent = text;
+}
+
+function finishProgress(text = "Selesai.") {
+  updateProgress(100, text);
+  window.setTimeout(() => {
+    if (els.progressPanel) els.progressPanel.hidden = true;
+  }, 1400);
+}
+
+function failProgress(text = "Proses gagal.") {
+  updateProgress(100, text);
+}
+
+function yieldUi() {
+  return new Promise((resolve) => window.setTimeout(resolve, 0));
+}
+
 async function handleUpload(event, kind) {
   const file = event.target.files?.[0];
   if (!file) return;
 
+  const label = kind === "dil" ? "DIL" : kind === "awal" ? "Saldo Awal" : "Saldo Akhir";
+  startProgress(`Upload ${label}`, `Membaca file ${file.name}...`);
   try {
-    const rows = await readWorkbook(file);
+    const rows = await readWorkbook(file, (percent) => {
+      updateProgress(percent * 0.35, `Membaca file ${file.name}...`);
+    });
+    updateProgress(42, `Memproses ${formatNumber(rows.length)} baris ${label}...`);
+    await yieldUi();
     state[kind] = kind === "dil" ? normalizeDil(rows) : normalizeSaldo(rows);
+    updateProgress(58, "Menyimpan data lokal...");
     await saveStoredData();
-    await autoSaveCloudData();
+    updateProgress(68, "Sinkronisasi online...");
+    await autoSaveCloudData({ embeddedProgress: true });
+    updateProgress(88, "Menghitung ulang laporan...");
     recompute();
+    finishProgress(`${label} selesai diproses: ${formatNumber(state[kind].length)} baris.`);
   } catch (error) {
+    failProgress(`Gagal membaca file ${file.name}: ${error.message}`);
     alert(`Gagal membaca file ${file.name}: ${error.message}`);
   } finally {
     event.target.value = "";
@@ -511,25 +574,39 @@ async function handleStrukUpload(event) {
   const file = event.target.files?.[0];
   if (!file) return;
 
+  startProgress("Upload File Struk", `Membaca file ${file.name}...`);
   try {
-    const rows = await readWorkbook(file);
+    const rows = await readWorkbook(file, (percent) => {
+      updateProgress(percent * 0.35, `Membaca file ${file.name}...`);
+    });
+    updateProgress(42, `Memproses ${formatNumber(rows.length)} baris stand meter...`);
+    await yieldUi();
     state.struk = normalizeStruk(rows);
+    updateProgress(58, "Menyimpan data lokal...");
     await saveStoredData();
-    await autoSaveCloudData();
+    updateProgress(68, "Sinkronisasi online...");
+    await autoSaveCloudData({ embeddedProgress: true });
+    updateProgress(88, "Memperbarui status file...");
     updateFileStatuses();
+    finishProgress(`File struk selesai diproses: ${formatNumber(state.struk.length)} IDPEL stand meter.`);
     setOnlineStatus(`File struk dimuat: ${formatNumber(state.struk.length)} IDPEL stand meter.`);
   } catch (error) {
+    failProgress(`Gagal membaca file ${file.name}: ${error.message}`);
     alert(`Gagal membaca file ${file.name}: ${error.message}`);
   } finally {
     event.target.value = "";
   }
 }
 
-function readWorkbook(file) {
+function readWorkbook(file, onProgress = () => {}) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
+    reader.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(Math.min(100, (event.loaded / event.total) * 100));
+    };
     reader.onload = () => {
       try {
+        onProgress(100);
         const workbook = XLSX.read(reader.result, { type: "array", cellDates: false });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = sheetToObjects(sheet);
@@ -1041,6 +1118,7 @@ function exportRemainingForPetugas(petugas) {
 }
 
 function exportReport() {
+  startProgress("Export Excel", "Menyiapkan workbook laporan...");
   const rows = getVisibleRows();
   const title = "MONITORING SALDO TUNGGAKAN";
   const date = new Intl.DateTimeFormat("id-ID", {
@@ -1118,9 +1196,12 @@ function exportReport() {
   ];
 
   applyExportFormats(worksheet, tableRows.length);
+  updateProgress(70, "Menyusun file Excel...");
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Monitoring");
+  updateProgress(90, "Mengunduh file Excel...");
   XLSX.writeFile(workbook, `monitoring-saldo-tunggakan-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  finishProgress("Export Excel selesai.");
 }
 
 function applyExportFormats(worksheet, rowCount) {
