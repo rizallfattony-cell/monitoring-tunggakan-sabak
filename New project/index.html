@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Monitoring Saldo Tunggakan</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="theme-color" content="#145ea8" />
     <link rel="stylesheet" href="./styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -80,6 +82,19 @@
             <input id="akhirInput" type="file" accept=".xlsx,.xls,.csv" />
           </label>
           <span class="file-status" id="akhirStatus">Belum ada data</span>
+        </article>
+
+        <article class="upload-panel" data-file-card="struk">
+          <div>
+            <span class="upload-label">Cetak Struk</span>
+            <h2>Stand Meter</h2>
+            <p>IDPEL, STANDAWAL, STAND AKHIR</p>
+          </div>
+          <label class="file-button">
+            Upload File Struk
+            <input id="strukInput" type="file" accept=".xlsx,.xls,.csv" />
+          </label>
+          <span class="file-status" id="strukStatus">Belum ada data</span>
         </article>
       </section>
 

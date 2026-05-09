@@ -7,6 +7,7 @@ const state = {
   dil: [],
   awal: [],
   akhir: [],
+  struk: [],
   report: [],
   totals: emptyTotals(),
   anomalies: [],
@@ -14,15 +15,18 @@ const state = {
   pendingExport: null,
   supabaseClient: null,
   user: null,
+  profile: null,
 };
 
 const els = {
   dilInput: document.querySelector("#dilInput"),
   awalInput: document.querySelector("#awalInput"),
   akhirInput: document.querySelector("#akhirInput"),
+  strukInput: document.querySelector("#strukInput"),
   dilStatus: document.querySelector("#dilStatus"),
   awalStatus: document.querySelector("#awalStatus"),
   akhirStatus: document.querySelector("#akhirStatus"),
+  strukStatus: document.querySelector("#strukStatus"),
   tableBody: document.querySelector("#tableBody"),
   tableFoot: document.querySelector("#tableFoot"),
   tableDate: document.querySelector("#tableDate"),
@@ -57,6 +61,10 @@ const els = {
   metricAkhir: document.querySelector("#metricAkhir"),
   metricPelunasan: document.querySelector("#metricPelunasan"),
   metricPersen: document.querySelector("#metricPersen"),
+  uploadGrid: document.querySelector(".upload-grid"),
+  summaryGrid: document.querySelector(".summary-grid"),
+  toolbar: document.querySelector(".toolbar"),
+  anomalySection: document.querySelector(".anomaly-section"),
 };
 
 boot();
@@ -67,13 +75,18 @@ async function boot() {
   initSupabase();
   await hydrate();
   await hydrateSession();
-  recompute();
+  if (state.profile?.role === "petugas") {
+    await loadPetugasData();
+  } else {
+    recompute();
+  }
 }
 
 function attachEvents() {
   els.dilInput.addEventListener("change", (event) => handleUpload(event, "dil"));
   els.awalInput.addEventListener("change", (event) => handleUpload(event, "awal"));
   els.akhirInput.addEventListener("change", (event) => handleUpload(event, "akhir"));
+  els.strukInput.addEventListener("change", handleStrukUpload);
   els.searchInput.addEventListener("input", render);
   els.sortSelect.addEventListener("change", render);
   els.exportButton.addEventListener("click", exportReport);
@@ -101,6 +114,7 @@ async function hydrate() {
   state.dil = saved.dil || [];
   state.awal = saved.awal || [];
   state.akhir = saved.akhir || [];
+  state.struk = saved.struk || [];
   updateFileStatuses();
 }
 
@@ -128,6 +142,7 @@ async function hydrateSession() {
 
   const { data } = await state.supabaseClient.auth.getSession();
   state.user = data.session?.user || null;
+  if (state.user) await loadProfile();
   updateOnlineUi();
 }
 
@@ -152,20 +167,48 @@ async function loginOnline() {
   }
 
   state.user = data.user;
+  await loadProfile();
   els.passwordInput.value = "";
   updateOnlineUi();
-  await loadCloudData({ silentIfEmpty: true });
+  if (state.profile?.role === "petugas") {
+    await loadPetugasData();
+  } else {
+    await loadCloudData({ silentIfEmpty: true });
+  }
 }
 
 async function logoutOnline() {
   if (!state.supabaseClient) return;
   await state.supabaseClient.auth.signOut();
   state.user = null;
+  state.profile = null;
   updateOnlineUi();
+  recompute();
+}
+
+async function loadProfile() {
+  if (!state.supabaseClient || !state.user) return;
+
+  const { data, error } = await state.supabaseClient
+    .from("monitoring_profiles")
+    .select("role, petugas, email")
+    .eq("user_id", state.user.id)
+    .maybeSingle();
+
+  if (error) {
+    setOnlineStatus(`Gagal membaca profil user: ${error.message}`);
+    return;
+  }
+
+  state.profile = data || null;
 }
 
 async function loadCloudData(options = {}) {
   if (!ensureOnlineReady()) return;
+  if (state.profile?.role === "petugas") {
+    await loadPetugasData();
+    return;
+  }
 
   setOnlineStatus("Mengambil data online...");
   const { data, error } = await state.supabaseClient
@@ -187,13 +230,113 @@ async function loadCloudData(options = {}) {
   state.dil = data.payload.dil || [];
   state.awal = data.payload.awal || [];
   state.akhir = data.payload.akhir || [];
+  state.struk = data.payload.struk || [];
   await saveStoredData();
   recompute();
   setOnlineStatus(`Data online dimuat. Update terakhir: ${formatDateTime(data.updated_at)}.`);
 }
 
+async function loadPetugasData() {
+  if (!ensureOnlineReady()) return;
+
+  setOnlineStatus("Mengambil data tunggakan petugas...");
+  const { data, error } = await state.supabaseClient
+    .from("monitoring_remaining_customers")
+    .select("petugas,idpel,nama,tarif,daya,alamat,lembar,kolok,koked,rptag")
+    .eq("report_id", CLOUD_STATE_ID)
+    .order("kolok", { ascending: true })
+    .order("koked", { ascending: true });
+
+  if (error) {
+    setOnlineStatus(`Gagal ambil data petugas: ${error.message}`);
+    return;
+  }
+
+  renderPetugasRows(data || []);
+  setOnlineStatus(`${formatNumber((data || []).length)} pelanggan tersisa dimuat untuk ${state.profile?.petugas || "petugas ini"}.`);
+}
+
+function renderPetugasRows(rows) {
+  const totalRupiah = rows.reduce((sum, row) => sum + Number(row.rptag || 0), 0);
+  els.metricAwal.textContent = formatNumber(rows.length);
+  els.metricAkhir.textContent = formatRupiah(totalRupiah);
+  els.metricPelunasan.textContent = state.profile?.petugas || "-";
+  els.metricPersen.textContent = "Petugas";
+
+  els.tableFoot.innerHTML = rows.length ? `
+    <tr>
+      <td colspan="2">TOTAL</td>
+      <td>${formatNumber(rows.length)}</td>
+      <td colspan="5"></td>
+      <td colspan="2">${formatRupiah(totalRupiah)}</td>
+    </tr>
+  ` : "";
+
+  els.tableBody.innerHTML = rows.length
+    ? rows.map((row, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td class="name-cell">${escapeHtml(row.nama || "")}</td>
+        <td>${escapeHtml(row.idpel || "")}</td>
+        <td>${escapeHtml(row.tarif || "")}</td>
+        <td>${escapeHtml(row.daya || "")}</td>
+        <td>${escapeHtml(row.lembar || "")}</td>
+        <td>${escapeHtml(row.kolok || "")}</td>
+        <td>${escapeHtml(row.koked || "")}</td>
+        <td>${formatRupiah(row.rptag)}</td>
+        <td>${escapeHtml(row.alamat || "")}</td>
+      </tr>
+    `).join("")
+    : `<tr><td class="empty-state" colspan="10">Belum ada tunggakan untuk user ini.</td></tr>`;
+
+  renderPetugasHeader();
+}
+
+function renderPetugasHeader() {
+  const thead = document.querySelector("#monitoringTable thead");
+  thead.innerHTML = `
+    <tr>
+      <th>NO</th>
+      <th>NAMA</th>
+      <th>IDPEL</th>
+      <th>TARIF</th>
+      <th>DAYA</th>
+      <th>LEMBAR</th>
+      <th>KOLOK</th>
+      <th>KOKED</th>
+      <th>RPTAG</th>
+      <th>ALAMAT</th>
+    </tr>
+  `;
+}
+
+function renderAdminHeader() {
+  const thead = document.querySelector("#monitoringTable thead");
+  thead.innerHTML = `
+    <tr>
+      <th rowspan="2">NO</th>
+      <th rowspan="2">BILLER</th>
+      <th colspan="2">SALDO AWAL</th>
+      <th colspan="2">SALDO AKHIR</th>
+      <th colspan="2">PELUNASAN TOTAL</th>
+      <th colspan="2">PELUNASAN TAGIHAN (%)</th>
+    </tr>
+    <tr>
+      <th>ID PEL</th>
+      <th>RP TAGIHAN</th>
+      <th>ID PEL</th>
+      <th>RP TAGIHAN</th>
+      <th>PEL</th>
+      <th>TAGIHAN</th>
+      <th>PEL</th>
+      <th>TAGIHAN</th>
+    </tr>
+  `;
+}
+
 async function saveCloudData() {
   if (!ensureOnlineReady()) return;
+  if (!ensureAdmin()) return;
 
   setOnlineStatus("Menyimpan data ke online...");
   const { error } = await state.supabaseClient
@@ -204,6 +347,7 @@ async function saveCloudData() {
         dil: state.dil,
         awal: state.awal,
         akhir: state.akhir,
+        struk: state.struk,
       },
       updated_by: state.user.id,
       updated_at: new Date().toISOString(),
@@ -214,7 +358,80 @@ async function saveCloudData() {
     return;
   }
 
+  await publishRemainingCustomers();
+  await publishReceiptMeters();
   setOnlineStatus(`Data online tersimpan: ${formatDateTime(new Date().toISOString())}.`);
+}
+
+async function publishRemainingCustomers() {
+  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") return;
+
+  const rows = [...state.remainingByPetugas.values()].flat().map((row) => ({
+    report_id: CLOUD_STATE_ID,
+    petugas: row.petugas,
+    idpel: row.idpel,
+    nama: row.nama,
+    tarif: row.tarif,
+    daya: row.daya,
+    alamat: row.alamat,
+    lembar: row.lembar || 0,
+    kolok: row.kolok,
+    koked: row.koked,
+    rptag: row.rptag || 0,
+    uploaded_at: new Date().toISOString(),
+  }));
+
+  const { error: deleteError } = await state.supabaseClient
+    .from("monitoring_remaining_customers")
+    .delete()
+    .eq("report_id", CLOUD_STATE_ID);
+
+  if (deleteError) {
+    setOnlineStatus(`Data utama tersimpan, tapi gagal reset data petugas: ${deleteError.message}`);
+    return;
+  }
+
+  if (!rows.length) return;
+
+  const { error: insertError } = await state.supabaseClient
+    .from("monitoring_remaining_customers")
+    .insert(rows);
+
+  if (insertError) {
+    setOnlineStatus(`Data utama tersimpan, tapi gagal publish data petugas: ${insertError.message}`);
+  }
+}
+
+async function publishReceiptMeters() {
+  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") return;
+
+  const rows = state.struk.map((row) => ({
+    report_id: CLOUD_STATE_ID,
+    idpel: row.idpel,
+    stand_awal: row.standAwal,
+    stand_akhir: row.standAkhir,
+    uploaded_at: new Date().toISOString(),
+  }));
+
+  const { error: deleteError } = await state.supabaseClient
+    .from("monitoring_receipt_meters")
+    .delete()
+    .eq("report_id", CLOUD_STATE_ID);
+
+  if (deleteError) {
+    setOnlineStatus(`Data utama tersimpan, tapi gagal reset stand meter: ${deleteError.message}`);
+    return;
+  }
+
+  if (!rows.length) return;
+
+  const { error: insertError } = await state.supabaseClient
+    .from("monitoring_receipt_meters")
+    .insert(rows);
+
+  if (insertError) {
+    setOnlineStatus(`Data utama tersimpan, tapi gagal upload stand meter: ${insertError.message}`);
+  }
 }
 
 async function autoSaveCloudData() {
@@ -236,16 +453,37 @@ function ensureOnlineReady() {
   return true;
 }
 
+function ensureAdmin() {
+  if (state.profile?.role !== "admin") {
+    alert("Hanya admin yang bisa upload dan menyimpan data online.");
+    return false;
+  }
+  return true;
+}
+
 function updateOnlineUi() {
   const online = Boolean(state.user);
   els.onlineButton.textContent = online ? "Online Aktif" : "Login Online";
   els.loginForm.hidden = online;
-  els.syncActions.hidden = !online;
+  els.syncActions.hidden = !online || state.profile?.role === "petugas";
+  applyRoleView();
   setOnlineStatus(online
-    ? `Login sebagai ${state.user.email}. Data bisa disimpan dan diambil dari Supabase.`
+    ? state.profile?.role === "petugas"
+      ? `Login sebagai ${state.user.email}. Mode petugas: ${state.profile.petugas || "-"}.`
+      : `Login sebagai ${state.user.email}. Mode admin. Data bisa disimpan dan diambil dari Supabase.`
     : state.supabaseClient
       ? "Supabase siap. Silakan login untuk sinkronisasi online."
       : "Supabase belum dikonfigurasi. Isi supabase-config.js untuk mode online.");
+}
+
+function applyRoleView() {
+  const petugasMode = state.profile?.role === "petugas";
+  els.uploadGrid.hidden = petugasMode;
+  els.summaryGrid.hidden = petugasMode;
+  els.toolbar.hidden = false;
+  els.anomalySection.hidden = petugasMode;
+  els.exportButton.hidden = petugasMode;
+  els.resetButton.hidden = petugasMode;
 }
 
 function setOnlineStatus(message) {
@@ -262,6 +500,24 @@ async function handleUpload(event, kind) {
     await saveStoredData();
     await autoSaveCloudData();
     recompute();
+  } catch (error) {
+    alert(`Gagal membaca file ${file.name}: ${error.message}`);
+  } finally {
+    event.target.value = "";
+  }
+}
+
+async function handleStrukUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const rows = await readWorkbook(file);
+    state.struk = normalizeStruk(rows);
+    await saveStoredData();
+    await autoSaveCloudData();
+    updateFileStatuses();
+    setOnlineStatus(`File struk dimuat: ${formatNumber(state.struk.length)} IDPEL stand meter.`);
   } catch (error) {
     alert(`Gagal membaca file ${file.name}: ${error.message}`);
   } finally {
@@ -336,6 +592,16 @@ function normalizeSaldo(rows) {
         rupiah: rptag + rpbk,
       };
     })
+    .filter((row) => row.idpel);
+}
+
+function normalizeStruk(rows) {
+  return rows
+    .map((row) => ({
+      idpel: normalizeId(getValue(row, ["IDPEL", "ID PEL", "ID_PEL", "ID PELANGGAN"])),
+      standAwal: cleanText(getValue(row, ["STANDAWAL", "STAND AWAL", "STAND_AWAL"])),
+      standAkhir: cleanText(getValue(row, ["STANDAKHIR", "STAND AKHIR", "STAND_AKHIR"])),
+    }))
     .filter((row) => row.idpel);
 }
 
@@ -494,6 +760,8 @@ function computeTotals(rows) {
 }
 
 function render() {
+  if (state.profile?.role === "petugas") return;
+  renderAdminHeader();
   const rows = getVisibleRows();
   const lowPerformerNames = getLowPerformerNames(state.report);
 
@@ -875,6 +1143,7 @@ async function resetData() {
   state.dil = [];
   state.awal = [];
   state.akhir = [];
+  state.struk = [];
   await saveStoredData();
   await autoSaveCloudData();
   recompute();
@@ -1008,6 +1277,7 @@ function updateFileStatuses() {
   setStatus("dil", state.dil.length, "DIL");
   setStatus("awal", state.awal.length, "Saldo awal");
   setStatus("akhir", state.akhir.length, "Saldo akhir");
+  setStatus("struk", state.struk.length, "Stand meter struk");
 }
 
 function setStatus(kind, count, label) {
@@ -1055,6 +1325,7 @@ async function saveStoredData() {
     dil: state.dil,
     awal: state.awal,
     akhir: state.akhir,
+    struk: state.struk,
     savedAt: new Date().toISOString(),
   };
 
