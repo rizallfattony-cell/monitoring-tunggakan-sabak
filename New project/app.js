@@ -333,6 +333,12 @@ function renderPremiumRequests() {
         </div>
         <div class="premium-actions">
           <button class="button secondary" type="button" data-proof="${escapeHtml(row.proof_path)}">Lihat Bukti</button>
+          <select data-package-select="${escapeHtml(row.id)}">
+            ${["P1", "P2", "P3"].map((pkg) => `
+              <option value="${pkg}" ${row.package_code === pkg ? "selected" : ""}>${pkg} - ${formatRupiah(premiumPackageAmount(pkg))}</option>
+            `).join("")}
+          </select>
+          <button class="button secondary" type="button" data-update-package="${escapeHtml(row.id)}">Ubah Paket</button>
           ${pending ? `<button class="button primary" type="button" data-approve="${escapeHtml(row.id)}">ACC 30 Hari</button>` : ""}
           ${pending ? `<button class="button secondary" type="button" data-reject="${escapeHtml(row.id)}">Tolak</button>` : ""}
         </div>
@@ -345,6 +351,7 @@ async function handlePremiumClick(event) {
   const proofPath = event.target?.dataset?.proof;
   const approveId = event.target?.dataset?.approve;
   const rejectId = event.target?.dataset?.reject;
+  const updatePackageId = event.target?.dataset?.updatePackage;
 
   if (proofPath) {
     const { data, error } = await state.supabaseClient.storage
@@ -363,9 +370,65 @@ async function handlePremiumClick(event) {
     return;
   }
 
+  if (updatePackageId) {
+    await updatePremiumRequestPackage(updatePackageId);
+    return;
+  }
+
   if (rejectId) {
     await rejectPremiumRequest(rejectId);
   }
+}
+
+async function updatePremiumRequestPackage(id) {
+  if (!ensureAdmin()) return;
+  const request = state.premiumRequests.find((row) => row.id === id);
+  if (!request) return;
+  const select = els.premiumList.querySelector(`select[data-package-select="${CSS.escape(id)}"]`);
+  const packageCode = select?.value;
+  if (!["P1", "P2", "P3"].includes(packageCode)) {
+    alert("Pilih paket yang valid.");
+    return;
+  }
+
+  const amount = premiumPackageAmount(packageCode);
+  startProgress("Ubah Paket Premium", `Mengubah ${request.username} ke ${packageCode}...`);
+
+  const { error: requestError } = await state.supabaseClient
+    .from("monitoring_premium_requests")
+    .update({
+      package_code: packageCode,
+      amount,
+      reviewer_note: request.status === "approved"
+        ? `Paket dikoreksi admin ke ${packageCode}`
+        : `Paket diubah admin ke ${packageCode}`,
+    })
+    .eq("id", id);
+
+  if (requestError) {
+    failProgress(`Gagal update pengajuan: ${requestError.message}`);
+    alert(`Gagal update pengajuan: ${requestError.message}`);
+    return;
+  }
+
+  if (request.status === "approved") {
+    const { error: profileError } = await state.supabaseClient
+      .from("monitoring_profiles")
+      .update({
+        premium_package: packageCode,
+        premium_updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", request.user_id);
+
+    if (profileError) {
+      failProgress(`Pengajuan berubah, tapi profil gagal update: ${profileError.message}`);
+      alert(`Pengajuan berubah, tapi profil gagal update: ${profileError.message}`);
+      return;
+    }
+  }
+
+  finishProgress(`Paket ${request.username} berhasil diubah ke ${packageCode}.`);
+  await loadPremiumRequests();
 }
 
 async function approvePremiumRequest(id) {
@@ -1516,6 +1579,13 @@ function premiumStatusLabel(status) {
   if (status === "approved") return "Disetujui";
   if (status === "rejected") return "Ditolak";
   return "Menunggu ACC";
+}
+
+function premiumPackageAmount(packageCode) {
+  if (packageCode === "P1") return 15000;
+  if (packageCode === "P2") return 25000;
+  if (packageCode === "P3") return 50000;
+  return 0;
 }
 
 function addDaysDateString(date, days) {
