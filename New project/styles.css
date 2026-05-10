@@ -143,6 +143,7 @@ h1 {
 .table-section,
 .anomaly-section,
 .progress-panel,
+.premium-panel,
 .online-panel {
   background: var(--panel);
   border: 1px solid #dde5ec;
@@ -218,6 +219,80 @@ h1 {
 
 .progress-panel p {
   margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.premium-panel {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+}
+
+.premium-panel[hidden] {
+  display: none;
+}
+
+.premium-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.premium-head h2 {
+  margin-bottom: 4px;
+  font-size: 18px;
+}
+
+.premium-head p,
+.premium-meta {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.premium-list {
+  display: grid;
+  gap: 10px;
+}
+
+.premium-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #d7e0ea;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fbfd;
+}
+
+.premium-card h3 {
+  margin: 0 0 5px;
+  font-size: 16px;
+}
+
+.premium-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.premium-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: #e8f2ff;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.empty-premium {
   color: var(--muted);
   font-size: 13px;
 }

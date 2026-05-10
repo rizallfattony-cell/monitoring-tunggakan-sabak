@@ -16,6 +16,7 @@ const state = {
   supabaseClient: null,
   user: null,
   profile: null,
+  premiumRequests: [],
 };
 
 const els = {
@@ -43,6 +44,10 @@ const els = {
   progressPercent: document.querySelector("#progressPercent"),
   progressFill: document.querySelector("#progressFill"),
   progressText: document.querySelector("#progressText"),
+  premiumPanel: document.querySelector("#premiumPanel"),
+  premiumStatus: document.querySelector("#premiumStatus"),
+  premiumList: document.querySelector("#premiumList"),
+  refreshPremiumButton: document.querySelector("#refreshPremiumButton"),
   loginForm: document.querySelector("#loginForm"),
   emailInput: document.querySelector("#emailInput"),
   passwordInput: document.querySelector("#passwordInput"),
@@ -83,6 +88,7 @@ async function boot() {
   if (state.profile?.role === "petugas") {
     await loadPetugasData();
   } else {
+    if (state.profile?.role === "admin") await loadPremiumRequests();
     recompute();
   }
 }
@@ -101,6 +107,8 @@ function attachEvents() {
   els.logoutButton.addEventListener("click", logoutOnline);
   els.loadCloudButton.addEventListener("click", loadCloudData);
   els.saveCloudButton.addEventListener("click", saveCloudData);
+  els.refreshPremiumButton?.addEventListener("click", loadPremiumRequests);
+  els.premiumList?.addEventListener("click", handlePremiumClick);
   els.tableBody.addEventListener("click", handleCountClick);
   els.tableFoot.addEventListener("click", handleCountClick);
   els.closeModalButton.addEventListener("click", closeExportModal);
@@ -178,6 +186,7 @@ async function loginOnline() {
   if (state.profile?.role === "petugas") {
     await loadPetugasData();
   } else {
+    await loadPremiumRequests();
     await loadCloudData({ silentIfEmpty: true });
   }
 }
@@ -187,7 +196,9 @@ async function logoutOnline() {
   await state.supabaseClient.auth.signOut();
   state.user = null;
   state.profile = null;
+  state.premiumRequests = [];
   updateOnlineUi();
+  renderPremiumRequests();
   recompute();
 }
 
@@ -196,7 +207,7 @@ async function loadProfile() {
 
   const { data, error } = await state.supabaseClient
     .from("monitoring_profiles")
-    .select("role, petugas, email")
+    .select("role, petugas, email, premium_package, premium_active_until")
     .eq("user_id", state.user.id)
     .maybeSingle();
 
@@ -266,6 +277,158 @@ async function loadPetugasData() {
 
   renderPetugasRows(data || []);
   setOnlineStatus(`${formatNumber((data || []).length)} pelanggan tersisa dimuat untuk ${state.profile?.petugas || "petugas ini"}.`);
+}
+
+async function loadPremiumRequests() {
+  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") {
+    state.premiumRequests = [];
+    renderPremiumRequests();
+    return;
+  }
+
+  if (els.premiumStatus) els.premiumStatus.textContent = "Memuat pengajuan premium...";
+  const { data, error } = await state.supabaseClient
+    .from("monitoring_premium_requests")
+    .select("id,user_id,username,package_code,amount,proof_path,status,created_at,reviewed_at,reviewer_note")
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    if (els.premiumStatus) els.premiumStatus.textContent = `Gagal memuat pengajuan: ${error.message}`;
+    state.premiumRequests = [];
+    renderPremiumRequests();
+    return;
+  }
+
+  state.premiumRequests = data || [];
+  renderPremiumRequests();
+}
+
+function renderPremiumRequests() {
+  if (!els.premiumList) return;
+  const requests = state.premiumRequests || [];
+  const pendingCount = requests.filter((row) => row.status === "pending").length;
+  if (els.premiumStatus) {
+    els.premiumStatus.textContent = state.profile?.role === "admin"
+      ? `${formatNumber(pendingCount)} menunggu ACC dari ${formatNumber(requests.length)} pengajuan terakhir.`
+      : "Login admin untuk melihat pengajuan premium.";
+  }
+
+  if (!requests.length) {
+    els.premiumList.innerHTML = `<div class="empty-premium">Belum ada pengajuan premium.</div>`;
+    return;
+  }
+
+  els.premiumList.innerHTML = requests.map((row) => {
+    const pending = row.status === "pending";
+    return `
+      <article class="premium-card">
+        <div>
+          <h3>${escapeHtml(row.username || "-")} <span class="premium-badge">${escapeHtml(row.package_code || "-")}</span></h3>
+          <p class="premium-meta">
+            Nominal ${formatRupiah(Number(row.amount || 0))} - ${premiumStatusLabel(row.status)}
+            <br />Upload: ${formatDateTime(row.created_at)}
+            ${row.reviewed_at ? `<br />Review: ${formatDateTime(row.reviewed_at)}` : ""}
+          </p>
+        </div>
+        <div class="premium-actions">
+          <button class="button secondary" type="button" data-proof="${escapeHtml(row.proof_path)}">Lihat Bukti</button>
+          ${pending ? `<button class="button primary" type="button" data-approve="${escapeHtml(row.id)}">ACC 30 Hari</button>` : ""}
+          ${pending ? `<button class="button secondary" type="button" data-reject="${escapeHtml(row.id)}">Tolak</button>` : ""}
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+async function handlePremiumClick(event) {
+  const proofPath = event.target?.dataset?.proof;
+  const approveId = event.target?.dataset?.approve;
+  const rejectId = event.target?.dataset?.reject;
+
+  if (proofPath) {
+    const { data, error } = await state.supabaseClient.storage
+      .from("premium-proofs")
+      .createSignedUrl(proofPath, 60 * 5);
+    if (error) {
+      alert(`Gagal membuka bukti: ${error.message}`);
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  if (approveId) {
+    await approvePremiumRequest(approveId);
+    return;
+  }
+
+  if (rejectId) {
+    await rejectPremiumRequest(rejectId);
+  }
+}
+
+async function approvePremiumRequest(id) {
+  if (!ensureAdmin()) return;
+  const request = state.premiumRequests.find((row) => row.id === id);
+  if (!request) return;
+
+  const activeUntil = addDaysDateString(new Date(), 30);
+  startProgress("ACC Premium", `Mengaktifkan ${request.username} sampai ${activeUntil}...`);
+
+  const { error: profileError } = await state.supabaseClient
+    .from("monitoring_profiles")
+    .update({
+      premium_package: request.package_code,
+      premium_active_until: activeUntil,
+      premium_updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", request.user_id);
+
+  if (profileError) {
+    failProgress(`Gagal update paket: ${profileError.message}`);
+    alert(`Gagal update paket: ${profileError.message}`);
+    return;
+  }
+
+  const { error: requestError } = await state.supabaseClient
+    .from("monitoring_premium_requests")
+    .update({
+      status: "approved",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: state.user.id,
+      reviewer_note: `Aktif sampai ${activeUntil}`,
+    })
+    .eq("id", id);
+
+  if (requestError) {
+    failProgress(`Paket aktif, tapi gagal update status pengajuan: ${requestError.message}`);
+    alert(`Paket aktif, tapi gagal update status pengajuan: ${requestError.message}`);
+    return;
+  }
+
+  finishProgress(`Premium ${request.username} aktif sampai ${activeUntil}.`);
+  await loadPremiumRequests();
+}
+
+async function rejectPremiumRequest(id) {
+  if (!ensureAdmin()) return;
+  const { error } = await state.supabaseClient
+    .from("monitoring_premium_requests")
+    .update({
+      status: "rejected",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: state.user.id,
+      reviewer_note: "Ditolak admin",
+    })
+    .eq("id", id);
+
+  if (error) {
+    alert(`Gagal menolak pengajuan: ${error.message}`);
+    return;
+  }
+
+  await loadPremiumRequests();
 }
 
 function renderPetugasRows(rows) {
@@ -488,6 +651,7 @@ function updateOnlineUi() {
   els.onlineButton.textContent = online ? "Online Aktif" : "Login Online";
   els.loginForm.hidden = online;
   els.syncActions.hidden = !online || state.profile?.role === "petugas";
+  if (els.premiumPanel) els.premiumPanel.hidden = !online || state.profile?.role !== "admin";
   applyRoleView();
   setOnlineStatus(online
     ? state.profile?.role === "petugas"
@@ -1336,6 +1500,7 @@ function formatPercent(value) {
 }
 
 function formatDateTime(value) {
+  if (!value) return "-";
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
     month: "short",
@@ -1343,6 +1508,18 @@ function formatDateTime(value) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function premiumStatusLabel(status) {
+  if (status === "approved") return "Disetujui";
+  if (status === "rejected") return "Ditolak";
+  return "Menunggu ACC";
+}
+
+function addDaysDateString(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next.toISOString().slice(0, 10);
 }
 
 function escapeHtml(value) {
