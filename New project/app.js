@@ -289,7 +289,7 @@ async function loadPremiumRequests() {
   if (els.premiumStatus) els.premiumStatus.textContent = "Memuat pengajuan premium...";
   const { data, error } = await state.supabaseClient
     .from("monitoring_premium_requests")
-    .select("id,user_id,username,package_code,amount,proof_path,status,created_at,reviewed_at,reviewer_note")
+    .select("id,user_id,username,package_code,amount,proof_path,status,created_at,reviewed_at,reviewer_note,request_type,requested_device_id")
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -321,25 +321,29 @@ function renderPremiumRequests() {
 
   els.premiumList.innerHTML = requests.map((row) => {
     const pending = row.status === "pending";
+    const deviceReset = row.request_type === "device_reset";
     return `
       <article class="premium-card">
         <div>
-          <h3>${escapeHtml(row.username || "-")} <span class="premium-badge">${escapeHtml(row.package_code || "-")}</span></h3>
+          <h3>
+            ${escapeHtml(row.username || "-")}
+            <span class="premium-badge">${deviceReset ? "VERIFIKASI DEVICE" : escapeHtml(row.package_code || "-")}</span>
+          </h3>
           <p class="premium-meta">
-            Nominal ${formatRupiah(Number(row.amount || 0))} - ${premiumStatusLabel(row.status)}
+            ${deviceReset ? "Permintaan ganti device premium" : `Nominal ${formatRupiah(Number(row.amount || 0))}`} - ${premiumStatusLabel(row.status)}
             <br />Upload: ${formatDateTime(row.created_at)}
             ${row.reviewed_at ? `<br />Review: ${formatDateTime(row.reviewed_at)}` : ""}
           </p>
         </div>
         <div class="premium-actions">
-          <button class="button secondary" type="button" data-proof="${escapeHtml(row.proof_path)}">Lihat Bukti</button>
-          <select data-package-select="${escapeHtml(row.id)}">
+          ${deviceReset ? "" : `<button class="button secondary" type="button" data-proof="${escapeHtml(row.proof_path)}">Lihat Bukti</button>`}
+          ${deviceReset ? "" : `<select data-package-select="${escapeHtml(row.id)}">
             ${["P1", "P2", "P3"].map((pkg) => `
               <option value="${pkg}" ${row.package_code === pkg ? "selected" : ""}>${pkg} - ${formatRupiah(premiumPackageAmount(pkg))}</option>
             `).join("")}
           </select>
-          <button class="button secondary" type="button" data-update-package="${escapeHtml(row.id)}">Ubah Paket</button>
-          ${pending ? `<button class="button primary" type="button" data-approve="${escapeHtml(row.id)}">ACC 30 Hari</button>` : ""}
+          <button class="button secondary" type="button" data-update-package="${escapeHtml(row.id)}">Ubah Paket</button>`}
+          ${pending ? `<button class="button primary" type="button" data-approve="${escapeHtml(row.id)}">${deviceReset ? "ACC Device" : "ACC 30 Hari"}</button>` : ""}
           ${pending ? `<button class="button secondary" type="button" data-reject="${escapeHtml(row.id)}">Tolak</button>` : ""}
         </div>
       </article>
@@ -436,6 +440,11 @@ async function approvePremiumRequest(id) {
   const request = state.premiumRequests.find((row) => row.id === id);
   if (!request) return;
 
+  if (request.request_type === "device_reset") {
+    await approveDeviceResetRequest(request);
+    return;
+  }
+
   const activeUntil = addDaysDateString(new Date(), 30);
   startProgress("ACC Premium", `Mengaktifkan ${request.username} sampai ${activeUntil}...`);
 
@@ -473,6 +482,48 @@ async function approvePremiumRequest(id) {
   }
 
   finishProgress(`Premium ${request.username} aktif sampai ${activeUntil}.`);
+  await loadPremiumRequests();
+}
+
+async function approveDeviceResetRequest(request) {
+  if (!request.requested_device_id) {
+    alert("Device ID pengajuan kosong.");
+    return;
+  }
+
+  startProgress("ACC Device", `Mengganti device premium ${request.username}...`);
+  const { error: profileError } = await state.supabaseClient
+    .from("monitoring_profiles")
+    .update({
+      premium_device_id: request.requested_device_id,
+      premium_device_bound_at: new Date().toISOString(),
+      premium_updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", request.user_id);
+
+  if (profileError) {
+    failProgress(`Gagal update device premium: ${profileError.message}`);
+    alert(`Gagal update device premium: ${profileError.message}`);
+    return;
+  }
+
+  const { error: requestError } = await state.supabaseClient
+    .from("monitoring_premium_requests")
+    .update({
+      status: "approved",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: state.user.id,
+      reviewer_note: "Device premium diganti admin",
+    })
+    .eq("id", request.id);
+
+  if (requestError) {
+    failProgress(`Device berubah, tapi status pengajuan gagal: ${requestError.message}`);
+    alert(`Device berubah, tapi status pengajuan gagal: ${requestError.message}`);
+    return;
+  }
+
+  finishProgress(`Device premium ${request.username} berhasil diverifikasi.`);
   await loadPremiumRequests();
 }
 
