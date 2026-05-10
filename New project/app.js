@@ -381,6 +381,8 @@ async function approvePremiumRequest(id) {
     .update({
       premium_package: request.package_code,
       premium_active_until: activeUntil,
+      premium_device_id: null,
+      premium_device_bound_at: null,
       premium_updated_at: new Date().toISOString(),
     })
     .eq("user_id", request.user_id);
