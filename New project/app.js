@@ -1305,10 +1305,17 @@ function openTotalExportModal() {
 
   state.pendingExport = { type: "multiple" };
   els.exportModalTitle.textContent = "Export Per Petugas";
-  els.exportModalSubtitle.textContent = "Pilih petugas. Setiap petugas akan menjadi file Excel terpisah.";
+  els.exportModalSubtitle.textContent = "Pilih ALL untuk satu file semua petugas, atau pilih petugas untuk file terpisah.";
   els.exportModalBody.innerHTML = choices.length
     ? `
       <div class="choice-list">
+        <div class="choice-row all-choice">
+          <label>
+            <input type="checkbox" name="exportAllPetugas" value="ALL" />
+            ALL - Semua petugas dalam 1 file
+          </label>
+          <span>${formatNumber(choices.reduce((sum, [, rows]) => sum + rows.length, 0))} pelanggan</span>
+        </div>
         ${choices.map(([petugas, rows]) => `
           <div class="choice-row">
             <label>
@@ -1334,6 +1341,13 @@ function confirmPendingExport() {
 
   if (state.pendingExport.type === "single") {
     exportRemainingForPetugas(state.pendingExport.petugas);
+    closeExportModal();
+    return;
+  }
+
+  const exportAll = els.exportModalBody.querySelector('input[name="exportAllPetugas"]')?.checked;
+  if (exportAll) {
+    exportRemainingAllPetugas();
     closeExportModal();
     return;
   }
@@ -1412,6 +1426,69 @@ function exportRemainingForPetugas(petugas) {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Pelanggan Tersisa");
   XLSX.writeFile(workbook, `pelanggan-tersisa-${slugify(petugas)}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+function exportRemainingAllPetugas() {
+  const entries = [...state.remainingByPetugas.entries()]
+    .filter(([, rows]) => rows.length)
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  const rows = entries.flatMap(([petugas, petugasRows]) =>
+    petugasRows.map((row) => ({ ...row, petugas }))
+  );
+
+  const tableRows = [
+    ["PELANGGAN TERSISA - SEMUA PETUGAS"],
+    [new Intl.DateTimeFormat("id-ID", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }).format(new Date()).toUpperCase()],
+    [],
+    ["NO", "PETUGAS", "IDPEL", "NAMA", "TARIF", "DAYA", "ALAMAT", "LEMBAR", "KOLOK", "KOKED", "RPTAG"],
+    ...rows.map((row, index) => [
+      index + 1,
+      row.petugas,
+      row.idpel,
+      row.nama,
+      row.tarif,
+      row.daya,
+      row.alamat,
+      row.lembar,
+      row.kolok,
+      row.koked,
+      row.rptag,
+    ]),
+  ];
+
+  const worksheet = XLSX.utils.aoa_to_sheet(tableRows);
+  worksheet["!merges"] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 10 } },
+  ];
+  worksheet["!cols"] = [
+    { wch: 6 },
+    { wch: 22 },
+    { wch: 16 },
+    { wch: 28 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 40 },
+    { wch: 10 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 16 },
+  ];
+
+  for (let row = 5; row <= tableRows.length; row += 1) {
+    const cell = worksheet[XLSX.utils.encode_cell({ r: row - 1, c: 10 })];
+    if (cell) cell.z = '"Rp"#,##0';
+  }
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Semua Petugas");
+  XLSX.writeFile(workbook, `pelanggan-tersisa-semua-petugas-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 function exportReport() {
