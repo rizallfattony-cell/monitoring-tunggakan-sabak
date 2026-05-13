@@ -240,6 +240,13 @@ h1 {
   margin-bottom: 12px;
 }
 
+.premium-head-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .premium-head h2 {
   margin-bottom: 4px;
   font-size: 18px;
@@ -255,6 +262,18 @@ h1 {
 .premium-list {
   display: grid;
   gap: 10px;
+}
+
+.premium-panel.is-collapsed {
+  padding-bottom: 10px;
+}
+
+.premium-panel.is-collapsed .premium-head {
+  margin-bottom: 0;
+}
+
+.premium-panel.is-collapsed .premium-list {
+  display: none;
 }
 
 .premium-card {

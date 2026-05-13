@@ -48,6 +48,7 @@ const els = {
   premiumStatus: document.querySelector("#premiumStatus"),
   premiumList: document.querySelector("#premiumList"),
   refreshPremiumButton: document.querySelector("#refreshPremiumButton"),
+  togglePremiumButton: document.querySelector("#togglePremiumButton"),
   loginForm: document.querySelector("#loginForm"),
   emailInput: document.querySelector("#emailInput"),
   passwordInput: document.querySelector("#passwordInput"),
@@ -108,6 +109,7 @@ function attachEvents() {
   els.loadCloudButton.addEventListener("click", loadCloudData);
   els.saveCloudButton.addEventListener("click", saveCloudData);
   els.refreshPremiumButton?.addEventListener("click", loadPremiumRequests);
+  els.togglePremiumButton?.addEventListener("click", togglePremiumPanel);
   els.premiumList?.addEventListener("click", handlePremiumClick);
   els.tableBody.addEventListener("click", handleCountClick);
   els.tableFoot.addEventListener("click", handleCountClick);
@@ -316,6 +318,7 @@ function renderPremiumRequests() {
 
   if (!requests.length) {
     els.premiumList.innerHTML = `<div class="empty-premium">Belum ada pengajuan premium.</div>`;
+    syncPremiumCollapseButton();
     return;
   }
 
@@ -349,6 +352,20 @@ function renderPremiumRequests() {
       </article>
     `;
   }).join("");
+  syncPremiumCollapseButton();
+}
+
+function togglePremiumPanel() {
+  if (!els.premiumPanel) return;
+  els.premiumPanel.classList.toggle("is-collapsed");
+  syncPremiumCollapseButton();
+}
+
+function syncPremiumCollapseButton() {
+  if (!els.togglePremiumButton || !els.premiumPanel) return;
+  els.togglePremiumButton.textContent = els.premiumPanel.classList.contains("is-collapsed")
+    ? "Tampilkan"
+    : "Minimize";
 }
 
 async function handlePremiumClick(event) {
