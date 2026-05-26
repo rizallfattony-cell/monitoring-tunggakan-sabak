@@ -36,6 +36,7 @@ const els = {
   searchInput: document.querySelector("#searchInput"),
   sortSelect: document.querySelector("#sortSelect"),
   exportButton: document.querySelector("#exportButton"),
+  exportJpgButton: document.querySelector("#exportJpgButton"),
   resetButton: document.querySelector("#resetButton"),
   onlineButton: document.querySelector("#onlineButton"),
   onlinePanel: document.querySelector("#onlinePanel"),
@@ -105,6 +106,7 @@ function attachEvents() {
   els.searchInput.addEventListener("input", render);
   els.sortSelect.addEventListener("change", render);
   els.exportButton.addEventListener("click", exportReport);
+  els.exportJpgButton?.addEventListener("click", exportReportJpg);
   els.resetButton.addEventListener("click", resetData);
   els.onlineButton.addEventListener("click", () => {
     switchTab("online");
@@ -845,6 +847,7 @@ function updateHeaderActions() {
   els.onlineButton.hidden = false;
   els.resetButton.hidden = petugasMode || state.activeTab !== "upload";
   els.exportButton.hidden = petugasMode || state.activeTab !== "laporan";
+  if (els.exportJpgButton) els.exportJpgButton.hidden = petugasMode || state.activeTab !== "laporan";
 }
 
 function setOnlineStatus(message) {
@@ -1188,6 +1191,7 @@ function render() {
 
   els.tableFoot.innerHTML = state.report.length ? renderTotals(state.totals) : "";
   els.exportButton.disabled = state.report.length === 0;
+  if (els.exportJpgButton) els.exportJpgButton.disabled = state.report.length === 0;
   els.metricAwal.textContent = formatRupiah(state.totals.awalRupiah);
   els.metricAkhir.textContent = formatRupiah(state.totals.akhirRupiah);
   els.metricPelunasan.textContent = formatRupiah(state.totals.pelunasanRupiah);
@@ -1619,6 +1623,196 @@ function exportReport() {
   updateProgress(90, "Mengunduh file Excel...");
   XLSX.writeFile(workbook, `monitoring-saldo-tunggakan-${new Date().toISOString().slice(0, 10)}.xlsx`);
   finishProgress("Export Excel selesai.");
+}
+
+function exportReportJpg() {
+  const rows = getVisibleRows();
+  if (!rows.length) {
+    alert("Belum ada data laporan untuk didownload.");
+    return;
+  }
+
+  startProgress("Download JPG", "Menggambar laporan ke gambar...");
+  const title = "LAPORAN MONITORING SALDO TUNGGAKAN";
+  const date = new Intl.DateTimeFormat("id-ID", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date()).toUpperCase();
+  const exportRows = rows.map((row, index) => ({
+    no: index + 1,
+    biller: row.petugas,
+    awalId: formatNumber(row.awalId),
+    awalRp: formatRupiah(row.awalRupiah),
+    akhirId: formatNumber(row.akhirId),
+    akhirRp: formatRupiah(row.akhirRupiah),
+    pelunasanPel: formatNumber(row.pelunasanPel),
+    pelunasanRp: formatRupiah(row.pelunasanRupiah),
+    persenPel: Math.round(row.persenPel),
+    persenTagihan: Math.round(row.persenTagihan),
+    danger: row.persenTagihan < 85,
+  }));
+  exportRows.push({
+    no: "",
+    biller: "TOTAL",
+    awalId: formatNumber(state.totals.awalId),
+    awalRp: formatRupiah(state.totals.awalRupiah),
+    akhirId: formatNumber(state.totals.akhirId),
+    akhirRp: formatRupiah(state.totals.akhirRupiah),
+    pelunasanPel: formatNumber(state.totals.pelunasanPel),
+    pelunasanRp: formatRupiah(state.totals.pelunasanRupiah),
+    persenPel: Math.round(state.totals.persenPel),
+    persenTagihan: Math.round(state.totals.persenTagihan),
+    total: true,
+  });
+
+  const scale = 2;
+  const columns = [
+    { key: "no", label: "NO", width: 54, align: "center" },
+    { key: "biller", label: "BILLER", width: 260, align: "left" },
+    { key: "awalId", group: "SALDO AWAL", label: "ID PEL", width: 100, align: "center" },
+    { key: "awalRp", group: "SALDO AWAL", label: "RP TAGIHAN", width: 210, align: "right" },
+    { key: "akhirId", group: "SALDO AKHIR", label: "ID PEL", width: 104, align: "center" },
+    { key: "akhirRp", group: "SALDO AKHIR", label: "RP TAGIHAN", width: 194, align: "right" },
+    { key: "pelunasanPel", group: "PELUNASAN TOTAL", label: "PEL", width: 100, align: "center" },
+    { key: "pelunasanRp", group: "PELUNASAN TOTAL", label: "TAGIHAN", width: 210, align: "right" },
+    { key: "persenPel", group: "PELUNASAN TAGIHAN (%)", label: "PEL", width: 160, align: "bar" },
+    { key: "persenTagihan", group: "PELUNASAN TAGIHAN (%)", label: "TAGIHAN", width: 160, align: "bar" },
+  ];
+  const tableWidth = columns.reduce((sum, column) => sum + column.width, 0);
+  const margin = 12;
+  const titleHeight = 84;
+  const groupHeight = 38;
+  const headerHeight = 38;
+  const rowHeight = 42;
+  const width = tableWidth + margin * 2;
+  const height = titleHeight + groupHeight + headerHeight + exportRows.length * rowHeight + margin;
+  const canvas = document.createElement("canvas");
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(scale, scale);
+
+  ctx.fillStyle = "#f8fbfd";
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#10202f";
+  ctx.font = "700 21px Arial";
+  ctx.fillText(title, margin, 36);
+  ctx.fillStyle = "#52677a";
+  ctx.font = "700 14px Arial";
+  ctx.fillText(date, margin, 64);
+
+  const startX = margin;
+  let y = titleHeight;
+  drawCell(ctx, startX, y, columns[0].width, groupHeight + headerHeight, "NO", { fill: "#e9f1f6", bold: true, align: "center" });
+  drawCell(ctx, startX + columns[0].width, y, columns[1].width, groupHeight + headerHeight, "BILLER", { fill: "#e9f1f6", bold: true, align: "center" });
+
+  let x = startX + columns[0].width + columns[1].width;
+  [
+    ["SALDO AWAL", columns[2].width + columns[3].width],
+    ["SALDO AKHIR", columns[4].width + columns[5].width],
+    ["PELUNASAN TOTAL", columns[6].width + columns[7].width],
+    ["PELUNASAN TAGIHAN (%)", columns[8].width + columns[9].width],
+  ].forEach(([label, groupWidth]) => {
+    drawCell(ctx, x, y, groupWidth, groupHeight, label, { fill: "#e9f1f6", bold: true, align: "center" });
+    x += groupWidth;
+  });
+
+  x = startX + columns[0].width + columns[1].width;
+  columns.slice(2).forEach((column) => {
+    drawCell(ctx, x, y + groupHeight, column.width, headerHeight, column.label, { fill: "#e9f1f6", bold: true, align: "center" });
+    x += column.width;
+  });
+
+  y += groupHeight + headerHeight;
+  exportRows.forEach((row, rowIndex) => {
+    x = startX;
+    const rowFill = row.total ? "#dcecf7" : rowIndex % 2 === 0 ? "#ffffff" : "#f8fbfd";
+    columns.forEach((column) => {
+      if (column.align === "bar") {
+        drawPercentCell(ctx, x, y, column.width, rowHeight, row[column.key], rowFill, row.total);
+      } else {
+        drawCell(ctx, x, y, column.width, rowHeight, row[column.key], {
+          fill: rowFill,
+          align: column.align,
+          bold: row.total || column.key === "biller",
+          danger: row.danger && !row.total,
+        });
+      }
+      x += column.width;
+    });
+    y += rowHeight;
+  });
+
+  updateProgress(86, "Mengunduh file JPG...");
+  const link = document.createElement("a");
+  link.download = `laporan-monitoring-tunggakan-${new Date().toISOString().slice(0, 10)}.jpg`;
+  link.href = canvas.toDataURL("image/jpeg", 0.94);
+  link.click();
+  finishProgress("Download JPG selesai.");
+}
+
+function drawCell(ctx, x, y, width, height, value, options = {}) {
+  ctx.fillStyle = options.fill || "#ffffff";
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = "#cfdbe5";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, width, height);
+  ctx.fillStyle = options.danger ? "#c1121f" : "#10202f";
+  ctx.font = `${options.bold ? "700" : "400"} 14px Arial`;
+  ctx.textBaseline = "middle";
+  const text = String(value ?? "");
+  const align = options.align || "left";
+  if (align === "right") {
+    ctx.textAlign = "right";
+    ctx.fillText(text, x + width - 10, y + height / 2);
+  } else if (align === "center") {
+    ctx.textAlign = "center";
+    ctx.fillText(text, x + width / 2, y + height / 2);
+  } else {
+    ctx.textAlign = "left";
+    ctx.fillText(text, x + 10, y + height / 2);
+  }
+}
+
+function drawPercentCell(ctx, x, y, width, height, value, fill, total = false) {
+  drawCell(ctx, x, y, width, height, "", { fill });
+  const percent = Math.max(0, Math.min(100, Number(value) || 0));
+  const barX = x + 8;
+  const barY = y + 8;
+  const barWidth = width - 16;
+  const barHeight = height - 16;
+  ctx.fillStyle = "#ffffff";
+  roundRect(ctx, barX, barY, barWidth, barHeight, 5);
+  ctx.fill();
+  ctx.strokeStyle = "#ccd6df";
+  ctx.stroke();
+  ctx.fillStyle = total || percent >= 85 ? "#6fc58a" : "#f0aaa6";
+  roundRect(ctx, barX, barY, (barWidth * percent) / 100, barHeight, 5);
+  ctx.fill();
+  ctx.fillStyle = percent >= 85 || total ? "#10202f" : "#c1121f";
+  ctx.font = "700 14px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`${percent}%`, x + width / 2, y + height / 2);
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + safeRadius, y);
+  ctx.lineTo(x + width - safeRadius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  ctx.lineTo(x + width, y + height - safeRadius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+  ctx.lineTo(x + safeRadius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  ctx.lineTo(x, y + safeRadius);
+  ctx.quadraticCurveTo(x, y, x + safeRadius, y);
+  ctx.closePath();
 }
 
 function applyExportFormats(worksheet, rowCount) {
