@@ -93,8 +93,12 @@ async function boot() {
   if (state.profile?.role === "petugas") {
     await loadPetugasData();
   } else {
-    if (state.profile?.role === "admin") await loadPremiumRequests();
-    recompute();
+    if (state.profile?.role === "admin") {
+      await loadPremiumRequests();
+      await loadCloudData({ silentIfEmpty: true, automatic: true });
+    } else {
+      recompute();
+    }
   }
 }
 
@@ -215,7 +219,7 @@ async function loginOnline() {
     await loadPetugasData();
   } else {
     await loadPremiumRequests();
-    await loadCloudData({ silentIfEmpty: true });
+    await loadCloudData({ silentIfEmpty: true, automatic: true });
   }
 }
 
@@ -254,7 +258,7 @@ async function loadCloudData(options = {}) {
     return;
   }
 
-  startProgress("Ambil Data Online", "Mengambil data dari Supabase...");
+  startProgress(options.automatic ? "Memuat Data Online" : "Ambil Data Online", "Mengambil data dari Supabase...");
   setOnlineStatus("Mengambil data online...");
   const { data, error } = await state.supabaseClient
     .from("monitoring_app_state")
@@ -271,6 +275,7 @@ async function loadCloudData(options = {}) {
   if (!data?.payload) {
     finishProgress(options.silentIfEmpty ? "Login berhasil. Belum ada data online." : "Belum ada data online.");
     setOnlineStatus(options.silentIfEmpty ? "Login berhasil. Belum ada data online." : "Belum ada data online.");
+    recompute();
     return;
   }
 
@@ -669,8 +674,8 @@ function renderAdminHeader() {
 }
 
 async function saveCloudData(options = {}) {
-  if (!ensureOnlineReady()) return;
-  if (!ensureAdmin()) return;
+  if (!ensureOnlineReady()) return false;
+  if (!ensureAdmin()) return false;
 
   const embeddedProgress = options.embeddedProgress === true;
   if (embeddedProgress) {
@@ -696,7 +701,7 @@ async function saveCloudData(options = {}) {
   if (error) {
     failProgress(`Gagal simpan online: ${error.message}`);
     setOnlineStatus(`Gagal simpan online: ${error.message}`);
-    return;
+    return false;
   }
 
   try {
@@ -705,7 +710,7 @@ async function saveCloudData(options = {}) {
   } catch (publishError) {
     failProgress(`Gagal publish data petugas: ${publishError.message}`);
     setOnlineStatus(`Data utama tersimpan, tapi gagal publish data petugas: ${publishError.message}`);
-    return;
+    return false;
   }
 
   updateProgress(embeddedProgress ? 82 : 70, "Mempublish data stand meter struk...");
@@ -714,6 +719,7 @@ async function saveCloudData(options = {}) {
   const savedMessage = `Data online tersimpan: ${formatDateTime(new Date().toISOString())}.`;
   if (!embeddedProgress) finishProgress(savedMessage);
   setOnlineStatus(savedMessage);
+  return true;
 }
 
 async function publishRemainingCustomers() {
@@ -790,8 +796,8 @@ async function publishReceiptMeters() {
 }
 
 async function autoSaveCloudData(options = {}) {
-  if (!state.supabaseClient || !state.user) return;
-  await saveCloudData(options);
+  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") return false;
+  return saveCloudData(options);
 }
 
 function ensureOnlineReady() {
@@ -827,7 +833,7 @@ function updateOnlineUi() {
   setOnlineStatus(online
     ? state.profile?.role === "petugas"
       ? `Login sebagai ${state.user.email}. Mode petugas: ${state.profile.petugas || "-"}.`
-      : `Login sebagai ${state.user.email}. Mode admin. Data bisa disimpan dan diambil dari Supabase.`
+      : `Login sebagai ${state.user.email}. Mode admin. Data online dimuat saat login dan upload otomatis tersimpan ke Supabase.`
     : state.supabaseClient
       ? "Supabase siap. Silakan login untuk sinkronisasi online."
       : "Supabase belum dikonfigurasi. Isi supabase-config.js untuk mode online.");
@@ -899,12 +905,12 @@ async function handleUpload(event, kind) {
     state[kind] = kind === "dil" ? normalizeDil(rows) : normalizeSaldo(rows);
     updateProgress(58, "Menyimpan data lokal...");
     await saveStoredData();
-    updateProgress(68, "Sinkronisasi online...");
-    await autoSaveCloudData({ embeddedProgress: true });
-    updateProgress(88, "Menghitung ulang laporan...");
+    updateProgress(66, "Menghitung ulang laporan...");
     recompute();
+    updateProgress(72, "Sinkronisasi online otomatis...");
+    const onlineSaved = await autoSaveCloudData({ embeddedProgress: true });
     if (kind === "akhir") switchTab("laporan");
-    finishProgress(`${label} selesai diproses: ${formatNumber(state[kind].length)} baris.`);
+    finishProgress(`${label} selesai diproses: ${formatNumber(state[kind].length)} baris.${onlineSaved ? " Data online sudah otomatis tersimpan." : ""}`);
   } catch (error) {
     failProgress(`Gagal membaca file ${file.name}: ${error.message}`);
     alert(`Gagal membaca file ${file.name}: ${error.message}`);
@@ -927,11 +933,11 @@ async function handleStrukUpload(event) {
     state.struk = normalizeStruk(rows);
     updateProgress(58, "Menyimpan data lokal...");
     await saveStoredData();
-    updateProgress(68, "Sinkronisasi online...");
-    await autoSaveCloudData({ embeddedProgress: true });
-    updateProgress(88, "Memperbarui status file...");
+    updateProgress(68, "Memperbarui status file...");
     updateFileStatuses();
-    finishProgress(`File struk selesai diproses: ${formatNumber(state.struk.length)} IDPEL stand meter.`);
+    updateProgress(74, "Sinkronisasi online otomatis...");
+    const onlineSaved = await autoSaveCloudData({ embeddedProgress: true });
+    finishProgress(`File struk selesai diproses: ${formatNumber(state.struk.length)} IDPEL stand meter.${onlineSaved ? " Data online sudah otomatis tersimpan." : ""}`);
     setOnlineStatus(`File struk dimuat: ${formatNumber(state.struk.length)} IDPEL stand meter.`);
   } catch (error) {
     failProgress(`Gagal membaca file ${file.name}: ${error.message}`);
