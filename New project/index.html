@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Monitoring Saldo Tunggakan</title>
+    <title>Monitoring Saldo Tunggakan SIMONTOK</title>
+    <meta name="theme-color" content="#006b8f" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <meta name="theme-color" content="#145ea8" />
     <link rel="stylesheet" href="./styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -14,39 +14,28 @@
   <body>
     <main class="app-shell">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">Web lokal</p>
+        <div class="brand-block">
+          <p class="eyebrow">SIMONTOK Admin</p>
           <h1>Monitoring Saldo Tunggakan</h1>
-          <p class="subtitle" id="reportDate">Siapkan DIL, saldo awal, dan saldo akhir untuk mulai.</p>
+          <p class="subtitle" id="reportDate">Memuat tanggal laporan...</p>
         </div>
         <div class="topbar-actions">
-          <button class="button secondary" id="onlineButton" type="button">Login Online</button>
-          <button class="button secondary" id="resetButton" type="button">Reset Data</button>
-          <button class="button primary" id="exportButton" type="button" disabled>Export Excel</button>
+          <button class="button secondary" id="onlineButton" type="button">Online / Login</button>
+          <button class="button secondary" id="resetButton" type="button">Reset Lokal</button>
+          <button class="button primary" id="exportButton" type="button">Export Excel</button>
         </div>
       </header>
 
-      <section class="online-panel" id="onlinePanel" hidden>
-        <div>
-          <span class="upload-label">Supabase</span>
-          <h2>Mode Online</h2>
-          <p id="onlineStatus">Belum login. Data masih tersimpan lokal di browser ini.</p>
-        </div>
-        <div class="online-form" id="loginForm">
-          <input id="emailInput" type="email" placeholder="Email" autocomplete="email" />
-          <input id="passwordInput" type="password" placeholder="Password" autocomplete="current-password" />
-          <button class="button primary" id="loginButton" type="button">Login</button>
-        </div>
-        <div class="online-actions" id="syncActions" hidden>
-          <button class="button secondary" id="loadCloudButton" type="button">Ambil Data Online</button>
-          <button class="button primary" id="saveCloudButton" type="button">Simpan ke Online</button>
-          <button class="button secondary" id="logoutButton" type="button">Logout</button>
-        </div>
-      </section>
+      <nav class="tab-nav" aria-label="Navigasi admin">
+        <button class="tab-button is-active" type="button" data-tab="upload">Upload Data</button>
+        <button class="tab-button" type="button" data-tab="laporan">Laporan</button>
+        <button class="tab-button" type="button" data-tab="online">Online & Sinkron</button>
+        <button class="tab-button" type="button" data-tab="premium">Premium</button>
+      </nav>
 
       <section class="progress-panel" id="progressPanel" hidden>
         <div class="progress-head">
-          <strong id="progressTitle">Memproses data...</strong>
+          <strong id="progressTitle">Memproses...</strong>
           <span id="progressPercent">0%</span>
         </div>
         <div class="progress-track">
@@ -55,162 +44,222 @@
         <p id="progressText">Menyiapkan proses.</p>
       </section>
 
-      <section class="premium-panel" id="premiumPanel" hidden>
-        <div class="premium-head">
+      <section class="tab-panel is-active" data-tab-panel="upload">
+        <div class="section-head">
           <div>
-            <span class="upload-label">Premium</span>
-            <h2>Pengajuan Premium Petugas</h2>
-            <p id="premiumStatus">Belum ada pengajuan dimuat.</p>
-          </div>
-          <div class="premium-head-actions">
-            <button class="button secondary" id="togglePremiumButton" type="button">Minimize</button>
-            <button class="button secondary" id="refreshPremiumButton" type="button">Refresh Pengajuan</button>
+            <p class="eyebrow">Langkah 1</p>
+            <h2>Upload Data Operasional</h2>
+            <p>Masukkan file sesuai urutan kerja harian. Saldo akhir akan menjadi data tunggakan petugas di APK.</p>
           </div>
         </div>
-        <div class="premium-list" id="premiumList">
-          <div class="empty-premium">Login admin untuk melihat pengajuan premium.</div>
-        </div>
+
+        <section class="upload-grid">
+          <article class="upload-panel">
+            <span class="step-badge">1</span>
+            <div>
+              <span class="upload-label">Data Induk Langganan</span>
+              <h2>DIL</h2>
+              <p>Kolom: IDPEL, NAMA, RBM, KOLOK, KOKED, PETUGAS.</p>
+            </div>
+            <label class="file-button">
+              Upload DIL
+              <input id="dilInput" type="file" accept=".xlsx,.xls,.csv" />
+            </label>
+            <span class="file-status" id="dilStatus">Belum ada file.</span>
+          </article>
+
+          <article class="upload-panel">
+            <span class="step-badge">2</span>
+            <div>
+              <span class="upload-label">Saldo Pembanding</span>
+              <h2>Saldo Awal</h2>
+              <p>Kolom: IDPEL, NAMA, RPTAG, RPBK.</p>
+            </div>
+            <label class="file-button">
+              Upload Saldo Awal
+              <input id="awalInput" type="file" accept=".xlsx,.xls,.csv" />
+            </label>
+            <span class="file-status" id="awalStatus">Belum ada file.</span>
+          </article>
+
+          <article class="upload-panel">
+            <span class="step-badge">3</span>
+            <div>
+              <span class="upload-label">Saldo Terbaru</span>
+              <h2>Saldo Akhir</h2>
+              <p>Data ini menjadi daftar tunggakan petugas.</p>
+            </div>
+            <label class="file-button">
+              Upload Saldo Akhir
+              <input id="akhirInput" type="file" accept=".xlsx,.xls,.csv" />
+            </label>
+            <span class="file-status" id="akhirStatus">Belum ada file.</span>
+          </article>
+
+          <article class="upload-panel">
+            <span class="step-badge">4</span>
+            <div>
+              <span class="upload-label">Struk Petugas</span>
+              <h2>Stand Meter</h2>
+              <p>Opsional untuk kebutuhan cetak struk di APK.</p>
+            </div>
+            <label class="file-button">
+              Upload Stand Meter
+              <input id="strukInput" type="file" accept=".xlsx,.xls,.csv" />
+            </label>
+            <span class="file-status" id="strukStatus">Belum ada file.</span>
+          </article>
+        </section>
       </section>
 
-      <section class="upload-grid" aria-label="Upload data Excel">
-        <article class="upload-panel" data-file-card="dil">
+      <section class="tab-panel" data-tab-panel="laporan" hidden>
+        <div class="section-head">
           <div>
-            <span class="upload-label">Data Master</span>
-            <h2>DIL</h2>
-            <p>IDPEL, NAMA, RBM, KOLOK, KOKED, PETUGAS</p>
+            <p class="eyebrow">Langkah 2</p>
+            <h2>Laporan & Evaluasi</h2>
+            <p>Cek ringkasan, cari petugas, lihat pelanggan tersisa, dan export laporan.</p>
           </div>
-          <label class="file-button">
-            Upload DIL
-            <input id="dilInput" type="file" accept=".xlsx,.xls,.csv" />
-          </label>
-          <span class="file-status" id="dilStatus">Belum ada data</span>
-        </article>
+        </div>
 
-        <article class="upload-panel" data-file-card="awal">
-          <div>
-            <span class="upload-label">Acuan Tetap</span>
-            <h2>Saldo Awal</h2>
-            <p>IDPEL, NAMA, RPTAG, RPBK</p>
-          </div>
-          <label class="file-button">
-            Upload Saldo Awal
-            <input id="awalInput" type="file" accept=".xlsx,.xls,.csv" />
-          </label>
-          <span class="file-status" id="awalStatus">Belum ada data</span>
-        </article>
+        <section class="summary-grid">
+          <article class="metric">
+            <span>Saldo Awal</span>
+            <strong id="metricAwal">Rp0</strong>
+          </article>
+          <article class="metric">
+            <span>Saldo Akhir</span>
+            <strong id="metricAkhir">Rp0</strong>
+          </article>
+          <article class="metric">
+            <span>Pelunasan</span>
+            <strong id="metricPelunasan">Rp0</strong>
+          </article>
+          <article class="metric">
+            <span>Persentase</span>
+            <strong id="metricPersen">0%</strong>
+          </article>
+        </section>
 
-        <article class="upload-panel" data-file-card="akhir">
-          <div>
-            <span class="upload-label">Update Harian</span>
-            <h2>Saldo Akhir</h2>
-            <p>IDPEL, NAMA, RPTAG, RPBK</p>
+        <section class="toolbar">
+          <div class="field">
+            <label for="searchInput">Cari Petugas</label>
+            <input id="searchInput" type="search" placeholder="Nama petugas" autocomplete="off" />
           </div>
-          <label class="file-button">
-            Upload Saldo Akhir
-            <input id="akhirInput" type="file" accept=".xlsx,.xls,.csv" />
-          </label>
-          <span class="file-status" id="akhirStatus">Belum ada data</span>
-        </article>
+          <div class="field">
+            <label for="sortSelect">Urutkan</label>
+            <select id="sortSelect">
+              <option value="tagihanDesc">Tagihan terbesar</option>
+              <option value="persenAsc">Persentase terendah</option>
+              <option value="persenDesc">Persentase tertinggi</option>
+              <option value="awalDesc">Saldo awal terbesar</option>
+              <option value="nameAsc">Nama petugas A-Z</option>
+            </select>
+          </div>
+          <p class="auto-note">Klik angka saldo akhir untuk membuka daftar pelanggan tersisa per petugas.</p>
+        </section>
 
-        <article class="upload-panel" data-file-card="struk">
-          <div>
-            <span class="upload-label">Cetak Struk</span>
-            <h2>Stand Meter</h2>
-            <p>IDPEL, STANDAWAL, STAND AKHIR</p>
+        <section class="table-section">
+          <div class="report-heading">
+            <h2>Laporan Monitoring Saldo Tunggakan</h2>
+            <p id="tableDate">-</p>
           </div>
-          <label class="file-button">
-            Upload File Struk
-            <input id="strukInput" type="file" accept=".xlsx,.xls,.csv" />
-          </label>
-          <span class="file-status" id="strukStatus">Belum ada data</span>
-        </article>
+          <div class="table-wrap">
+            <table id="monitoringTable">
+              <thead>
+                <tr>
+                  <th rowspan="2">No</th>
+                  <th rowspan="2">Petugas</th>
+                  <th colspan="2">Saldo Awal</th>
+                  <th colspan="2">Saldo Akhir</th>
+                  <th colspan="2">Pelunasan</th>
+                  <th colspan="2">Persentase</th>
+                </tr>
+                <tr>
+                  <th>PEL</th>
+                  <th>TAGIHAN</th>
+                  <th>PEL</th>
+                  <th>TAGIHAN</th>
+                  <th>PEL</th>
+                  <th>TAGIHAN</th>
+                  <th>PEL</th>
+                  <th>TAGIHAN</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <tr>
+                  <td class="empty-state" colspan="10">Belum ada data. Upload DIL, saldo awal, dan saldo akhir.</td>
+                </tr>
+              </tbody>
+              <tfoot id="tableFoot"></tfoot>
+            </table>
+          </div>
+        </section>
+
+        <section class="anomaly-section">
+          <button class="accordion" id="anomalyToggle" type="button">
+            <span>Anomali Data</span>
+            <strong id="anomalyCount">0</strong>
+          </button>
+          <div class="anomaly-body" id="anomalyBody" hidden>
+            <div class="anomaly-list" id="anomalyList">
+              <div class="anomaly-item">
+                <strong>Aman</strong>
+                <span>Belum ada anomali terdeteksi.</span>
+              </div>
+            </div>
+          </div>
+        </section>
       </section>
 
-      <section class="summary-grid" aria-label="Ringkasan monitoring">
-        <div class="metric">
-          <span>Total Saldo Awal</span>
-          <strong id="metricAwal">Rp0</strong>
+      <section class="tab-panel" data-tab-panel="online" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Langkah 3</p>
+            <h2>Online & Sinkron</h2>
+            <p>Login admin, ambil data online, atau publish data terbaru untuk aplikasi petugas.</p>
+          </div>
         </div>
-        <div class="metric">
-          <span>Total Saldo Akhir</span>
-          <strong id="metricAkhir">Rp0</strong>
-        </div>
-        <div class="metric">
-          <span>Pelunasan Total</span>
-          <strong id="metricPelunasan">Rp0</strong>
-        </div>
-        <div class="metric">
-          <span>Kinerja Tagihan</span>
-          <strong id="metricPersen">0%</strong>
-        </div>
+
+        <section class="online-panel" id="onlinePanel">
+          <div>
+            <h2>Mode Online Supabase</h2>
+            <p id="onlineStatus">Supabase belum dikonfigurasi.</p>
+          </div>
+          <div class="online-form" id="loginForm">
+            <input id="emailInput" type="email" placeholder="Email admin/petugas" autocomplete="username" />
+            <input id="passwordInput" type="password" placeholder="Password" autocomplete="current-password" />
+            <button class="button primary" id="loginButton" type="button">Login</button>
+          </div>
+          <div class="online-actions" id="syncActions" hidden>
+            <button class="button secondary" id="loadCloudButton" type="button">Ambil Data Online</button>
+            <button class="button primary" id="saveCloudButton" type="button">Simpan ke Online</button>
+            <button class="button secondary" id="logoutButton" type="button">Logout</button>
+          </div>
+        </section>
       </section>
 
-      <section class="toolbar" aria-label="Kontrol tabel">
-        <div class="field">
-          <label for="searchInput">Cari petugas</label>
-          <input id="searchInput" type="search" placeholder="Nama biller/petugas" />
+      <section class="tab-panel" data-tab-panel="premium" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Admin</p>
+            <h2>Premium & Device</h2>
+            <p>Kelola pengajuan premium petugas dan permintaan verifikasi ulang device.</p>
+          </div>
         </div>
-        <div class="field">
-          <label for="sortSelect">Urutkan</label>
-          <select id="sortSelect">
-            <option value="tagihanDesc">Tagihan % tertinggi</option>
-            <option value="tagihanAsc">Tagihan % terendah</option>
-            <option value="pelDesc">PEL % tertinggi</option>
-            <option value="akhirDesc">Saldo akhir terbesar</option>
-            <option value="awalDesc">Saldo awal terbesar</option>
-            <option value="nameAsc">Nama petugas A-Z</option>
-          </select>
-        </div>
-        <div class="auto-note">
-          5 petugas dengan persentase rupiah terendah otomatis diberi warna merah.
-        </div>
-      </section>
 
-      <section class="table-section">
-        <div class="report-heading">
-          <h2>MONITORING TUNGGAKAN SABAK</h2>
-          <p id="tableDate">Memuat tanggal...</p>
-        </div>
-        <div class="table-wrap">
-          <table id="monitoringTable">
-            <thead>
-              <tr>
-                <th rowspan="2">NO</th>
-                <th rowspan="2">BILLER</th>
-                <th colspan="2">SALDO AWAL</th>
-                <th colspan="2">SALDO AKHIR</th>
-                <th colspan="2">PELUNASAN TOTAL</th>
-                <th colspan="2">PELUNASAN TAGIHAN (%)</th>
-              </tr>
-              <tr>
-                <th>ID PEL</th>
-                <th>RP TAGIHAN</th>
-                <th>ID PEL</th>
-                <th>RP TAGIHAN</th>
-                <th>PEL</th>
-                <th>TAGIHAN</th>
-                <th>PEL</th>
-                <th>TAGIHAN</th>
-              </tr>
-            </thead>
-            <tbody id="tableBody">
-              <tr>
-                <td class="empty-state" colspan="10">Belum ada laporan. Upload DIL, saldo awal, dan saldo akhir.</td>
-              </tr>
-            </tbody>
-            <tfoot id="tableFoot"></tfoot>
-          </table>
-        </div>
-      </section>
-
-      <section class="anomaly-section">
-        <button class="accordion" id="anomalyToggle" type="button">
-          <span>Data Anomali</span>
-          <strong id="anomalyCount">0</strong>
-        </button>
-        <div class="anomaly-body" id="anomalyBody" hidden>
-          <div id="anomalyList" class="anomaly-list"></div>
-        </div>
+        <section class="premium-panel is-collapsed" id="premiumPanel" hidden>
+          <div class="premium-head">
+            <div>
+              <h2>Pengajuan Premium Petugas</h2>
+              <p id="premiumStatus">Login admin untuk melihat pengajuan premium.</p>
+            </div>
+            <div class="premium-head-actions">
+              <button class="button secondary" id="refreshPremiumButton" type="button">Refresh</button>
+              <button class="button secondary" id="togglePremiumButton" type="button">Tampilkan</button>
+            </div>
+          </div>
+          <div class="premium-list" id="premiumList"></div>
+        </section>
       </section>
     </main>
 
@@ -218,15 +267,15 @@
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
         <div class="modal-header">
           <div>
-            <h2 id="exportModalTitle">Export Pelanggan Tersisa</h2>
+            <h2 id="exportModalTitle">Export Data Petugas</h2>
             <p id="exportModalSubtitle">Pilih data yang ingin diexport.</p>
           </div>
-          <button class="icon-button" id="closeModalButton" type="button" aria-label="Tutup">X</button>
+          <button class="icon-button" id="closeModalButton" type="button" aria-label="Tutup">x</button>
         </div>
         <div class="modal-body" id="exportModalBody"></div>
         <div class="modal-actions">
           <button class="button secondary" id="cancelExportButton" type="button">Batal</button>
-          <button class="button primary" id="confirmExportButton" type="button">Export Excel</button>
+          <button class="button primary" id="confirmExportButton" type="button">Export</button>
         </div>
       </div>
     </div>

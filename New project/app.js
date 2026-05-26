@@ -13,6 +13,7 @@ const state = {
   anomalies: [],
   remainingByPetugas: new Map(),
   pendingExport: null,
+  activeTab: "upload",
   supabaseClient: null,
   user: null,
   profile: null,
@@ -76,6 +77,8 @@ const els = {
   summaryGrid: document.querySelector(".summary-grid"),
   toolbar: document.querySelector(".toolbar"),
   anomalySection: document.querySelector(".anomaly-section"),
+  tabButtons: [...document.querySelectorAll("[data-tab]")],
+  tabPanels: [...document.querySelectorAll("[data-tab-panel]")],
 };
 
 boot();
@@ -103,7 +106,10 @@ function attachEvents() {
   els.sortSelect.addEventListener("change", render);
   els.exportButton.addEventListener("click", exportReport);
   els.resetButton.addEventListener("click", resetData);
-  els.onlineButton.addEventListener("click", openOnlinePanel);
+  els.onlineButton.addEventListener("click", () => {
+    switchTab("online");
+    openOnlinePanel();
+  });
   els.loginButton.addEventListener("click", loginOnline);
   els.logoutButton.addEventListener("click", logoutOnline);
   els.loadCloudButton.addEventListener("click", loadCloudData);
@@ -122,6 +128,24 @@ function attachEvents() {
   els.anomalyToggle.addEventListener("click", () => {
     els.anomalyBody.hidden = !els.anomalyBody.hidden;
   });
+  els.tabButtons.forEach((button) => {
+    button.addEventListener("click", () => switchTab(button.dataset.tab));
+  });
+}
+
+function switchTab(tabName) {
+  if (!tabName) return;
+  state.activeTab = tabName;
+  els.tabButtons.forEach((button) => {
+    const active = button.dataset.tab === tabName;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", active ? "true" : "false");
+  });
+  els.tabPanels.forEach((panel) => {
+    panel.hidden = panel.dataset.tabPanel !== tabName;
+    panel.classList.toggle("is-active", panel.dataset.tabPanel === tabName);
+  });
+  updateHeaderActions();
 }
 
 async function hydrate() {
@@ -673,17 +697,27 @@ async function saveCloudData(options = {}) {
     return;
   }
 
-  updateProgress(embeddedProgress ? 74 : 35, "Mempublish data pelanggan tersisa...");
-  await publishRemainingCustomers();
+  try {
+    updateProgress(embeddedProgress ? 74 : 35, "Mempublish data pelanggan tersisa...");
+    await publishRemainingCustomers();
+  } catch (publishError) {
+    failProgress(`Gagal publish data petugas: ${publishError.message}`);
+    setOnlineStatus(`Data utama tersimpan, tapi gagal publish data petugas: ${publishError.message}`);
+    return;
+  }
+
   updateProgress(embeddedProgress ? 82 : 70, "Mempublish data stand meter struk...");
   await publishReceiptMeters();
-  if (!embeddedProgress) finishProgress(`Data online tersimpan: ${formatDateTime(new Date().toISOString())}.`);
-  setOnlineStatus(`Data online tersimpan: ${formatDateTime(new Date().toISOString())}.`);
+
+  const savedMessage = `Data online tersimpan: ${formatDateTime(new Date().toISOString())}.`;
+  if (!embeddedProgress) finishProgress(savedMessage);
+  setOnlineStatus(savedMessage);
 }
 
 async function publishRemainingCustomers() {
-  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") return;
+  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") return null;
 
+  const uploadedAt = new Date().toISOString();
   const rows = [...state.remainingByPetugas.values()].flat().map((row) => ({
     report_id: CLOUD_STATE_ID,
     petugas: row.petugas,
@@ -696,7 +730,7 @@ async function publishRemainingCustomers() {
     kolok: row.kolok,
     koked: row.koked,
     rptag: row.rptag || 0,
-    uploaded_at: new Date().toISOString(),
+    uploaded_at: uploadedAt,
   }));
 
   const { error: deleteError } = await state.supabaseClient
@@ -705,19 +739,20 @@ async function publishRemainingCustomers() {
     .eq("report_id", CLOUD_STATE_ID);
 
   if (deleteError) {
-    setOnlineStatus(`Data utama tersimpan, tapi gagal reset data petugas: ${deleteError.message}`);
-    return;
+    throw new Error(deleteError.message);
   }
 
-  if (!rows.length) return;
+  if (!rows.length) return { uploadedAt, count: 0 };
 
   const { error: insertError } = await state.supabaseClient
     .from("monitoring_remaining_customers")
     .insert(rows);
 
   if (insertError) {
-    setOnlineStatus(`Data utama tersimpan, tapi gagal publish data petugas: ${insertError.message}`);
+    throw new Error(insertError.message);
   }
+
+  return { uploadedAt, count: rows.length };
 }
 
 async function publishReceiptMeters() {
@@ -786,6 +821,7 @@ function updateOnlineUi() {
   els.syncActions.hidden = !online || state.profile?.role === "petugas";
   if (els.premiumPanel) els.premiumPanel.hidden = !online || state.profile?.role !== "admin";
   applyRoleView();
+  updateHeaderActions();
   setOnlineStatus(online
     ? state.profile?.role === "petugas"
       ? `Login sebagai ${state.user.email}. Mode petugas: ${state.profile.petugas || "-"}.`
@@ -801,8 +837,14 @@ function applyRoleView() {
   els.summaryGrid.hidden = petugasMode;
   els.toolbar.hidden = false;
   els.anomalySection.hidden = petugasMode;
-  els.exportButton.hidden = petugasMode;
-  els.resetButton.hidden = petugasMode;
+  updateHeaderActions();
+}
+
+function updateHeaderActions() {
+  const petugasMode = state.profile?.role === "petugas";
+  els.onlineButton.hidden = false;
+  els.resetButton.hidden = petugasMode || state.activeTab !== "upload";
+  els.exportButton.hidden = petugasMode || state.activeTab !== "laporan";
 }
 
 function setOnlineStatus(message) {
@@ -858,6 +900,7 @@ async function handleUpload(event, kind) {
     await autoSaveCloudData({ embeddedProgress: true });
     updateProgress(88, "Menghitung ulang laporan...");
     recompute();
+    if (kind === "akhir") switchTab("laporan");
     finishProgress(`${label} selesai diproses: ${formatNumber(state[kind].length)} baris.`);
   } catch (error) {
     failProgress(`Gagal membaca file ${file.name}: ${error.message}`);
@@ -1169,12 +1212,12 @@ function getVisibleRows() {
   return [...state.report]
     .filter((row) => !query || row.petugas.includes(query))
     .sort((a, b) => {
-      if (sort === "tagihanAsc") return a.persenTagihan - b.persenTagihan;
-      if (sort === "pelDesc") return b.persenPel - a.persenPel;
-      if (sort === "akhirDesc") return b.akhirRupiah - a.akhirRupiah;
+      if (sort === "persenAsc") return a.persenTagihan - b.persenTagihan;
+      if (sort === "persenDesc") return b.persenTagihan - a.persenTagihan;
+      if (sort === "tagihanDesc") return b.akhirRupiah - a.akhirRupiah;
       if (sort === "awalDesc") return b.awalRupiah - a.awalRupiah;
       if (sort === "nameAsc") return a.petugas.localeCompare(b.petugas);
-      return b.persenTagihan - a.persenTagihan;
+      return b.akhirRupiah - a.akhirRupiah;
     });
 }
 
@@ -1757,9 +1800,10 @@ function updateFileStatuses() {
 
 function setStatus(kind, count, label) {
   const status = els[`${kind}Status`];
-  const card = document.querySelector(`[data-file-card="${kind}"]`);
+  const card = document.querySelector(`[data-file-card="${kind}"]`) || status?.closest(".upload-panel");
+  if (!status) return;
   status.textContent = count ? `${label}: ${formatNumber(count)} baris tersimpan` : "Belum ada data";
-  card.classList.toggle("loaded", count > 0);
+  card?.classList.toggle("loaded", count > 0);
 }
 
 function setReportDate() {
