@@ -1640,6 +1640,7 @@ function exportReportJpg() {
     month: "long",
     year: "numeric",
   }).format(new Date()).toUpperCase();
+  const lowPerformerNames = getLowPerformerNames(state.report);
   const exportRows = rows.map((row, index) => ({
     no: index + 1,
     biller: row.petugas,
@@ -1651,7 +1652,7 @@ function exportReportJpg() {
     pelunasanRp: formatRupiah(row.pelunasanRupiah),
     persenPel: Math.round(row.persenPel),
     persenTagihan: Math.round(row.persenTagihan),
-    danger: row.persenTagihan < 85,
+    danger: lowPerformerNames.has(row.petugas),
   }));
   exportRows.push({
     no: "",
@@ -1733,7 +1734,7 @@ function exportReportJpg() {
     const rowFill = row.total ? "#dcecf7" : rowIndex % 2 === 0 ? "#ffffff" : "#f8fbfd";
     columns.forEach((column) => {
       if (column.align === "bar") {
-        drawPercentCell(ctx, x, y, column.width, rowHeight, row[column.key], rowFill, row.total);
+        drawPercentCell(ctx, x, y, column.width, rowHeight, row[column.key], rowFill, row.total, row.danger);
       } else {
         drawCell(ctx, x, y, column.width, rowHeight, row[column.key], {
           fill: rowFill,
@@ -1778,7 +1779,7 @@ function drawCell(ctx, x, y, width, height, value, options = {}) {
   }
 }
 
-function drawPercentCell(ctx, x, y, width, height, value, fill, total = false) {
+function drawPercentCell(ctx, x, y, width, height, value, fill, total = false, danger = false) {
   drawCell(ctx, x, y, width, height, "", { fill });
   const percent = Math.max(0, Math.min(100, Number(value) || 0));
   const barX = x + 8;
@@ -1790,10 +1791,10 @@ function drawPercentCell(ctx, x, y, width, height, value, fill, total = false) {
   ctx.fill();
   ctx.strokeStyle = "#ccd6df";
   ctx.stroke();
-  ctx.fillStyle = total || percent >= 85 ? "#6fc58a" : "#f0aaa6";
+  ctx.fillStyle = total || percent >= 85 ? "#6fc58a" : danger ? "#f0aaa6" : "#f3ce6b";
   roundRect(ctx, barX, barY, (barWidth * percent) / 100, barHeight, 5);
   ctx.fill();
-  ctx.fillStyle = percent >= 85 || total ? "#10202f" : "#c1121f";
+  ctx.fillStyle = danger && !total ? "#c1121f" : "#10202f";
   ctx.font = "700 14px Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
