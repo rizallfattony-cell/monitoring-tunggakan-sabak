@@ -228,7 +228,9 @@ h1 {
 
 .progress-panel[hidden],
 .premium-panel[hidden],
-.online-panel[hidden] {
+.online-panel[hidden],
+.online-form[hidden],
+.online-actions[hidden] {
   display: none;
 }
 

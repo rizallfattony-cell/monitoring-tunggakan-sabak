@@ -280,10 +280,18 @@ async function loadCloudData(options = {}) {
   }
 
   updateProgress(45, "Memuat DIL, saldo, dan stand meter...");
-  state.dil = data.payload.dil || [];
-  state.awal = data.payload.awal || [];
-  state.akhir = data.payload.akhir || [];
-  state.struk = data.payload.struk || [];
+  let payload;
+  try {
+    payload = await decodeCloudPayload(data.payload);
+  } catch (error) {
+    failProgress(`Gagal membaca data online: ${error.message}`);
+    setOnlineStatus(`Gagal membaca data online: ${error.message}`);
+    return;
+  }
+  state.dil = payload.dil || [];
+  state.awal = payload.awal || [];
+  state.akhir = payload.akhir || [];
+  state.struk = payload.struk || [];
   updateProgress(70, "Menyimpan data ke browser...");
   await saveStoredData();
   updateProgress(85, "Menghitung ulang laporan...");
@@ -684,16 +692,18 @@ async function saveCloudData(options = {}) {
     startProgress("Simpan ke Online", "Menyimpan data utama ke Supabase...");
   }
   setOnlineStatus("Menyimpan data ke online...");
+  const cloudPayload = await encodeCloudPayload({
+    dil: state.dil,
+    awal: state.awal,
+    akhir: state.akhir,
+    struk: state.struk,
+  });
+
   const { error } = await state.supabaseClient
     .from("monitoring_app_state")
     .upsert({
       id: CLOUD_STATE_ID,
-      payload: {
-        dil: state.dil,
-        awal: state.awal,
-        akhir: state.akhir,
-        struk: state.struk,
-      },
+      payload: cloudPayload,
       updated_by: state.user.id,
       updated_at: new Date().toISOString(),
     });
@@ -720,6 +730,86 @@ async function saveCloudData(options = {}) {
   if (!embeddedProgress) finishProgress(savedMessage);
   setOnlineStatus(savedMessage);
   return true;
+}
+
+async function encodeCloudPayload(payload) {
+  const basePayload = {
+    schemaVersion: 2,
+    savedAt: new Date().toISOString(),
+    dil: payload.dil || [],
+    awal: payload.awal || [],
+    akhir: payload.akhir || [],
+    struk: payload.struk || [],
+  };
+
+  if (!window.CompressionStream) return basePayload;
+
+  try {
+    const json = JSON.stringify(basePayload);
+    const compressed = await compressText(json);
+    return {
+      schemaVersion: 2,
+      encoding: "gzip-base64",
+      savedAt: basePayload.savedAt,
+      counts: {
+        dil: basePayload.dil.length,
+        awal: basePayload.awal.length,
+        akhir: basePayload.akhir.length,
+        struk: basePayload.struk.length,
+      },
+      data: compressed,
+    };
+  } catch (error) {
+    console.warn("Gagal kompres payload online, memakai format biasa.", error);
+    return basePayload;
+  }
+}
+
+async function decodeCloudPayload(payload) {
+  if (!payload?.encoding || payload.encoding !== "gzip-base64" || !payload.data) {
+    return payload || {};
+  }
+
+  if (!window.DecompressionStream) {
+    throw new Error("Browser ini belum mendukung baca data online terkompres. Gunakan Chrome/Edge terbaru.");
+  }
+
+  const json = await decompressText(payload.data);
+  return JSON.parse(json);
+}
+
+async function compressText(text) {
+  const stream = new Blob([text], { type: "application/json" })
+    .stream()
+    .pipeThrough(new CompressionStream("gzip"));
+  const blob = await new Response(stream).blob();
+  return blobToBase64(blob);
+}
+
+async function decompressText(base64) {
+  const bytes = base64ToBytes(base64);
+  const stream = new Blob([bytes], { type: "application/gzip" })
+    .stream()
+    .pipeThrough(new DecompressionStream("gzip"));
+  return new Response(stream).text();
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+function base64ToBytes(base64) {
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
 }
 
 async function publishRemainingCustomers() {
@@ -752,13 +842,7 @@ async function publishRemainingCustomers() {
 
   if (!rows.length) return { uploadedAt, count: 0 };
 
-  const { error: insertError } = await state.supabaseClient
-    .from("monitoring_remaining_customers")
-    .insert(rows);
-
-  if (insertError) {
-    throw new Error(insertError.message);
-  }
+  await insertInChunks("monitoring_remaining_customers", rows, 500);
 
   return { uploadedAt, count: rows.length };
 }
@@ -786,12 +870,21 @@ async function publishReceiptMeters() {
 
   if (!rows.length) return;
 
-  const { error: insertError } = await state.supabaseClient
-    .from("monitoring_receipt_meters")
-    .insert(rows);
+  try {
+    await insertInChunks("monitoring_receipt_meters", rows, 500);
+  } catch (error) {
+    setOnlineStatus(`Data utama tersimpan, tapi gagal upload stand meter: ${error.message}`);
+  }
+}
 
-  if (insertError) {
-    setOnlineStatus(`Data utama tersimpan, tapi gagal upload stand meter: ${insertError.message}`);
+async function insertInChunks(tableName, rows, chunkSize = 500) {
+  for (let index = 0; index < rows.length; index += chunkSize) {
+    const chunk = rows.slice(index, index + chunkSize);
+    const { error } = await state.supabaseClient
+      .from(tableName)
+      .insert(chunk);
+
+    if (error) throw new Error(error.message);
   }
 }
 
