@@ -2,6 +2,13 @@ const STORE_NAME = "monitoringSaldoTunggakan";
 const DB_NAME = "monitoring-saldo-db";
 const DB_VERSION = 1;
 const CLOUD_STATE_ID = "main";
+const SALDO_AVERAGE_FIELDS = [
+  { key: "kogol0Berjalan", label: "KOGOL 0 Berjalan" },
+  { key: "kogol0Tunggakan", label: "KOGOL 0 Tunggakan" },
+  { key: "kogol3Perkantoran", label: "KOGOL 3 Perkantoran" },
+  { key: "kogol3Pju", label: "KOGOL 3 PJU" },
+  { key: "kogol4", label: "KOGOL 4" },
+];
 
 const state = {
   dil: [],
@@ -18,6 +25,8 @@ const state = {
   user: null,
   profile: null,
   premiumRequests: [],
+  saldoAkhirRataRata: emptySaldoAverageState(),
+  saldoAverageSaveTimer: null,
 };
 
 const els = {
@@ -78,6 +87,16 @@ const els = {
   summaryGrid: document.querySelector(".summary-grid"),
   toolbar: document.querySelector(".toolbar"),
   anomalySection: document.querySelector(".anomaly-section"),
+  saldoAverageAwalFields: document.querySelector('[data-saldo-group="awal"]'),
+  saldoAverageAkhirFields: document.querySelector('[data-saldo-group="akhir"]'),
+  saldoAverageTarget: document.querySelector("#saldoAverageTarget"),
+  saldoAverageAwalTotal: document.querySelector("#saldoAverageAwalTotal"),
+  saldoAverageAkhirTotal: document.querySelector("#saldoAverageAkhirTotal"),
+  saldoAverageCurrent: document.querySelector("#saldoAverageCurrent"),
+  saldoAverageGap: document.querySelector("#saldoAverageGap"),
+  saldoAverageReportText: document.querySelector("#saldoAverageReportText"),
+  copySaldoAverageButton: document.querySelector("#copySaldoAverageButton"),
+  saldoAverageCopyStatus: document.querySelector("#saldoAverageCopyStatus"),
   tabButtons: [...document.querySelectorAll("[data-tab]")],
   tabPanels: [...document.querySelectorAll("[data-tab-panel]")],
 };
@@ -86,6 +105,7 @@ boot();
 
 async function boot() {
   setReportDate();
+  renderSaldoAverageInputs();
   attachEvents();
   initSupabase();
   await hydrate();
@@ -134,6 +154,10 @@ function attachEvents() {
   els.anomalyToggle.addEventListener("click", () => {
     els.anomalyBody.hidden = !els.anomalyBody.hidden;
   });
+  els.saldoAverageAwalFields?.addEventListener("input", handleSaldoAverageInput);
+  els.saldoAverageAkhirFields?.addEventListener("input", handleSaldoAverageInput);
+  els.saldoAverageTarget?.addEventListener("input", handleSaldoAverageInput);
+  els.copySaldoAverageButton?.addEventListener("click", copySaldoAverageReport);
   els.tabButtons.forEach((button) => {
     button.addEventListener("click", () => switchTab(button.dataset.tab));
   });
@@ -160,7 +184,9 @@ async function hydrate() {
   state.awal = saved.awal || [];
   state.akhir = saved.akhir || [];
   state.struk = saved.struk || [];
+  state.saldoAkhirRataRata = normalizeSaldoAverageState(saved.saldoAkhirRataRata);
   updateFileStatuses();
+  renderSaldoAverage();
 }
 
 function initSupabase() {
@@ -292,10 +318,12 @@ async function loadCloudData(options = {}) {
   state.awal = payload.awal || [];
   state.akhir = payload.akhir || [];
   state.struk = payload.struk || [];
+  state.saldoAkhirRataRata = normalizeSaldoAverageState(payload.saldoAkhirRataRata);
   updateProgress(70, "Menyimpan data ke browser...");
   await saveStoredData();
   updateProgress(85, "Menghitung ulang laporan...");
   recompute();
+  renderSaldoAverage();
   finishProgress(`Data online dimuat. Update terakhir: ${formatDateTime(data.updated_at)}.`);
   setOnlineStatus(`Data online dimuat. Update terakhir: ${formatDateTime(data.updated_at)}.`);
 }
@@ -697,6 +725,7 @@ async function saveCloudData(options = {}) {
     awal: state.awal,
     akhir: state.akhir,
     struk: state.struk,
+    saldoAkhirRataRata: state.saldoAkhirRataRata,
   });
 
   const { error } = await state.supabaseClient
@@ -714,17 +743,19 @@ async function saveCloudData(options = {}) {
     return false;
   }
 
-  try {
-    updateProgress(embeddedProgress ? 74 : 35, "Mempublish data pelanggan tersisa...");
-    await publishRemainingCustomers();
-  } catch (publishError) {
-    failProgress(`Gagal publish data petugas: ${publishError.message}`);
-    setOnlineStatus(`Data utama tersimpan, tapi gagal publish data petugas: ${publishError.message}`);
-    return false;
-  }
+  if (!options.skipPublish) {
+    try {
+      updateProgress(embeddedProgress ? 74 : 35, "Mempublish data pelanggan tersisa...");
+      await publishRemainingCustomers();
+    } catch (publishError) {
+      failProgress(`Gagal publish data petugas: ${publishError.message}`);
+      setOnlineStatus(`Data utama tersimpan, tapi gagal publish data petugas: ${publishError.message}`);
+      return false;
+    }
 
-  updateProgress(embeddedProgress ? 82 : 70, "Mempublish data stand meter struk...");
-  await publishReceiptMeters();
+    updateProgress(embeddedProgress ? 82 : 70, "Mempublish data stand meter struk...");
+    await publishReceiptMeters();
+  }
 
   const savedMessage = `Data online tersimpan: ${formatDateTime(new Date().toISOString())}.`;
   if (!embeddedProgress) finishProgress(savedMessage);
@@ -740,6 +771,7 @@ async function encodeCloudPayload(payload) {
     awal: payload.awal || [],
     akhir: payload.akhir || [],
     struk: payload.struk || [],
+    saldoAkhirRataRata: normalizeSaldoAverageState(payload.saldoAkhirRataRata),
   };
 
   if (!window.CompressionStream) return basePayload;
@@ -934,6 +966,11 @@ function updateOnlineUi() {
 
 function applyRoleView() {
   const petugasMode = state.profile?.role === "petugas";
+  const saldoAverageTab = document.querySelector('[data-tab="saldo-rata"]');
+  const saldoAveragePanel = document.querySelector('[data-tab-panel="saldo-rata"]');
+  if (saldoAverageTab) saldoAverageTab.hidden = petugasMode;
+  if (saldoAveragePanel && petugasMode) saldoAveragePanel.hidden = true;
+  if (petugasMode && state.activeTab === "saldo-rata") switchTab("laporan");
   els.uploadGrid.hidden = petugasMode;
   els.summaryGrid.hidden = petugasMode;
   els.toolbar.hidden = false;
@@ -1941,6 +1978,200 @@ async function resetData() {
   recompute();
 }
 
+function renderSaldoAverageInputs() {
+  if (!els.saldoAverageAwalFields || !els.saldoAverageAkhirFields) return;
+
+  els.saldoAverageAwalFields.innerHTML = SALDO_AVERAGE_FIELDS.map((field) => saldoAverageFieldTemplate("awal", field)).join("");
+  els.saldoAverageAkhirFields.innerHTML = SALDO_AVERAGE_FIELDS.map((field) => saldoAverageFieldTemplate("akhir", field)).join("");
+}
+
+function saldoAverageFieldTemplate(group, field) {
+  const id = `saldo-average-${group}-${field.key}`;
+  return `
+    <div class="saldo-average-field">
+      <label for="${id}">${field.label}</label>
+      <input id="${id}" type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-saldo-average-input="${group}:${field.key}" />
+    </div>
+  `;
+}
+
+function renderSaldoAverage() {
+  syncSaldoAverageInputs();
+  updateSaldoAverageOutputs();
+}
+
+function syncSaldoAverageInputs() {
+  document.querySelectorAll("[data-saldo-average-input]").forEach((input) => {
+    const [group, key] = input.dataset.saldoAverageInput.split(":");
+    const value = state.saldoAkhirRataRata?.[group]?.[key] || 0;
+    input.value = value ? formatIntegerInput(value) : "";
+  });
+  if (els.saldoAverageTarget) {
+    const target = state.saldoAkhirRataRata?.target || 0;
+    els.saldoAverageTarget.value = target ? formatIntegerInput(target) : "";
+  }
+}
+
+function handleSaldoAverageInput(event) {
+  const target = event.target;
+  if (!target) return;
+
+  if (target.dataset.saldoAverageInput) {
+    const [group, key] = target.dataset.saldoAverageInput.split(":");
+    state.saldoAkhirRataRata[group][key] = parseFlexibleRupiah(target.value);
+  } else if (target === els.saldoAverageTarget) {
+    state.saldoAkhirRataRata.target = parseFlexibleRupiah(target.value);
+  }
+
+  updateSaldoAverageOutputs();
+  scheduleSaldoAverageSave();
+}
+
+function updateSaldoAverageOutputs() {
+  const report = calculateSaldoAverageReport();
+  if (els.saldoAverageAwalTotal) els.saldoAverageAwalTotal.textContent = formatReportRupiah(report.saldoAwal);
+  if (els.saldoAverageAkhirTotal) els.saldoAverageAkhirTotal.textContent = formatReportRupiah(report.saldoAkhir);
+  if (els.saldoAverageCurrent) els.saldoAverageCurrent.textContent = formatReportRupiah(report.saldoSaatIni);
+  if (els.saldoAverageGap) els.saldoAverageGap.textContent = formatReportRupiah(report.gapTarget);
+  if (els.saldoAverageReportText) els.saldoAverageReportText.value = renderSaldoAverageReportText(report);
+}
+
+function calculateSaldoAverageReport() {
+  const data = normalizeSaldoAverageState(state.saldoAkhirRataRata);
+  const awal = data.awal;
+  const akhir = data.akhir;
+  const realisasiKogol4 = awal.kogol4 - akhir.kogol4;
+  const realisasi = {
+    kogol0Berjalan: awal.kogol0Berjalan - akhir.kogol0Berjalan,
+    kogol0Tunggakan: awal.kogol0Tunggakan - akhir.kogol0Tunggakan,
+    kogol3Perkantoran: awal.kogol3Perkantoran - akhir.kogol3Perkantoran + realisasiKogol4,
+    kogol3Pju: awal.kogol3Pju - akhir.kogol3Pju,
+    kogol4: realisasiKogol4,
+  };
+  const saldoAwal = sumSaldoAverageGroup(awal);
+  const saldoAkhir = sumSaldoAverageGroup(akhir);
+  const totalRealisasi = realisasi.kogol0Berjalan
+    + realisasi.kogol0Tunggakan
+    + realisasi.kogol3Perkantoran
+    + realisasi.kogol3Pju;
+  const saldoSaatIni = saldoAwal - totalRealisasi;
+
+  return {
+    saldoAwal,
+    saldoAkhir,
+    target: data.target,
+    realisasi,
+    totalRealisasi,
+    saldoSaatIni,
+    gapTarget: saldoSaatIni - data.target,
+  };
+}
+
+function renderSaldoAverageReportText(report) {
+  return [
+    "*LAPORAN HARIAN ULP MUARA SABAK*",
+    `*${formatLongIndonesianDate(new Date())}*`,
+    "",
+    `Saldo Awal : ${formatReportRupiah(report.saldoAwal)}`,
+    `Target Saldo Akhir : ${formatReportRupiah(report.target)}`,
+    "",
+    `Realisasi Lunas Harian Kogol 0 Berjalan : ${formatReportRupiah(report.realisasi.kogol0Berjalan)}`,
+    `Realisasi Lunas Harian Kogol 0 Tunggakan : ${formatReportRupiah(report.realisasi.kogol0Tunggakan)}`,
+    `Realisasi Lunas Harian Kogol 3 Perkantoran : ${formatReportRupiah(report.realisasi.kogol3Perkantoran)}`,
+    `Realisasi Lunas Harian Kogol 3 PJU : ${formatReportRupiah(report.realisasi.kogol3Pju)}`,
+    `Total Realisasi Lunas Harian : ${formatReportRupiah(report.totalRealisasi)}`,
+    "",
+    `Saldo saat ini : ${formatReportRupiah(report.saldoSaatIni)}`,
+    "",
+    `GAP Terhadap Target : ${formatReportRupiah(report.gapTarget)}`,
+  ].join("\n");
+}
+
+async function copySaldoAverageReport() {
+  const text = els.saldoAverageReportText?.value || "";
+  if (!text) return;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    setSaldoAverageCopyStatus("Laporan berhasil dicopy.");
+  } catch (error) {
+    els.saldoAverageReportText?.select();
+    document.execCommand("copy");
+    setSaldoAverageCopyStatus("Laporan dicopy lewat seleksi textbox.");
+  }
+}
+
+function setSaldoAverageCopyStatus(message) {
+  if (!els.saldoAverageCopyStatus) return;
+  els.saldoAverageCopyStatus.textContent = message;
+  window.setTimeout(() => {
+    if (els.saldoAverageCopyStatus) {
+      els.saldoAverageCopyStatus.textContent = "Angka boleh diketik pakai koma, titik, atau tanpa pemisah.";
+    }
+  }, 1800);
+}
+
+function scheduleSaldoAverageSave() {
+  window.clearTimeout(state.saldoAverageSaveTimer);
+  state.saldoAverageSaveTimer = window.setTimeout(saveSaldoAverageDraft, 900);
+}
+
+async function saveSaldoAverageDraft() {
+  await saveStoredData();
+  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") return;
+
+  const cloudPayload = await encodeCloudPayload({
+    dil: state.dil,
+    awal: state.awal,
+    akhir: state.akhir,
+    struk: state.struk,
+    saldoAkhirRataRata: state.saldoAkhirRataRata,
+  });
+  const { error } = await state.supabaseClient
+    .from("monitoring_app_state")
+    .upsert({
+      id: CLOUD_STATE_ID,
+      payload: cloudPayload,
+      updated_by: state.user.id,
+      updated_at: new Date().toISOString(),
+    });
+
+  if (error) {
+    setOnlineStatus(`Gagal simpan Saldo Akhir Rata Rata: ${error.message}`);
+    return;
+  }
+
+  setOnlineStatus(`Saldo Akhir Rata Rata tersimpan online: ${formatDateTime(new Date().toISOString())}.`);
+}
+
+function emptySaldoAverageState() {
+  return {
+    awal: emptySaldoAverageGroup(),
+    akhir: emptySaldoAverageGroup(),
+    target: 0,
+  };
+}
+
+function emptySaldoAverageGroup() {
+  return Object.fromEntries(SALDO_AVERAGE_FIELDS.map((field) => [field.key, 0]));
+}
+
+function normalizeSaldoAverageState(value) {
+  const normalized = emptySaldoAverageState();
+  const source = value || {};
+  for (const group of ["awal", "akhir"]) {
+    for (const field of SALDO_AVERAGE_FIELDS) {
+      normalized[group][field.key] = Number(source[group]?.[field.key] || 0);
+    }
+  }
+  normalized.target = Number(source.target || 0);
+  return normalized;
+}
+
+function sumSaldoAverageGroup(group) {
+  return SALDO_AVERAGE_FIELDS.reduce((total, field) => total + Number(group[field.key] || 0), 0);
+}
+
 function getValue(row, candidates, containsCandidates = []) {
   const normalized = Object.fromEntries(
     Object.entries(row).map(([key, value]) => [normalizeHeader(key), value])
@@ -1984,6 +2215,16 @@ function parseCurrency(value) {
   cleaned = cleaned.replace(/([.,])\d{1,2}$/, "");
   const parsed = Number(cleaned.replace(/[^\d-]/g, ""));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseFlexibleRupiah(value) {
+  if (typeof value === "number") return value;
+  const text = String(value ?? "").trim();
+  const negative = text.startsWith("-");
+  const digits = text.replace(/[^\d]/g, "");
+  if (!digits) return 0;
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? (negative ? -parsed : parsed) : 0;
 }
 
 function sortRemainingRows(rows) {
@@ -2038,6 +2279,16 @@ function formatRupiah(value) {
   }).format(value || 0);
 }
 
+function formatReportRupiah(value) {
+  return `Rp ${formatIntegerInput(value)}`;
+}
+
+function formatIntegerInput(value) {
+  return new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+}
+
 function formatNumber(value) {
   return new Intl.NumberFormat("id-ID").format(value || 0);
 }
@@ -2055,6 +2306,15 @@ function formatDateTime(value) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatLongIndonesianDate(value) {
+  return new Intl.DateTimeFormat("id-ID", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(value);
 }
 
 function premiumStatusLabel(status) {
@@ -2139,6 +2399,7 @@ async function saveStoredData() {
     awal: state.awal,
     akhir: state.akhir,
     struk: state.struk,
+    saldoAkhirRataRata: state.saldoAkhirRataRata,
     savedAt: new Date().toISOString(),
   };
 

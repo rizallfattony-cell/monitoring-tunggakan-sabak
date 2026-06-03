@@ -6,7 +6,7 @@
     <title>Monitoring Saldo Tunggakan SIMONTOK</title>
     <meta name="theme-color" content="#006b8f" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260602-timeout" />
+    <link rel="stylesheet" href="./styles.css?v=20260603-saldo-rata" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -30,6 +30,7 @@
       <nav class="tab-nav" aria-label="Navigasi admin">
         <button class="tab-button is-active" type="button" data-tab="upload">Upload Data</button>
         <button class="tab-button" type="button" data-tab="laporan">Laporan</button>
+        <button class="tab-button" type="button" data-tab="saldo-rata">Saldo Akhir Rata Rata</button>
         <button class="tab-button" type="button" data-tab="online">Online & Sinkron</button>
         <button class="tab-button" type="button" data-tab="premium">Premium</button>
       </nav>
@@ -212,6 +213,75 @@
         </section>
       </section>
 
+      <section class="tab-panel" data-tab-panel="saldo-rata" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Laporan Harian</p>
+            <h2>Saldo Akhir Rata Rata</h2>
+            <p>Isi saldo per KOGOL, target saldo akhir, lalu copy format laporan harian.</p>
+          </div>
+        </div>
+
+        <section class="saldo-average-grid">
+          <article class="saldo-average-panel">
+            <div class="saldo-average-head">
+              <span class="step-badge">1</span>
+              <div>
+                <span class="upload-label">Input Manual</span>
+                <h2>Isi Saldo Awal</h2>
+              </div>
+            </div>
+            <div class="saldo-average-fields" data-saldo-group="awal"></div>
+            <div class="saldo-average-total">
+              <span>Saldo Awal</span>
+              <strong id="saldoAverageAwalTotal">Rp 0</strong>
+            </div>
+          </article>
+
+          <article class="saldo-average-panel">
+            <div class="saldo-average-head">
+              <span class="step-badge">2</span>
+              <div>
+                <span class="upload-label">Input Manual</span>
+                <h2>Isi Saldo Akhir</h2>
+              </div>
+            </div>
+            <div class="saldo-average-fields" data-saldo-group="akhir"></div>
+            <div class="saldo-average-total">
+              <span>Saldo Akhir</span>
+              <strong id="saldoAverageAkhirTotal">Rp 0</strong>
+            </div>
+          </article>
+        </section>
+
+        <section class="saldo-average-report">
+          <div class="saldo-target-row">
+            <label class="field saldo-target-field" for="saldoAverageTarget">
+              <span>Target Saldo Akhir</span>
+              <input id="saldoAverageTarget" type="text" inputmode="numeric" placeholder="Contoh: 6,000,000" autocomplete="off" />
+            </label>
+            <div class="saldo-average-total is-current">
+              <span>Saldo saat ini</span>
+              <strong id="saldoAverageCurrent">Rp 0</strong>
+            </div>
+            <div class="saldo-average-total is-gap">
+              <span>GAP Terhadap Target</span>
+              <strong id="saldoAverageGap">Rp 0</strong>
+            </div>
+          </div>
+
+          <div class="report-copy-head">
+            <div>
+              <span class="upload-label">Format WhatsApp</span>
+              <h2>Laporan Harian</h2>
+            </div>
+            <button class="button primary" id="copySaldoAverageButton" type="button">Copy Laporan</button>
+          </div>
+          <textarea id="saldoAverageReportText" readonly rows="17" spellcheck="false"></textarea>
+          <p class="auto-note" id="saldoAverageCopyStatus">Angka boleh diketik pakai koma, titik, atau tanpa pemisah.</p>
+        </section>
+      </section>
+
       <section class="tab-panel" data-tab-panel="online" hidden>
         <div class="section-head">
           <div>
@@ -281,6 +351,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260602-timeout"></script>
+    <script src="./app.js?v=20260603-saldo-rata"></script>
   </body>
 </html>
