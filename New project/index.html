@@ -6,7 +6,7 @@
     <title>Monitoring Saldo Tunggakan SIMONTOK</title>
     <meta name="theme-color" content="#006b8f" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260603-saldo-rata" />
+    <link rel="stylesheet" href="./styles.css?v=20260603-saldo-rata-copy" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -245,6 +245,9 @@
                 <span class="upload-label">Input Manual</span>
                 <h2>Isi Saldo Akhir</h2>
               </div>
+              <button class="button secondary saldo-copy-button" id="useEndingAsBeginningButton" type="button">
+                Jadikan Saldo Awal
+              </button>
             </div>
             <div class="saldo-average-fields" data-saldo-group="akhir"></div>
             <div class="saldo-average-total">
@@ -351,6 +354,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260603-saldo-rata"></script>
+    <script src="./app.js?v=20260603-saldo-rata-copy"></script>
   </body>
 </html>

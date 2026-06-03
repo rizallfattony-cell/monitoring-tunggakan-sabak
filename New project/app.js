@@ -96,6 +96,7 @@ const els = {
   saldoAverageGap: document.querySelector("#saldoAverageGap"),
   saldoAverageReportText: document.querySelector("#saldoAverageReportText"),
   copySaldoAverageButton: document.querySelector("#copySaldoAverageButton"),
+  useEndingAsBeginningButton: document.querySelector("#useEndingAsBeginningButton"),
   saldoAverageCopyStatus: document.querySelector("#saldoAverageCopyStatus"),
   tabButtons: [...document.querySelectorAll("[data-tab]")],
   tabPanels: [...document.querySelectorAll("[data-tab-panel]")],
@@ -158,6 +159,7 @@ function attachEvents() {
   els.saldoAverageAkhirFields?.addEventListener("input", handleSaldoAverageInput);
   els.saldoAverageTarget?.addEventListener("input", handleSaldoAverageInput);
   els.copySaldoAverageButton?.addEventListener("click", copySaldoAverageReport);
+  els.useEndingAsBeginningButton?.addEventListener("click", useEndingSaldoAsBeginning);
   els.tabButtons.forEach((button) => {
     button.addEventListener("click", () => switchTab(button.dataset.tab));
   });
@@ -2025,6 +2027,15 @@ function handleSaldoAverageInput(event) {
 
   updateSaldoAverageOutputs();
   scheduleSaldoAverageSave();
+}
+
+function useEndingSaldoAsBeginning() {
+  for (const field of SALDO_AVERAGE_FIELDS) {
+    state.saldoAkhirRataRata.awal[field.key] = Number(state.saldoAkhirRataRata.akhir[field.key] || 0);
+  }
+  renderSaldoAverage();
+  scheduleSaldoAverageSave();
+  setSaldoAverageCopyStatus("Saldo akhir sudah dijadikan saldo awal.");
 }
 
 function updateSaldoAverageOutputs() {
