@@ -110,6 +110,8 @@ const els = {
   undoDailyUploadButton: document.querySelector("#undoDailyUploadButton"),
   exportDailyExcelButton: document.querySelector("#exportDailyExcelButton"),
   exportDailyJpgButton: document.querySelector("#exportDailyJpgButton"),
+  exportDailyExcelTopButton: document.querySelector("#exportDailyExcelTopButton"),
+  exportDailyJpgTopButton: document.querySelector("#exportDailyJpgTopButton"),
   tabButtons: [...document.querySelectorAll("[data-tab]")],
   tabPanels: [...document.querySelectorAll("[data-tab-panel]")],
 };
@@ -180,6 +182,8 @@ function attachEvents() {
   els.undoDailyUploadButton?.addEventListener("click", undoDailyPelunasanUpload);
   els.exportDailyExcelButton?.addEventListener("click", exportDailyPelunasanExcel);
   els.exportDailyJpgButton?.addEventListener("click", exportDailyPelunasanJpg);
+  els.exportDailyExcelTopButton?.addEventListener("click", exportDailyPelunasanExcel);
+  els.exportDailyJpgTopButton?.addEventListener("click", exportDailyPelunasanJpg);
   els.tabButtons.forEach((button) => {
     button.addEventListener("click", () => switchTab(button.dataset.tab));
   });

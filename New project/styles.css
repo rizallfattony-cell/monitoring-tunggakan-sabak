@@ -738,6 +738,10 @@ h1 {
 }
 
 .report-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 16px;
   border-bottom: 1px solid var(--line);
   background: linear-gradient(90deg, #ffffff, #f7fbfd);
@@ -756,6 +760,13 @@ h1 {
   font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.daily-report-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .table-wrap {
@@ -1079,6 +1090,7 @@ tfoot td {
   .topbar-actions,
   .toolbar,
   .daily-controls,
+  .daily-report-actions,
   .online-form,
   .online-actions,
   .premium-actions {

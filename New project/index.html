@@ -6,7 +6,7 @@
     <title>Monitoring Saldo Tunggakan SIMONTOK</title>
     <meta name="theme-color" content="#006b8f" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260610-daily-total-detail" />
+    <link rel="stylesheet" href="./styles.css?v=20260610-daily-download-visible" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -246,8 +246,14 @@
 
         <section class="table-section daily-table-section">
           <div class="report-heading">
-            <h2>Monitoring Pelunasan Harian</h2>
-            <p id="dailyTableDate">-</p>
+            <div>
+              <h2>Monitoring Pelunasan Harian</h2>
+              <p id="dailyTableDate">-</p>
+            </div>
+            <div class="daily-report-actions">
+              <button class="button secondary" id="exportDailyExcelTopButton" type="button">Download Excel</button>
+              <button class="button secondary" id="exportDailyJpgTopButton" type="button">Download JPG</button>
+            </div>
           </div>
           <div class="table-wrap daily-table-wrap">
             <table id="dailyTable">
@@ -403,6 +409,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260610-daily-total-detail"></script>
+    <script src="./app.js?v=20260610-daily-download-visible"></script>
   </body>
 </html>
