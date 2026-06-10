@@ -107,6 +107,8 @@ const els = {
   dailyTableDate: document.querySelector("#dailyTableDate"),
   dailyTableHead: document.querySelector("#dailyTableHead"),
   dailyTableBody: document.querySelector("#dailyTableBody"),
+  exportDailyExcelButton: document.querySelector("#exportDailyExcelButton"),
+  exportDailyJpgButton: document.querySelector("#exportDailyJpgButton"),
   tabButtons: [...document.querySelectorAll("[data-tab]")],
   tabPanels: [...document.querySelectorAll("[data-tab-panel]")],
 };
@@ -173,6 +175,8 @@ function attachEvents() {
   els.dailyMonthInput?.addEventListener("change", handleDailyMonthChange);
   els.dailyDateSelect?.addEventListener("change", handleDailyDateChange);
   els.dailySaldoInput?.addEventListener("change", handleDailySaldoUpload);
+  els.exportDailyExcelButton?.addEventListener("click", exportDailyPelunasanExcel);
+  els.exportDailyJpgButton?.addEventListener("click", exportDailyPelunasanJpg);
   els.tabButtons.forEach((button) => {
     button.addEventListener("click", () => switchTab(button.dataset.tab));
   });
@@ -2116,17 +2120,21 @@ function renderDailyPelunasanTable() {
       <th rowspan="2">No</th>
       <th rowspan="2">Petugas</th>
       <th colspan="2">Saldo Awal</th>
-      ${days.map((date) => `<th class="daily-day ${state.dailyPelunasan.snapshots?.[date] ? "daily-uploaded-day" : ""}" rowspan="2">${Number(date.slice(-2))}</th>`).join("")}
+      ${days.map((date) => `<th class="daily-day ${state.dailyPelunasan.snapshots?.[date] ? "daily-uploaded-day" : ""}" colspan="2">${Number(date.slice(-2))}</th>`).join("")}
     </tr>
     <tr>
       <th>IDPEL</th>
       <th>RPTAG</th>
+      ${days.map((date) => `
+        <th class="daily-sub ${state.dailyPelunasan.snapshots?.[date] ? "daily-uploaded-day" : ""}">IDPEL</th>
+        <th class="daily-sub ${state.dailyPelunasan.snapshots?.[date] ? "daily-uploaded-day" : ""}">RP TAGIHAN</th>
+      `).join("")}
     </tr>
   `;
 
   const rows = calculateDailyPelunasanRows(days);
   if (!rows.length) {
-    els.dailyTableBody.innerHTML = `<tr><td class="empty-state" colspan="${4 + days.length}">Belum ada data. Upload DIL dan Saldo Awal terlebih dahulu.</td></tr>`;
+    els.dailyTableBody.innerHTML = `<tr><td class="empty-state" colspan="${4 + (days.length * 2)}">Belum ada data. Upload DIL dan Saldo Awal terlebih dahulu.</td></tr>`;
     setDailyStatus("Upload DIL dan Saldo Awal untuk menampilkan baseline pelunasan harian.");
     return;
   }
@@ -2194,16 +2202,196 @@ function buildDailyPelunasanBaseline() {
 
 function renderDailyPelunasanCell(value, date) {
   const uploaded = state.dailyPelunasan.snapshots?.[date];
-  if (!uploaded) return `<td class="daily-day-cell"></td>`;
+  if (!uploaded) return `<td class="daily-day-cell"></td><td class="daily-day-cell"></td>`;
   const negative = (value?.pelId || 0) < 0 || (value?.pelRupiah || 0) < 0;
   return `
-    <td class="daily-day-cell">
-      <div class="daily-cell ${negative ? "is-negative" : ""}">
-        <strong>${formatNumber(value?.pelId || 0)} pel</strong>
-        <span>${formatRupiah(value?.pelRupiah || 0)}</span>
-      </div>
-    </td>
+    <td class="daily-day-cell ${negative ? "negative-value" : ""}">${formatNumber(value?.pelId || 0)}</td>
+    <td class="daily-day-cell daily-rupiah ${negative ? "negative-value" : ""}">${formatRupiah(value?.pelRupiah || 0)}</td>
   `;
+}
+
+function getDailyPelunasanExportData() {
+  const month = normalizeMonthKey(state.dailyPelunasan.selectedMonth);
+  const days = getDaysInSelectedMonth(month);
+  const rows = calculateDailyPelunasanRows(days);
+  const dateLabel = new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${month}-01T00:00:00`));
+  return { month, days, rows, dateLabel };
+}
+
+function exportDailyPelunasanExcel() {
+  const { month, days, rows, dateLabel } = getDailyPelunasanExportData();
+  if (!rows.length) {
+    alert("Belum ada data Pelunasan Harian untuk diexport.");
+    return;
+  }
+
+  startProgress("Export Excel", "Menyiapkan workbook Pelunasan Harian...");
+  const totalColumns = 4 + (days.length * 2);
+  const title = "MONITORING PELUNASAN HARIAN";
+  const headerGroup = ["NO", "PETUGAS", "SALDO AWAL", "", ...days.flatMap((date) => [Number(date.slice(-2)), ""])];
+  const headerSub = ["", "", "IDPEL", "RP TAGIHAN", ...days.flatMap(() => ["IDPEL", "RP TAGIHAN"])];
+  const tableRows = [
+    [title],
+    [dateLabel.toUpperCase()],
+    [],
+    headerGroup,
+    headerSub,
+    ...rows.map((row, index) => [
+      index + 1,
+      row.petugas,
+      row.awalId,
+      row.awalRupiah,
+      ...days.flatMap((date) => {
+        const uploaded = state.dailyPelunasan.snapshots?.[date];
+        const daily = row.daily[date];
+        return uploaded ? [daily?.pelId || 0, daily?.pelRupiah || 0] : ["", ""];
+      }),
+    ]),
+  ];
+
+  const worksheet = XLSX.utils.aoa_to_sheet(tableRows);
+  worksheet["!merges"] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: totalColumns - 1 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: totalColumns - 1 } },
+    { s: { r: 3, c: 0 }, e: { r: 4, c: 0 } },
+    { s: { r: 3, c: 1 }, e: { r: 4, c: 1 } },
+    { s: { r: 3, c: 2 }, e: { r: 3, c: 3 } },
+    ...days.map((_, index) => {
+      const col = 4 + (index * 2);
+      return { s: { r: 3, c: col }, e: { r: 3, c: col + 1 } };
+    }),
+  ];
+  worksheet["!cols"] = [
+    { wch: 6 },
+    { wch: 24 },
+    { wch: 10 },
+    { wch: 18 },
+    ...days.flatMap(() => [{ wch: 9 }, { wch: 18 }]),
+  ];
+
+  for (let rowIndex = 6; rowIndex <= tableRows.length; rowIndex += 1) {
+    const saldoAwalCell = worksheet[XLSX.utils.encode_cell({ r: rowIndex - 1, c: 3 })];
+    if (saldoAwalCell) saldoAwalCell.z = '"Rp"#,##0';
+    days.forEach((_, dayIndex) => {
+      const rupiahCol = 5 + (dayIndex * 2);
+      const cell = worksheet[XLSX.utils.encode_cell({ r: rowIndex - 1, c: rupiahCol })];
+      if (cell) cell.z = '"Rp"#,##0';
+    });
+  }
+
+  updateProgress(80, "Mengunduh file Excel...");
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Pelunasan Harian");
+  XLSX.writeFile(workbook, `pelunasan-harian-${month}.xlsx`);
+  finishProgress("Export Excel Pelunasan Harian selesai.");
+}
+
+function exportDailyPelunasanJpg() {
+  const { month, days, rows, dateLabel } = getDailyPelunasanExportData();
+  if (!rows.length) {
+    alert("Belum ada data Pelunasan Harian untuk didownload.");
+    return;
+  }
+
+  startProgress("Download JPG", "Menggambar Pelunasan Harian ke gambar...");
+  const scale = 2;
+  const columns = [
+    { key: "no", label: "NO", width: 54, align: "center" },
+    { key: "petugas", label: "PETUGAS", width: 230, align: "left" },
+    { key: "awalId", group: "SALDO AWAL", label: "IDPEL", width: 78, align: "center" },
+    { key: "awalRupiah", group: "SALDO AWAL", label: "RP TAGIHAN", width: 155, align: "right" },
+    ...days.flatMap((date) => [
+      { key: `${date}:id`, group: Number(date.slice(-2)), label: "IDPEL", width: 72, align: "center", date },
+      { key: `${date}:rp`, group: Number(date.slice(-2)), label: "RP TAGIHAN", width: 145, align: "right", date },
+    ]),
+  ];
+  const tableWidth = columns.reduce((sum, column) => sum + column.width, 0);
+  const margin = 12;
+  const titleHeight = 84;
+  const groupHeight = 36;
+  const headerHeight = 36;
+  const rowHeight = 38;
+  const width = tableWidth + margin * 2;
+  const height = titleHeight + groupHeight + headerHeight + rows.length * rowHeight + margin;
+  const canvas = document.createElement("canvas");
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(scale, scale);
+
+  ctx.fillStyle = "#f8fbfd";
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#10202f";
+  ctx.font = "700 21px Arial";
+  ctx.fillText("MONITORING PELUNASAN HARIAN", margin, 36);
+  ctx.fillStyle = "#52677a";
+  ctx.font = "700 14px Arial";
+  ctx.fillText(dateLabel.toUpperCase(), margin, 64);
+
+  const startX = margin;
+  let y = titleHeight;
+  drawCell(ctx, startX, y, columns[0].width, groupHeight + headerHeight, "NO", { fill: "#e9f1f6", bold: true, align: "center" });
+  drawCell(ctx, startX + columns[0].width, y, columns[1].width, groupHeight + headerHeight, "PETUGAS", { fill: "#e9f1f6", bold: true, align: "center" });
+
+  let x = startX + columns[0].width + columns[1].width;
+  drawCell(ctx, x, y, columns[2].width + columns[3].width, groupHeight, "SALDO AWAL", { fill: "#e9f1f6", bold: true, align: "center" });
+  x += columns[2].width + columns[3].width;
+  days.forEach((date) => {
+    const uploaded = state.dailyPelunasan.snapshots?.[date];
+    drawCell(ctx, x, y, columns[4].width + columns[5].width, groupHeight, Number(date.slice(-2)), {
+      fill: uploaded ? "#fff7d1" : "#e9f1f6",
+      bold: true,
+      align: "center",
+    });
+    x += columns[4].width + columns[5].width;
+  });
+
+  x = startX + columns[0].width + columns[1].width;
+  columns.slice(2).forEach((column) => {
+    const fill = column.date && state.dailyPelunasan.snapshots?.[column.date] ? "#fff7d1" : "#e9f1f6";
+    drawCell(ctx, x, y + groupHeight, column.width, headerHeight, column.label, { fill, bold: true, align: "center" });
+    x += column.width;
+  });
+
+  y += groupHeight + headerHeight;
+  rows.forEach((row, rowIndex) => {
+    const rowFill = rowIndex % 2 === 0 ? "#ffffff" : "#f8fbfd";
+    x = startX;
+    columns.forEach((column) => {
+      let value = "";
+      let danger = false;
+      if (column.key === "no") value = rowIndex + 1;
+      else if (column.key === "petugas") value = row.petugas;
+      else if (column.key === "awalId") value = formatNumber(row.awalId);
+      else if (column.key === "awalRupiah") value = formatRupiah(row.awalRupiah);
+      else if (column.date && state.dailyPelunasan.snapshots?.[column.date]) {
+        const daily = row.daily[column.date] || { pelId: 0, pelRupiah: 0 };
+        if (column.key.endsWith(":id")) value = formatNumber(daily.pelId || 0);
+        if (column.key.endsWith(":rp")) value = formatRupiah(daily.pelRupiah || 0);
+        danger = (daily.pelId || 0) < 0 || (daily.pelRupiah || 0) < 0;
+      }
+      drawCell(ctx, x, y, column.width, rowHeight, value, {
+        fill: rowFill,
+        align: column.align,
+        danger,
+        bold: column.key === "petugas",
+      });
+      x += column.width;
+    });
+    y += rowHeight;
+  });
+
+  updateProgress(88, "Mengunduh file JPG...");
+  const link = document.createElement("a");
+  link.download = `pelunasan-harian-${month}.jpg`;
+  link.href = canvas.toDataURL("image/jpeg", 0.94);
+  link.click();
+  finishProgress("Download JPG Pelunasan Harian selesai.");
 }
 
 function getDaysInSelectedMonth(monthKey) {

@@ -460,12 +460,21 @@ h1 {
 }
 
 #dailyTable {
-  min-width: 1280px;
+  min-width: 2200px;
 }
 
-#dailyTable th.daily-day,
+#dailyTable th.daily-day {
+  min-width: 150px;
+}
+
+#dailyTable th.daily-sub,
 #dailyTable td.daily-day-cell {
-  min-width: 118px;
+  min-width: 76px;
+}
+
+#dailyTable td.daily-rupiah {
+  min-width: 132px;
+  text-align: right;
 }
 
 .daily-cell {
@@ -484,7 +493,8 @@ h1 {
 }
 
 .daily-cell.is-negative strong,
-.daily-cell.is-negative span {
+.daily-cell.is-negative span,
+#dailyTable td.negative-value {
   color: var(--danger);
 }
 
