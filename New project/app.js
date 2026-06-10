@@ -27,6 +27,7 @@ const state = {
   premiumRequests: [],
   saldoAkhirRataRata: emptySaldoAverageState(),
   dailyPelunasan: emptyDailyPelunasanState(),
+  dailyPelunasanUndo: null,
   saldoAverageSaveTimer: null,
   dailyPelunasanSaveTimer: null,
 };
@@ -107,6 +108,7 @@ const els = {
   dailyTableDate: document.querySelector("#dailyTableDate"),
   dailyTableHead: document.querySelector("#dailyTableHead"),
   dailyTableBody: document.querySelector("#dailyTableBody"),
+  undoDailyUploadButton: document.querySelector("#undoDailyUploadButton"),
   exportDailyExcelButton: document.querySelector("#exportDailyExcelButton"),
   exportDailyJpgButton: document.querySelector("#exportDailyJpgButton"),
   tabButtons: [...document.querySelectorAll("[data-tab]")],
@@ -123,6 +125,7 @@ async function boot() {
   initSupabase();
   await hydrate();
   await hydrateSession();
+  syncDailyUndoButton();
   if (state.profile?.role === "petugas") {
     await loadPetugasData();
   } else {
@@ -175,6 +178,7 @@ function attachEvents() {
   els.dailyMonthInput?.addEventListener("change", handleDailyMonthChange);
   els.dailyDateSelect?.addEventListener("change", handleDailyDateChange);
   els.dailySaldoInput?.addEventListener("change", handleDailySaldoUpload);
+  els.undoDailyUploadButton?.addEventListener("click", undoDailyPelunasanUpload);
   els.exportDailyExcelButton?.addEventListener("click", exportDailyPelunasanExcel);
   els.exportDailyJpgButton?.addEventListener("click", exportDailyPelunasanJpg);
   els.tabButtons.forEach((button) => {
@@ -205,6 +209,7 @@ async function hydrate() {
   state.struk = saved.struk || [];
   state.saldoAkhirRataRata = normalizeSaldoAverageState(saved.saldoAkhirRataRata);
   state.dailyPelunasan = normalizeDailyPelunasanState(saved.dailyPelunasan);
+  state.dailyPelunasanUndo = null;
   updateFileStatuses();
   renderSaldoAverage();
   syncDailyPelunasanControls();
@@ -342,12 +347,14 @@ async function loadCloudData(options = {}) {
   state.struk = payload.struk || [];
   state.saldoAkhirRataRata = normalizeSaldoAverageState(payload.saldoAkhirRataRata);
   state.dailyPelunasan = normalizeDailyPelunasanState(payload.dailyPelunasan);
+  state.dailyPelunasanUndo = null;
   updateProgress(70, "Menyimpan data ke browser...");
   await saveStoredData();
   updateProgress(85, "Menghitung ulang laporan...");
   recompute();
   renderSaldoAverage();
   syncDailyPelunasanControls();
+  syncDailyUndoButton();
   renderDailyPelunasanTable();
   finishProgress(`Data online dimuat. Update terakhir: ${formatDateTime(data.updated_at)}.`);
   setOnlineStatus(`Data online dimuat. Update terakhir: ${formatDateTime(data.updated_at)}.`);
@@ -2006,9 +2013,11 @@ async function resetData() {
   state.akhir = [];
   state.struk = [];
   state.dailyPelunasan = emptyDailyPelunasanState();
+  state.dailyPelunasanUndo = null;
   await saveStoredData();
   await autoSaveCloudData();
   syncDailyPelunasanControls();
+  syncDailyUndoButton();
   recompute();
 }
 
@@ -2041,7 +2050,9 @@ function renderDailyDateOptions() {
 function handleDailyMonthChange(event) {
   state.dailyPelunasan.selectedMonth = normalizeMonthKey(event.target.value);
   state.dailyPelunasan.selectedDate = `${state.dailyPelunasan.selectedMonth}-01`;
+  state.dailyPelunasanUndo = null;
   renderDailyDateOptions();
+  syncDailyUndoButton();
   renderDailyPelunasanTable();
   scheduleDailyPelunasanSave();
 }
@@ -2065,11 +2076,18 @@ async function handleDailySaldoUpload(event) {
     await yieldUi();
     const normalizedRows = normalizeSaldo(rows);
     const snapshot = buildDailyPelunasanSnapshot(normalizedRows);
+    state.dailyPelunasanUndo = {
+      date,
+      previousSnapshot: cloneDailySnapshot(state.dailyPelunasan.snapshots[date]),
+      hadPreviousSnapshot: Boolean(state.dailyPelunasan.snapshots[date]),
+      createdAt: new Date().toISOString(),
+    };
     state.dailyPelunasan.snapshots[date] = snapshot;
     updateProgress(68, "Menyimpan snapshot harian...");
     await saveStoredData();
     renderDailyDateOptions();
     renderDailyPelunasanTable();
+    syncDailyUndoButton();
     updateProgress(78, "Sinkronisasi online otomatis...");
     await saveDailyPelunasanDraft();
     finishProgress(`Saldo akhir harian ${formatShortDate(date)} tersimpan: ${formatNumber(snapshot.total.akhirId)} IDPEL.`);
@@ -2078,6 +2096,45 @@ async function handleDailySaldoUpload(event) {
     alert(`Gagal upload saldo harian: ${error.message}`);
   } finally {
     event.target.value = "";
+  }
+}
+
+async function undoDailyPelunasanUpload() {
+  const undo = state.dailyPelunasanUndo;
+  if (!undo) return;
+
+  const label = formatShortDate(undo.date);
+  const confirmed = confirm(`Batalkan upload saldo harian terakhir untuk tanggal ${label}?`);
+  if (!confirmed) return;
+
+  startProgress("Undo Upload Harian", `Mengembalikan data tanggal ${label}...`);
+  if (undo.hadPreviousSnapshot) {
+    state.dailyPelunasan.snapshots[undo.date] = cloneDailySnapshot(undo.previousSnapshot);
+  } else {
+    delete state.dailyPelunasan.snapshots[undo.date];
+  }
+  state.dailyPelunasanUndo = null;
+  updateProgress(50, "Menyimpan hasil undo...");
+  await saveStoredData();
+  renderDailyDateOptions();
+  renderDailyPelunasanTable();
+  syncDailyUndoButton();
+  updateProgress(75, "Sinkronisasi online otomatis...");
+  await saveDailyPelunasanDraft();
+  finishProgress(`Upload tanggal ${label} berhasil di-undo.`);
+}
+
+function cloneDailySnapshot(snapshot) {
+  return snapshot ? JSON.parse(JSON.stringify(snapshot)) : null;
+}
+
+function syncDailyUndoButton() {
+  if (!els.undoDailyUploadButton) return;
+  els.undoDailyUploadButton.disabled = !state.dailyPelunasanUndo;
+  if (state.dailyPelunasanUndo) {
+    els.undoDailyUploadButton.textContent = `Undo ${formatShortDate(state.dailyPelunasanUndo.date)}`;
+  } else {
+    els.undoDailyUploadButton.textContent = "Undo Upload Terakhir";
   }
 }
 
