@@ -6,7 +6,7 @@
     <title>Monitoring Saldo Tunggakan SIMONTOK</title>
     <meta name="theme-color" content="#006b8f" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260610-daily-undo" />
+    <link rel="stylesheet" href="./styles.css?v=20260610-daily-undo-date" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -237,7 +237,7 @@
               Upload Saldo Akhir Harian
               <input id="dailySaldoInput" type="file" accept=".xlsx,.xls,.csv" />
             </label>
-            <button class="button secondary" id="undoDailyUploadButton" type="button" disabled>Undo Upload Terakhir</button>
+            <button class="button secondary" id="undoDailyUploadButton" type="button" disabled>Undo Tanggal Dipilih</button>
             <button class="button secondary" id="exportDailyExcelButton" type="button">Export Excel</button>
             <button class="button secondary" id="exportDailyJpgButton" type="button">Download JPG</button>
           </div>
@@ -403,6 +403,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260610-daily-undo"></script>
+    <script src="./app.js?v=20260610-daily-undo-date"></script>
   </body>
 </html>
