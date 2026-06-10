@@ -2132,6 +2132,11 @@ function buildDailyPelunasanSnapshot(rows) {
     petugas[name] = {
       akhirId: group.count,
       akhirRupiah: group.rupiah,
+      customers: Object.fromEntries([...group.rowMap.entries()].map(([idpel, row]) => [idpel, {
+        idpel,
+        nama: row.nama || "",
+        rptag: row.rptag || 0,
+      }])),
     };
     akhirId += group.count;
     akhirRupiah += group.rupiah;
@@ -2179,6 +2184,7 @@ function renderDailyPelunasanTable() {
     return;
   }
 
+  const totals = calculateDailyPelunasanTotals(rows, days);
   els.dailyTableBody.innerHTML = rows.map((row, index) => `
     <tr>
       <td>${index + 1}</td>
@@ -2187,10 +2193,38 @@ function renderDailyPelunasanTable() {
       <td>${formatRupiah(row.awalRupiah)}</td>
       ${days.map((date) => renderDailyPelunasanCell(row.daily[date], date)).join("")}
     </tr>
-  `).join("");
+  `).join("") + `
+    <tr class="daily-total-row">
+      <td colspan="2">TOTAL</td>
+      <td>${formatNumber(totals.awalId)}</td>
+      <td>${formatRupiah(totals.awalRupiah)}</td>
+      ${days.map((date) => renderDailyPelunasanCell(totals.daily[date], date)).join("")}
+    </tr>
+  `;
   setDailyStatus(uploadedDates.length
     ? `Snapshot tersimpan: ${uploadedDates.map((date) => Number(date.slice(-2))).join(", ")}. Upload ulang tanggal yang sama akan menimpa data lama.`
     : "Pilih tanggal lalu upload saldo akhir harian. Upload ulang tanggal yang sama akan menimpa data sebelumnya.");
+}
+
+function calculateDailyPelunasanTotals(rows, days) {
+  const totals = {
+    awalId: 0,
+    awalRupiah: 0,
+    daily: {},
+  };
+
+  for (const row of rows) {
+    totals.awalId += row.awalId || 0;
+    totals.awalRupiah += row.awalRupiah || 0;
+    for (const date of days) {
+      if (!row.daily[date]) continue;
+      if (!totals.daily[date]) totals.daily[date] = { pelId: 0, pelRupiah: 0 };
+      totals.daily[date].pelId += row.daily[date].pelId || 0;
+      totals.daily[date].pelRupiah += row.daily[date].pelRupiah || 0;
+    }
+  }
+
+  return totals;
 }
 
 function calculateDailyPelunasanRows(days) {
@@ -2204,16 +2238,20 @@ function calculateDailyPelunasanRows(days) {
 
   return [...petugasNames].sort((a, b) => a.localeCompare(b, "id-ID")).map((petugas) => {
     const awal = baseline.get(petugas) || { akhirId: 0, akhirRupiah: 0 };
-    let previous = { akhirId: awal.akhirId, akhirRupiah: awal.akhirRupiah };
+    let previous = { akhirId: awal.akhirId, akhirRupiah: awal.akhirRupiah, customers: awal.customers || {} };
     const daily = {};
 
     for (const date of days) {
       const snapshot = state.dailyPelunasan.snapshots?.[date];
       if (!snapshot) continue;
-      const current = snapshot.petugas?.[petugas] || { akhirId: 0, akhirRupiah: 0 };
+      const current = snapshot.petugas?.[petugas] || { akhirId: 0, akhirRupiah: 0, customers: {} };
+      const paidCustomers = snapshotHasCustomerDetails(snapshot)
+        ? getDailyPaidCustomers(previous.customers, current.customers)
+        : [];
       daily[date] = {
         pelId: previous.akhirId - current.akhirId,
         pelRupiah: previous.akhirRupiah - current.akhirRupiah,
+        paidCustomers,
       };
       previous = current;
     }
@@ -2235,9 +2273,29 @@ function buildDailyPelunasanBaseline() {
     baseline.set(petugas, {
       akhirId: group.count,
       akhirRupiah: group.rupiah,
+      customers: Object.fromEntries([...group.rowMap.entries()].map(([idpel, row]) => [idpel, {
+        idpel,
+        nama: row.nama || "",
+        rptag: row.rptag || 0,
+      }])),
     });
   }
   return baseline;
+}
+
+function getDailyPaidCustomers(previousCustomers = {}, currentCustomers = {}) {
+  if (!previousCustomers || !currentCustomers) return [];
+  return Object.entries(previousCustomers)
+    .filter(([idpel]) => !currentCustomers?.[idpel])
+    .map(([idpel, row]) => ({
+      idpel,
+      nama: row.nama || "",
+      rptag: row.rptag || 0,
+    }));
+}
+
+function snapshotHasCustomerDetails(snapshot) {
+  return Object.values(snapshot?.petugas || {}).some((row) => row && row.customers);
 }
 
 function renderDailyPelunasanCell(value, date) {
@@ -2271,6 +2329,7 @@ function exportDailyPelunasanExcel() {
   startProgress("Export Excel", "Menyiapkan workbook Pelunasan Harian...");
   const totalColumns = 4 + (days.length * 2);
   const title = "MONITORING PELUNASAN HARIAN";
+  const totals = calculateDailyPelunasanTotals(rows, days);
   const headerGroup = ["NO", "PETUGAS", "SALDO AWAL", "", ...days.flatMap((date) => [Number(date.slice(-2)), ""])];
   const headerSub = ["", "", "IDPEL", "RP TAGIHAN", ...days.flatMap(() => ["IDPEL", "RP TAGIHAN"])];
   const tableRows = [
@@ -2290,6 +2349,17 @@ function exportDailyPelunasanExcel() {
         return uploaded ? [daily?.pelId || 0, daily?.pelRupiah || 0] : ["", ""];
       }),
     ]),
+    [
+      "",
+      "TOTAL",
+      totals.awalId,
+      totals.awalRupiah,
+      ...days.flatMap((date) => {
+        const uploaded = state.dailyPelunasan.snapshots?.[date];
+        const daily = totals.daily[date];
+        return uploaded ? [daily?.pelId || 0, daily?.pelRupiah || 0] : ["", ""];
+      }),
+    ],
   ];
 
   const worksheet = XLSX.utils.aoa_to_sheet(tableRows);
@@ -2325,8 +2395,38 @@ function exportDailyPelunasanExcel() {
   updateProgress(80, "Mengunduh file Excel...");
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Pelunasan Harian");
+  const detailRows = buildDailyPaidCustomerDetailRows(days, rows);
+  const detailWorksheet = XLSX.utils.aoa_to_sheet([
+    ["TANGGAL", "PETUGAS", "IDPEL", "NAMA", "RP TAGIHAN"],
+    ...detailRows.map((row) => [row.date, row.petugas, row.idpel, row.nama, row.rptag]),
+  ]);
+  detailWorksheet["!cols"] = [
+    { wch: 14 },
+    { wch: 24 },
+    { wch: 16 },
+    { wch: 32 },
+    { wch: 18 },
+  ];
+  for (let rowIndex = 2; rowIndex <= detailRows.length + 1; rowIndex += 1) {
+    const cell = detailWorksheet[XLSX.utils.encode_cell({ r: rowIndex - 1, c: 4 })];
+    if (cell) cell.z = '"Rp"#,##0';
+  }
+  XLSX.utils.book_append_sheet(workbook, detailWorksheet, "Detail IDPEL");
   XLSX.writeFile(workbook, `pelunasan-harian-${month}.xlsx`);
   finishProgress("Export Excel Pelunasan Harian selesai.");
+}
+
+function buildDailyPaidCustomerDetailRows(days, rows) {
+  return days.flatMap((date) => rows.flatMap((row) => {
+    const paidCustomers = row.daily[date]?.paidCustomers || [];
+    return paidCustomers.map((customer) => ({
+      date,
+      petugas: row.petugas,
+      idpel: customer.idpel,
+      nama: customer.nama,
+      rptag: customer.rptag,
+    }));
+  }));
 }
 
 function exportDailyPelunasanJpg() {
@@ -2337,6 +2437,17 @@ function exportDailyPelunasanJpg() {
   }
 
   startProgress("Download JPG", "Menggambar Pelunasan Harian ke gambar...");
+  const totals = calculateDailyPelunasanTotals(rows, days);
+  const exportRows = [
+    ...rows,
+    {
+      petugas: "TOTAL",
+      awalId: totals.awalId,
+      awalRupiah: totals.awalRupiah,
+      daily: totals.daily,
+      total: true,
+    },
+  ];
   const scale = 2;
   const columns = [
     { key: "no", label: "NO", width: 54, align: "center" },
@@ -2355,7 +2466,7 @@ function exportDailyPelunasanJpg() {
   const headerHeight = 36;
   const rowHeight = 38;
   const width = tableWidth + margin * 2;
-  const height = titleHeight + groupHeight + headerHeight + rows.length * rowHeight + margin;
+  const height = titleHeight + groupHeight + headerHeight + exportRows.length * rowHeight + margin;
   const canvas = document.createElement("canvas");
   canvas.width = width * scale;
   canvas.height = height * scale;
@@ -2399,13 +2510,13 @@ function exportDailyPelunasanJpg() {
   });
 
   y += groupHeight + headerHeight;
-  rows.forEach((row, rowIndex) => {
-    const rowFill = rowIndex % 2 === 0 ? "#ffffff" : "#f8fbfd";
+  exportRows.forEach((row, rowIndex) => {
+    const rowFill = row.total ? "#dcecf7" : rowIndex % 2 === 0 ? "#ffffff" : "#f8fbfd";
     x = startX;
     columns.forEach((column) => {
       let value = "";
       let danger = false;
-      if (column.key === "no") value = rowIndex + 1;
+      if (column.key === "no") value = row.total ? "" : rowIndex + 1;
       else if (column.key === "petugas") value = row.petugas;
       else if (column.key === "awalId") value = formatNumber(row.awalId);
       else if (column.key === "awalRupiah") value = formatRupiah(row.awalRupiah);
@@ -2419,7 +2530,7 @@ function exportDailyPelunasanJpg() {
         fill: rowFill,
         align: column.align,
         danger,
-        bold: column.key === "petugas",
+        bold: row.total || column.key === "petugas",
       });
       x += column.width;
     });
