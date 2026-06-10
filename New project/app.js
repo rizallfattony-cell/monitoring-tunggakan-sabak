@@ -26,7 +26,9 @@ const state = {
   profile: null,
   premiumRequests: [],
   saldoAkhirRataRata: emptySaldoAverageState(),
+  dailyPelunasan: emptyDailyPelunasanState(),
   saldoAverageSaveTimer: null,
+  dailyPelunasanSaveTimer: null,
 };
 
 const els = {
@@ -98,6 +100,13 @@ const els = {
   copySaldoAverageButton: document.querySelector("#copySaldoAverageButton"),
   useEndingAsBeginningButton: document.querySelector("#useEndingAsBeginningButton"),
   saldoAverageCopyStatus: document.querySelector("#saldoAverageCopyStatus"),
+  dailyMonthInput: document.querySelector("#dailyMonthInput"),
+  dailyDateSelect: document.querySelector("#dailyDateSelect"),
+  dailySaldoInput: document.querySelector("#dailySaldoInput"),
+  dailyStatus: document.querySelector("#dailyStatus"),
+  dailyTableDate: document.querySelector("#dailyTableDate"),
+  dailyTableHead: document.querySelector("#dailyTableHead"),
+  dailyTableBody: document.querySelector("#dailyTableBody"),
   tabButtons: [...document.querySelectorAll("[data-tab]")],
   tabPanels: [...document.querySelectorAll("[data-tab-panel]")],
 };
@@ -107,6 +116,7 @@ boot();
 async function boot() {
   setReportDate();
   renderSaldoAverageInputs();
+  initializeDailyPelunasanControls();
   attachEvents();
   initSupabase();
   await hydrate();
@@ -160,6 +170,9 @@ function attachEvents() {
   els.saldoAverageTarget?.addEventListener("input", handleSaldoAverageInput);
   els.copySaldoAverageButton?.addEventListener("click", copySaldoAverageReport);
   els.useEndingAsBeginningButton?.addEventListener("click", useEndingSaldoAsBeginning);
+  els.dailyMonthInput?.addEventListener("change", handleDailyMonthChange);
+  els.dailyDateSelect?.addEventListener("change", handleDailyDateChange);
+  els.dailySaldoInput?.addEventListener("change", handleDailySaldoUpload);
   els.tabButtons.forEach((button) => {
     button.addEventListener("click", () => switchTab(button.dataset.tab));
   });
@@ -187,8 +200,11 @@ async function hydrate() {
   state.akhir = saved.akhir || [];
   state.struk = saved.struk || [];
   state.saldoAkhirRataRata = normalizeSaldoAverageState(saved.saldoAkhirRataRata);
+  state.dailyPelunasan = normalizeDailyPelunasanState(saved.dailyPelunasan);
   updateFileStatuses();
   renderSaldoAverage();
+  syncDailyPelunasanControls();
+  renderDailyPelunasanTable();
 }
 
 function initSupabase() {
@@ -321,11 +337,14 @@ async function loadCloudData(options = {}) {
   state.akhir = payload.akhir || [];
   state.struk = payload.struk || [];
   state.saldoAkhirRataRata = normalizeSaldoAverageState(payload.saldoAkhirRataRata);
+  state.dailyPelunasan = normalizeDailyPelunasanState(payload.dailyPelunasan);
   updateProgress(70, "Menyimpan data ke browser...");
   await saveStoredData();
   updateProgress(85, "Menghitung ulang laporan...");
   recompute();
   renderSaldoAverage();
+  syncDailyPelunasanControls();
+  renderDailyPelunasanTable();
   finishProgress(`Data online dimuat. Update terakhir: ${formatDateTime(data.updated_at)}.`);
   setOnlineStatus(`Data online dimuat. Update terakhir: ${formatDateTime(data.updated_at)}.`);
 }
@@ -728,6 +747,7 @@ async function saveCloudData(options = {}) {
     akhir: state.akhir,
     struk: state.struk,
     saldoAkhirRataRata: state.saldoAkhirRataRata,
+    dailyPelunasan: state.dailyPelunasan,
   });
 
   const { error } = await state.supabaseClient
@@ -774,6 +794,7 @@ async function encodeCloudPayload(payload) {
     akhir: payload.akhir || [],
     struk: payload.struk || [],
     saldoAkhirRataRata: normalizeSaldoAverageState(payload.saldoAkhirRataRata),
+    dailyPelunasan: normalizeDailyPelunasanState(payload.dailyPelunasan),
   };
 
   if (!window.CompressionStream) return basePayload;
@@ -970,9 +991,13 @@ function applyRoleView() {
   const petugasMode = state.profile?.role === "petugas";
   const saldoAverageTab = document.querySelector('[data-tab="saldo-rata"]');
   const saldoAveragePanel = document.querySelector('[data-tab-panel="saldo-rata"]');
+  const dailyTab = document.querySelector('[data-tab="pelunasan-harian"]');
+  const dailyPanel = document.querySelector('[data-tab-panel="pelunasan-harian"]');
   if (saldoAverageTab) saldoAverageTab.hidden = petugasMode;
   if (saldoAveragePanel && petugasMode) saldoAveragePanel.hidden = true;
-  if (petugasMode && state.activeTab === "saldo-rata") switchTab("laporan");
+  if (dailyTab) dailyTab.hidden = petugasMode;
+  if (dailyPanel && petugasMode) dailyPanel.hidden = true;
+  if (petugasMode && (state.activeTab === "saldo-rata" || state.activeTab === "pelunasan-harian")) switchTab("laporan");
   els.uploadGrid.hidden = petugasMode;
   els.summaryGrid.hidden = petugasMode;
   els.toolbar.hidden = false;
@@ -1200,6 +1225,7 @@ function recompute() {
 
   updateFileStatuses();
   render();
+  renderDailyPelunasanTable();
 }
 
 function buildDilMap(rows) {
@@ -1975,9 +2001,289 @@ async function resetData() {
   state.awal = [];
   state.akhir = [];
   state.struk = [];
+  state.dailyPelunasan = emptyDailyPelunasanState();
   await saveStoredData();
   await autoSaveCloudData();
+  syncDailyPelunasanControls();
   recompute();
+}
+
+function initializeDailyPelunasanControls() {
+  if (!state.dailyPelunasan?.selectedMonth) {
+    state.dailyPelunasan = normalizeDailyPelunasanState(state.dailyPelunasan);
+  }
+  syncDailyPelunasanControls();
+}
+
+function syncDailyPelunasanControls() {
+  if (els.dailyMonthInput) els.dailyMonthInput.value = state.dailyPelunasan.selectedMonth;
+  renderDailyDateOptions();
+}
+
+function renderDailyDateOptions() {
+  if (!els.dailyDateSelect) return;
+  const month = normalizeMonthKey(state.dailyPelunasan.selectedMonth);
+  const days = getDaysInSelectedMonth(month);
+  const selectedDate = normalizeDailySelectedDate(state.dailyPelunasan.selectedDate, month);
+  state.dailyPelunasan.selectedMonth = month;
+  state.dailyPelunasan.selectedDate = selectedDate;
+  els.dailyDateSelect.innerHTML = days.map((date) => {
+    const day = Number(date.slice(-2));
+    const uploaded = state.dailyPelunasan.snapshots?.[date] ? " - sudah upload" : "";
+    return `<option value="${date}" ${date === selectedDate ? "selected" : ""}>Tanggal ${day}${uploaded}</option>`;
+  }).join("");
+}
+
+function handleDailyMonthChange(event) {
+  state.dailyPelunasan.selectedMonth = normalizeMonthKey(event.target.value);
+  state.dailyPelunasan.selectedDate = `${state.dailyPelunasan.selectedMonth}-01`;
+  renderDailyDateOptions();
+  renderDailyPelunasanTable();
+  scheduleDailyPelunasanSave();
+}
+
+function handleDailyDateChange(event) {
+  state.dailyPelunasan.selectedDate = event.target.value;
+  scheduleDailyPelunasanSave();
+}
+
+async function handleDailySaldoUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const date = state.dailyPelunasan.selectedDate;
+  startProgress("Upload Saldo Harian", `Membaca file ${file.name} untuk tanggal ${formatShortDate(date)}...`);
+  try {
+    const rows = await readWorkbook(file, (percent) => {
+      updateProgress(percent * 0.35, `Membaca file ${file.name}...`);
+    });
+    updateProgress(44, "Memproses saldo akhir harian...");
+    await yieldUi();
+    const normalizedRows = normalizeSaldo(rows);
+    const snapshot = buildDailyPelunasanSnapshot(normalizedRows);
+    state.dailyPelunasan.snapshots[date] = snapshot;
+    updateProgress(68, "Menyimpan snapshot harian...");
+    await saveStoredData();
+    renderDailyDateOptions();
+    renderDailyPelunasanTable();
+    updateProgress(78, "Sinkronisasi online otomatis...");
+    await saveDailyPelunasanDraft();
+    finishProgress(`Saldo akhir harian ${formatShortDate(date)} tersimpan: ${formatNumber(snapshot.total.akhirId)} IDPEL.`);
+  } catch (error) {
+    failProgress(`Gagal upload saldo harian: ${error.message}`);
+    alert(`Gagal upload saldo harian: ${error.message}`);
+  } finally {
+    event.target.value = "";
+  }
+}
+
+function buildDailyPelunasanSnapshot(rows) {
+  const dilMap = buildDilMap(state.dil);
+  const grouped = groupSaldoByPetugas(rows, dilMap, "saldo akhir harian");
+  const petugas = {};
+  let akhirId = 0;
+  let akhirRupiah = 0;
+
+  for (const [name, group] of grouped.entries()) {
+    petugas[name] = {
+      akhirId: group.count,
+      akhirRupiah: group.rupiah,
+    };
+    akhirId += group.count;
+    akhirRupiah += group.rupiah;
+  }
+
+  return {
+    uploadedAt: new Date().toISOString(),
+    petugas,
+    total: { akhirId, akhirRupiah },
+  };
+}
+
+function renderDailyPelunasanTable() {
+  if (!els.dailyTableHead || !els.dailyTableBody) return;
+
+  const month = normalizeMonthKey(state.dailyPelunasan.selectedMonth);
+  const days = getDaysInSelectedMonth(month);
+  const uploadedDates = days.filter((date) => state.dailyPelunasan.snapshots?.[date]);
+  if (els.dailyTableDate) {
+    const dateLabel = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(new Date(`${month}-01T00:00:00`));
+    els.dailyTableDate.textContent = `${dateLabel.toUpperCase()} - ${formatNumber(uploadedDates.length)} tanggal sudah upload`;
+  }
+
+  els.dailyTableHead.innerHTML = `
+    <tr>
+      <th rowspan="2">No</th>
+      <th rowspan="2">Petugas</th>
+      <th colspan="2">Saldo Awal</th>
+      ${days.map((date) => `<th class="daily-day ${state.dailyPelunasan.snapshots?.[date] ? "daily-uploaded-day" : ""}" rowspan="2">${Number(date.slice(-2))}</th>`).join("")}
+    </tr>
+    <tr>
+      <th>IDPEL</th>
+      <th>RPTAG</th>
+    </tr>
+  `;
+
+  const rows = calculateDailyPelunasanRows(days);
+  if (!rows.length) {
+    els.dailyTableBody.innerHTML = `<tr><td class="empty-state" colspan="${4 + days.length}">Belum ada data. Upload DIL dan Saldo Awal terlebih dahulu.</td></tr>`;
+    setDailyStatus("Upload DIL dan Saldo Awal untuk menampilkan baseline pelunasan harian.");
+    return;
+  }
+
+  els.dailyTableBody.innerHTML = rows.map((row, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td class="name-cell">${escapeHtml(row.petugas)}</td>
+      <td>${formatNumber(row.awalId)}</td>
+      <td>${formatRupiah(row.awalRupiah)}</td>
+      ${days.map((date) => renderDailyPelunasanCell(row.daily[date], date)).join("")}
+    </tr>
+  `).join("");
+  setDailyStatus(uploadedDates.length
+    ? `Snapshot tersimpan: ${uploadedDates.map((date) => Number(date.slice(-2))).join(", ")}. Upload ulang tanggal yang sama akan menimpa data lama.`
+    : "Pilih tanggal lalu upload saldo akhir harian. Upload ulang tanggal yang sama akan menimpa data sebelumnya.");
+}
+
+function calculateDailyPelunasanRows(days) {
+  const baseline = buildDailyPelunasanBaseline();
+  const petugasNames = new Set(baseline.keys());
+  for (const date of days) {
+    const snapshot = state.dailyPelunasan.snapshots?.[date];
+    if (!snapshot) continue;
+    Object.keys(snapshot.petugas || {}).forEach((petugas) => petugasNames.add(petugas));
+  }
+
+  return [...petugasNames].sort((a, b) => a.localeCompare(b, "id-ID")).map((petugas) => {
+    const awal = baseline.get(petugas) || { akhirId: 0, akhirRupiah: 0 };
+    let previous = { akhirId: awal.akhirId, akhirRupiah: awal.akhirRupiah };
+    const daily = {};
+
+    for (const date of days) {
+      const snapshot = state.dailyPelunasan.snapshots?.[date];
+      if (!snapshot) continue;
+      const current = snapshot.petugas?.[petugas] || { akhirId: 0, akhirRupiah: 0 };
+      daily[date] = {
+        pelId: previous.akhirId - current.akhirId,
+        pelRupiah: previous.akhirRupiah - current.akhirRupiah,
+      };
+      previous = current;
+    }
+
+    return {
+      petugas,
+      awalId: awal.akhirId,
+      awalRupiah: awal.akhirRupiah,
+      daily,
+    };
+  }).filter((row) => row.awalId || row.awalRupiah || Object.keys(row.daily).length);
+}
+
+function buildDailyPelunasanBaseline() {
+  const dilMap = buildDilMap(state.dil);
+  const grouped = groupSaldoByPetugas(state.awal, dilMap, "saldo awal");
+  const baseline = new Map();
+  for (const [petugas, group] of grouped.entries()) {
+    baseline.set(petugas, {
+      akhirId: group.count,
+      akhirRupiah: group.rupiah,
+    });
+  }
+  return baseline;
+}
+
+function renderDailyPelunasanCell(value, date) {
+  const uploaded = state.dailyPelunasan.snapshots?.[date];
+  if (!uploaded) return `<td class="daily-day-cell"></td>`;
+  const negative = (value?.pelId || 0) < 0 || (value?.pelRupiah || 0) < 0;
+  return `
+    <td class="daily-day-cell">
+      <div class="daily-cell ${negative ? "is-negative" : ""}">
+        <strong>${formatNumber(value?.pelId || 0)} pel</strong>
+        <span>${formatRupiah(value?.pelRupiah || 0)}</span>
+      </div>
+    </td>
+  `;
+}
+
+function getDaysInSelectedMonth(monthKey) {
+  const [year, month] = normalizeMonthKey(monthKey).split("-").map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  return Array.from({ length: lastDay }, (_, index) => `${year}-${String(month).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`);
+}
+
+function normalizeMonthKey(value) {
+  const fallback = getCurrentMonthKey();
+  return /^\d{4}-\d{2}$/.test(String(value || "")) ? value : fallback;
+}
+
+function normalizeDailySelectedDate(value, monthKey) {
+  const days = getDaysInSelectedMonth(monthKey);
+  return days.includes(value) ? value : days[0];
+}
+
+function emptyDailyPelunasanState() {
+  const selectedMonth = getCurrentMonthKey();
+  return {
+    selectedMonth,
+    selectedDate: `${selectedMonth}-01`,
+    snapshots: {},
+  };
+}
+
+function normalizeDailyPelunasanState(value) {
+  const base = emptyDailyPelunasanState();
+  const source = value || {};
+  const selectedMonth = normalizeMonthKey(source.selectedMonth || base.selectedMonth);
+  return {
+    selectedMonth,
+    selectedDate: normalizeDailySelectedDate(source.selectedDate, selectedMonth),
+    snapshots: source.snapshots && typeof source.snapshots === "object" ? source.snapshots : {},
+  };
+}
+
+function scheduleDailyPelunasanSave() {
+  window.clearTimeout(state.dailyPelunasanSaveTimer);
+  state.dailyPelunasanSaveTimer = window.setTimeout(saveDailyPelunasanDraft, 900);
+}
+
+async function saveDailyPelunasanDraft() {
+  await saveStoredData();
+  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") return false;
+
+  const cloudPayload = await encodeCloudPayload({
+    dil: state.dil,
+    awal: state.awal,
+    akhir: state.akhir,
+    struk: state.struk,
+    saldoAkhirRataRata: state.saldoAkhirRataRata,
+    dailyPelunasan: state.dailyPelunasan,
+  });
+  const { error } = await state.supabaseClient
+    .from("monitoring_app_state")
+    .upsert({
+      id: CLOUD_STATE_ID,
+      payload: cloudPayload,
+      updated_by: state.user.id,
+      updated_at: new Date().toISOString(),
+    });
+
+  if (error) {
+    setOnlineStatus(`Gagal simpan Pelunasan Harian: ${error.message}`);
+    return false;
+  }
+
+  setOnlineStatus(`Pelunasan Harian tersimpan online: ${formatDateTime(new Date().toISOString())}.`);
+  return true;
+}
+
+function setDailyStatus(message) {
+  if (els.dailyStatus) els.dailyStatus.textContent = message;
+}
+
+function getCurrentMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function renderSaldoAverageInputs() {
@@ -2137,6 +2443,7 @@ async function saveSaldoAverageDraft() {
     akhir: state.akhir,
     struk: state.struk,
     saldoAkhirRataRata: state.saldoAkhirRataRata,
+    dailyPelunasan: state.dailyPelunasan,
   });
   const { error } = await state.supabaseClient
     .from("monitoring_app_state")
@@ -2319,6 +2626,15 @@ function formatDateTime(value) {
   }).format(new Date(value));
 }
 
+function formatShortDate(value) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00`));
+}
+
 function formatLongIndonesianDate(value) {
   return new Intl.DateTimeFormat("id-ID", {
     weekday: "long",
@@ -2411,6 +2727,7 @@ async function saveStoredData() {
     akhir: state.akhir,
     struk: state.struk,
     saldoAkhirRataRata: state.saldoAkhirRataRata,
+    dailyPelunasan: state.dailyPelunasan,
     savedAt: new Date().toISOString(),
   };
 

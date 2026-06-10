@@ -429,6 +429,69 @@ h1 {
   line-height: 1.4;
 }
 
+.daily-panel {
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.daily-controls {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.daily-controls .field input,
+.daily-controls .field select {
+  min-width: 190px;
+}
+
+.daily-upload-button {
+  width: auto;
+}
+
+.daily-table-wrap {
+  max-height: calc(100vh - 360px);
+}
+
+#dailyTable {
+  min-width: 1280px;
+}
+
+#dailyTable th.daily-day,
+#dailyTable td.daily-day-cell {
+  min-width: 118px;
+}
+
+.daily-cell {
+  display: grid;
+  gap: 3px;
+  line-height: 1.25;
+}
+
+.daily-cell strong {
+  font-size: 12px;
+}
+
+.daily-cell span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.daily-cell.is-negative strong,
+.daily-cell.is-negative span {
+  color: var(--danger);
+}
+
+.daily-uploaded-day {
+  background: #fff7d1;
+}
+
 .saldo-average-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -997,6 +1060,7 @@ tfoot td {
 
   .topbar-actions,
   .toolbar,
+  .daily-controls,
   .online-form,
   .online-actions,
   .premium-actions {

@@ -6,7 +6,7 @@
     <title>Monitoring Saldo Tunggakan SIMONTOK</title>
     <meta name="theme-color" content="#006b8f" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260603-saldo-rata-copy" />
+    <link rel="stylesheet" href="./styles.css?v=20260610-daily-pelunasan" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -30,6 +30,7 @@
       <nav class="tab-nav" aria-label="Navigasi admin">
         <button class="tab-button is-active" type="button" data-tab="upload">Upload Data</button>
         <button class="tab-button" type="button" data-tab="laporan">Laporan</button>
+        <button class="tab-button" type="button" data-tab="pelunasan-harian">Pelunasan Harian</button>
         <button class="tab-button" type="button" data-tab="saldo-rata">Saldo Akhir Rata Rata</button>
         <button class="tab-button" type="button" data-tab="online">Online & Sinkron</button>
         <button class="tab-button" type="button" data-tab="premium">Premium</button>
@@ -213,6 +214,51 @@
         </section>
       </section>
 
+      <section class="tab-panel" data-tab-panel="pelunasan-harian" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Monitoring Bulanan</p>
+            <h2>Pelunasan Harian</h2>
+            <p>Upload saldo akhir per tanggal untuk menghitung pelunasan harian setiap petugas.</p>
+          </div>
+        </div>
+
+        <section class="daily-panel">
+          <div class="daily-controls">
+            <label class="field" for="dailyMonthInput">
+              <span>Bulan Laporan</span>
+              <input id="dailyMonthInput" type="month" />
+            </label>
+            <label class="field" for="dailyDateSelect">
+              <span>Tanggal Upload Saldo Akhir</span>
+              <select id="dailyDateSelect"></select>
+            </label>
+            <label class="file-button daily-upload-button">
+              Upload Saldo Akhir Harian
+              <input id="dailySaldoInput" type="file" accept=".xlsx,.xls,.csv" />
+            </label>
+          </div>
+          <p class="auto-note" id="dailyStatus">Pilih tanggal lalu upload saldo akhir harian. Upload ulang tanggal yang sama akan menimpa data sebelumnya.</p>
+        </section>
+
+        <section class="table-section daily-table-section">
+          <div class="report-heading">
+            <h2>Monitoring Pelunasan Harian</h2>
+            <p id="dailyTableDate">-</p>
+          </div>
+          <div class="table-wrap daily-table-wrap">
+            <table id="dailyTable">
+              <thead id="dailyTableHead"></thead>
+              <tbody id="dailyTableBody">
+                <tr>
+                  <td class="empty-state" colspan="4">Belum ada data. Upload DIL dan Saldo Awal terlebih dahulu.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
       <section class="tab-panel" data-tab-panel="saldo-rata" hidden>
         <div class="section-head">
           <div>
@@ -354,6 +400,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260603-saldo-rata-copy"></script>
+    <script src="./app.js?v=20260610-daily-pelunasan"></script>
   </body>
 </html>
