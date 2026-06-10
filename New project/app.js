@@ -184,6 +184,7 @@ function attachEvents() {
   els.exportDailyJpgButton?.addEventListener("click", exportDailyPelunasanJpg);
   els.exportDailyExcelTopButton?.addEventListener("click", exportDailyPelunasanExcel);
   els.exportDailyJpgTopButton?.addEventListener("click", exportDailyPelunasanJpg);
+  els.dailyTableBody?.addEventListener("click", handleDailyDetailClick);
   els.tabButtons.forEach((button) => {
     button.addEventListener("click", () => switchTab(button.dataset.tab));
   });
@@ -2202,7 +2203,7 @@ function renderDailyPelunasanTable() {
       <td colspan="2">TOTAL</td>
       <td>${formatNumber(totals.awalId)}</td>
       <td>${formatRupiah(totals.awalRupiah)}</td>
-      ${days.map((date) => renderDailyPelunasanCell(totals.daily[date], date)).join("")}
+      ${days.map((date) => renderDailyPelunasanCell(totals.daily[date], date, { clickable: true })).join("")}
     </tr>
   `;
   setDailyStatus(uploadedDates.length
@@ -2302,14 +2303,27 @@ function snapshotHasCustomerDetails(snapshot) {
   return Object.values(snapshot?.petugas || {}).some((row) => row && row.customers);
 }
 
-function renderDailyPelunasanCell(value, date) {
+function renderDailyPelunasanCell(value, date, options = {}) {
   const uploaded = state.dailyPelunasan.snapshots?.[date];
   if (!uploaded) return `<td class="daily-day-cell"></td><td class="daily-day-cell"></td>`;
   const negative = (value?.pelId || 0) < 0 || (value?.pelRupiah || 0) < 0;
+  const detailAttrs = options.clickable ? `data-daily-detail-date="${date}" title="Download detail pelanggan lunas ${formatShortDate(date)}"` : "";
+  const idContent = options.clickable
+    ? `<button class="count-button daily-detail-button" type="button" ${detailAttrs}>${formatNumber(value?.pelId || 0)}</button>`
+    : formatNumber(value?.pelId || 0);
+  const rupiahContent = options.clickable
+    ? `<button class="count-button daily-detail-button" type="button" ${detailAttrs}>${formatRupiah(value?.pelRupiah || 0)}</button>`
+    : formatRupiah(value?.pelRupiah || 0);
   return `
-    <td class="daily-day-cell ${negative ? "negative-value" : ""}">${formatNumber(value?.pelId || 0)}</td>
-    <td class="daily-day-cell daily-rupiah ${negative ? "negative-value" : ""}">${formatRupiah(value?.pelRupiah || 0)}</td>
+    <td class="daily-day-cell ${negative ? "negative-value" : ""}">${idContent}</td>
+    <td class="daily-day-cell daily-rupiah ${negative ? "negative-value" : ""}">${rupiahContent}</td>
   `;
+}
+
+function handleDailyDetailClick(event) {
+  const button = event.target.closest("[data-daily-detail-date]");
+  if (!button) return;
+  exportDailyPaidCustomerDetail(button.dataset.dailyDetailDate);
 }
 
 function getDailyPelunasanExportData() {
@@ -2431,6 +2445,69 @@ function buildDailyPaidCustomerDetailRows(days, rows) {
       rptag: customer.rptag,
     }));
   }));
+}
+
+function exportDailyPaidCustomerDetail(date) {
+  const { days, rows } = getDailyPelunasanExportData();
+  if (!state.dailyPelunasan.snapshots?.[date]) {
+    alert("Tanggal ini belum punya upload saldo akhir.");
+    return;
+  }
+
+  const detailRows = buildDailyPaidCustomerDetailRows([date], rows);
+  if (!detailRows.length) {
+    alert("Detail pelanggan lunas belum tersedia untuk tanggal ini. Upload ulang saldo harian tanggal ini dengan versi web terbaru agar detail IDPEL tersimpan.");
+    return;
+  }
+
+  const previousDate = findPreviousDailySnapshotDate(date, days);
+  startProgress("Export Detail IDPEL", `Menyiapkan detail pelanggan lunas ${formatShortDate(date)}...`);
+  const tableRows = [
+    [`DETAIL PELANGGAN LUNAS ${formatShortDate(date).toUpperCase()}`],
+    [`Pembanding: ${previousDate ? formatShortDate(previousDate) : "Saldo Awal"}`],
+    [],
+    ["NO", "TANGGAL", "PETUGAS", "IDPEL", "NAMA", "RP TAGIHAN"],
+    ...detailRows.map((row, index) => [
+      index + 1,
+      row.date,
+      row.petugas,
+      row.idpel,
+      row.nama,
+      row.rptag,
+    ]),
+    ["", "", "TOTAL", detailRows.length, "", detailRows.reduce((sum, row) => sum + Number(row.rptag || 0), 0)],
+  ];
+
+  const worksheet = XLSX.utils.aoa_to_sheet(tableRows);
+  worksheet["!merges"] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },
+  ];
+  worksheet["!cols"] = [
+    { wch: 6 },
+    { wch: 14 },
+    { wch: 24 },
+    { wch: 16 },
+    { wch: 32 },
+    { wch: 18 },
+  ];
+  for (let rowIndex = 5; rowIndex <= tableRows.length; rowIndex += 1) {
+    const cell = worksheet[XLSX.utils.encode_cell({ r: rowIndex - 1, c: 5 })];
+    if (cell) cell.z = '"Rp"#,##0';
+  }
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Detail Lunas");
+  XLSX.writeFile(workbook, `detail-pelunasan-${date}.xlsx`);
+  finishProgress("Export detail pelanggan lunas selesai.");
+}
+
+function findPreviousDailySnapshotDate(date, days) {
+  const index = days.indexOf(date);
+  for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+    if (state.dailyPelunasan.snapshots?.[days[cursor]]) return days[cursor];
+  }
+  return "";
 }
 
 function exportDailyPelunasanJpg() {

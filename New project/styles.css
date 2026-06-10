@@ -506,6 +506,10 @@ h1 {
   font-weight: 900;
 }
 
+.daily-detail-button {
+  color: var(--accent-dark);
+}
+
 .daily-uploaded-day {
   background: #fff7d1;
 }
