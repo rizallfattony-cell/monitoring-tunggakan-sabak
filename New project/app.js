@@ -2007,6 +2007,32 @@ function applyExportFormats(worksheet, rowCount) {
   }
 }
 
+function applyWorksheetTableBorders(worksheet) {
+  if (!worksheet["!ref"]) return;
+  const range = XLSX.utils.decode_range(worksheet["!ref"]);
+  const border = {
+    top: { style: "thin", color: { rgb: "FFB7C5D2" } },
+    bottom: { style: "thin", color: { rgb: "FFB7C5D2" } },
+    left: { style: "thin", color: { rgb: "FFB7C5D2" } },
+    right: { style: "thin", color: { rgb: "FFB7C5D2" } },
+  };
+
+  for (let row = range.s.r; row <= range.e.r; row += 1) {
+    for (let col = range.s.c; col <= range.e.c; col += 1) {
+      const ref = XLSX.utils.encode_cell({ r: row, c: col });
+      if (!worksheet[ref]) worksheet[ref] = { t: "s", v: "" };
+      worksheet[ref].s = {
+        ...(worksheet[ref].s || {}),
+        border,
+        alignment: { vertical: "center", wrapText: true },
+      };
+      if (row <= 4) {
+        worksheet[ref].s.font = { bold: true };
+      }
+    }
+  }
+}
+
 async function resetData() {
   const confirmed = confirm("Reset semua data lokal DIL, saldo awal, dan saldo akhir?");
   if (!confirmed) return;
@@ -2409,27 +2435,17 @@ function exportDailyPelunasanExcel() {
       if (cell) cell.z = '"Rp"#,##0';
     });
   }
+  applyWorksheetTableBorders(worksheet);
 
   updateProgress(80, "Mengunduh file Excel...");
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Pelunasan Harian");
-  const detailRows = buildDailyPaidCustomerDetailRows(days, rows);
-  const detailWorksheet = XLSX.utils.aoa_to_sheet([
-    ["TANGGAL", "PETUGAS", "IDPEL", "NAMA", "RP TAGIHAN"],
-    ...detailRows.map((row) => [row.date, row.petugas, row.idpel, row.nama, row.rptag]),
-  ]);
-  detailWorksheet["!cols"] = [
-    { wch: 14 },
-    { wch: 24 },
-    { wch: 16 },
-    { wch: 32 },
-    { wch: 18 },
-  ];
-  for (let rowIndex = 2; rowIndex <= detailRows.length + 1; rowIndex += 1) {
-    const cell = detailWorksheet[XLSX.utils.encode_cell({ r: rowIndex - 1, c: 4 })];
-    if (cell) cell.z = '"Rp"#,##0';
-  }
-  XLSX.utils.book_append_sheet(workbook, detailWorksheet, "Detail IDPEL");
+  days.forEach((date) => {
+    if (!state.dailyPelunasan.snapshots?.[date]) return;
+    const detailRows = buildDailyPaidCustomerDetailRows([date], rows);
+    const detailWorksheet = createDailyPaidCustomerDetailWorksheet(date, detailRows, days);
+    XLSX.utils.book_append_sheet(workbook, detailWorksheet, dailyDetailSheetName(date));
+  });
   XLSX.writeFile(workbook, `pelunasan-harian-${month}.xlsx`);
   finishProgress("Export Excel Pelunasan Harian selesai.");
 }
@@ -2460,8 +2476,16 @@ function exportDailyPaidCustomerDetail(date) {
     return;
   }
 
-  const previousDate = findPreviousDailySnapshotDate(date, days);
   startProgress("Export Detail IDPEL", `Menyiapkan detail pelanggan lunas ${formatShortDate(date)}...`);
+  const worksheet = createDailyPaidCustomerDetailWorksheet(date, detailRows, days);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, dailyDetailSheetName(date));
+  XLSX.writeFile(workbook, `detail-pelunasan-${date}.xlsx`);
+  finishProgress("Export detail pelanggan lunas selesai.");
+}
+
+function createDailyPaidCustomerDetailWorksheet(date, detailRows, days) {
+  const previousDate = findPreviousDailySnapshotDate(date, days);
   const tableRows = [
     [`DETAIL PELANGGAN LUNAS ${formatShortDate(date).toUpperCase()}`],
     [`Pembanding: ${previousDate ? formatShortDate(previousDate) : "Saldo Awal"}`],
@@ -2495,11 +2519,13 @@ function exportDailyPaidCustomerDetail(date) {
     const cell = worksheet[XLSX.utils.encode_cell({ r: rowIndex - 1, c: 5 })];
     if (cell) cell.z = '"Rp"#,##0';
   }
+  applyWorksheetTableBorders(worksheet);
+  return worksheet;
+}
 
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Detail Lunas");
-  XLSX.writeFile(workbook, `detail-pelunasan-${date}.xlsx`);
-  finishProgress("Export detail pelanggan lunas selesai.");
+function dailyDetailSheetName(date) {
+  const [year, month, day] = date.split("-");
+  return `Pelanggan ${day}-${month}-${year}`;
 }
 
 function findPreviousDailySnapshotDate(date, days) {
