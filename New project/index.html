@@ -6,13 +6,32 @@
     <title>Monitoring Saldo Tunggakan SIMONTOK</title>
     <meta name="theme-color" content="#006b8f" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260614-login-simontok" />
+    <link rel="stylesheet" href="./styles.css?v=20260614-login-gate" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
   </head>
   <body>
-    <main class="app-shell">
+    <section class="auth-gate" id="authGate">
+      <div class="login-card auth-login-card">
+        <div class="login-card-title">
+          <span aria-hidden="true">&#9889;</span>
+          <strong>Login Simontok Terpusat</strong>
+        </div>
+        <div class="online-form">
+          <label for="gateEmailInput">Email:</label>
+          <input id="gateEmailInput" type="email" placeholder="-ISI EMAIL-" autocomplete="username" />
+          <label for="gatePasswordInput">Password:</label>
+          <input id="gatePasswordInput" type="password" placeholder="Password" autocomplete="current-password" />
+          <div class="login-button-row">
+            <button class="button primary login-eis-button" id="gateLoginButton" type="button">Login</button>
+          </div>
+        </div>
+        <p class="auth-gate-status" id="gateLoginStatus">Silakan login untuk membuka SIMONTOK Admin.</p>
+      </div>
+    </section>
+
+    <main class="app-shell" id="appShell" hidden>
       <header class="topbar">
         <div class="brand-block">
           <p class="eyebrow">SIMONTOK Admin</p>
@@ -419,6 +438,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260614-login-simontok"></script>
+    <script src="./app.js?v=20260614-login-gate"></script>
   </body>
 </html>

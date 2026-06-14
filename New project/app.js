@@ -32,6 +32,12 @@ const state = {
 };
 
 const els = {
+  appShell: document.querySelector("#appShell"),
+  authGate: document.querySelector("#authGate"),
+  gateEmailInput: document.querySelector("#gateEmailInput"),
+  gatePasswordInput: document.querySelector("#gatePasswordInput"),
+  gateLoginButton: document.querySelector("#gateLoginButton"),
+  gateLoginStatus: document.querySelector("#gateLoginStatus"),
   dilInput: document.querySelector("#dilInput"),
   awalInput: document.querySelector("#awalInput"),
   akhirInput: document.querySelector("#akhirInput"),
@@ -153,7 +159,11 @@ function attachEvents() {
     switchTab("online");
     openOnlinePanel();
   });
-  els.loginButton.addEventListener("click", loginOnline);
+  els.gateLoginButton?.addEventListener("click", () => loginOnline("gate"));
+  els.gatePasswordInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") loginOnline("gate");
+  });
+  els.loginButton.addEventListener("click", () => loginOnline("panel"));
   els.logoutButton.addEventListener("click", logoutOnline);
   els.loadCloudButton.addEventListener("click", loadCloudData);
   els.saveCloudButton.addEventListener("click", saveCloudData);
@@ -247,29 +257,39 @@ async function hydrateSession() {
   updateOnlineUi();
 }
 
-async function loginOnline() {
+async function loginOnline(source = "panel") {
   if (!state.supabaseClient) {
-    alert("Supabase belum dikonfigurasi. Isi supabase-config.js terlebih dahulu.");
+    const message = "Supabase belum dikonfigurasi. Isi supabase-config.js terlebih dahulu.";
+    setGateStatus(message);
+    alert(message);
     return;
   }
 
-  const email = els.emailInput.value.trim();
-  const password = els.passwordInput.value;
+  const fields = source === "gate"
+    ? { emailInput: els.gateEmailInput, passwordInput: els.gatePasswordInput }
+    : { emailInput: els.emailInput, passwordInput: els.passwordInput };
+  const email = fields.emailInput?.value.trim() || "";
+  const password = fields.passwordInput?.value || "";
   if (!email || !password) {
-    alert("Isi email dan password.");
+    const message = "Isi email dan password.";
+    setGateStatus(message);
+    alert(message);
     return;
   }
 
   setOnlineStatus("Login...");
+  setGateStatus("Login...");
   const { data, error } = await state.supabaseClient.auth.signInWithPassword({ email, password });
   if (error) {
     setOnlineStatus(`Login gagal: ${error.message}`);
+    setGateStatus(`Login gagal: ${error.message}`);
     return;
   }
 
   state.user = data.user;
   await loadProfile();
-  els.passwordInput.value = "";
+  if (els.passwordInput) els.passwordInput.value = "";
+  if (els.gatePasswordInput) els.gatePasswordInput.value = "";
   updateOnlineUi();
   if (state.profile?.role === "petugas") {
     await loadPetugasData();
@@ -985,6 +1005,8 @@ function ensureAdmin() {
 
 function updateOnlineUi() {
   const online = Boolean(state.user);
+  if (els.authGate) els.authGate.hidden = online;
+  if (els.appShell) els.appShell.hidden = !online;
   els.onlineButton.textContent = online ? "Online Aktif" : "Login Online";
   els.loginForm.hidden = online;
   els.syncActions.hidden = !online || state.profile?.role === "petugas";
@@ -998,6 +1020,13 @@ function updateOnlineUi() {
     : state.supabaseClient
       ? "Supabase siap. Silakan login untuk sinkronisasi online."
       : "Supabase belum dikonfigurasi. Isi supabase-config.js untuk mode online.");
+  setGateStatus(state.supabaseClient
+    ? "Silakan login untuk membuka SIMONTOK Admin."
+    : "Supabase belum dikonfigurasi. Isi supabase-config.js untuk mode online.");
+}
+
+function setGateStatus(message) {
+  if (els.gateLoginStatus) els.gateLoginStatus.textContent = message;
 }
 
 function applyRoleView() {
