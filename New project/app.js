@@ -205,6 +205,7 @@ function attachEvents() {
     });
   });
   els.tabButtons.forEach((button) => {
+    if (button.hasAttribute("data-tree-toggle")) return;
     button.addEventListener("click", () => switchTab(button.dataset.tab));
   });
 }
@@ -221,9 +222,10 @@ function switchTab(tabName) {
     button.setAttribute("aria-selected", active ? "true" : "false");
   });
   els.treeToggleButtons.forEach((button) => {
-    const active = button.dataset.tab === tabName;
+    const group = button.closest(".tree-group");
+    const active = Boolean(group?.querySelector(".tree-child.is-active"));
     button.classList.toggle("is-active", active);
-    if (active) button.closest(".tree-group")?.classList.add("is-open");
+    if (active) group?.classList.add("is-open");
   });
   els.tabPanels.forEach((panel) => {
     panel.hidden = panel.dataset.tabPanel !== tabName;
