@@ -9,6 +9,23 @@ const SALDO_AVERAGE_FIELDS = [
   { key: "kogol3Pju", label: "KOGOL 3 PJU" },
   { key: "kogol4", label: "KOGOL 4" },
 ];
+const WORK_MOTIVATION_QUOTES = [
+  "Kerja yang rapi hari ini membuat masalah besok jauh lebih ringan.",
+  "Disiplin kecil yang dilakukan konsisten akan mengalahkan semangat besar yang hanya sesekali.",
+  "Data yang tertib adalah awal dari keputusan yang tepat.",
+  "Fokus pada pekerjaan yang bisa diselesaikan hari ini, lalu tuntaskan dengan hati tenang.",
+  "Pelayanan yang baik dimulai dari pekerjaan yang dicatat dengan benar.",
+  "Jangan menunggu semua mudah; mulai dari yang paling penting dan bergerak pelan tapi pasti.",
+  "Kualitas kerja terlihat dari hal kecil yang tetap dikerjakan dengan sungguh-sungguh.",
+  "Target besar menjadi dekat ketika pekerjaan harian tidak ditunda.",
+  "Orang yang teliti bukan yang tidak pernah salah, tetapi yang mau memeriksa sebelum selesai.",
+  "Hari kerja yang baik dimulai dari niat yang jelas dan data yang siap.",
+  "Semangat boleh naik turun, tetapi tanggung jawab harus tetap jalan.",
+  "Satu laporan yang akurat bisa membantu banyak keputusan menjadi lebih baik.",
+  "Bekerja cepat itu baik, bekerja benar jauh lebih penting.",
+  "Jaga ritme, jaga fokus, dan selesaikan satu pekerjaan sampai tuntas.",
+  "Setiap data yang diperbarui adalah bagian kecil dari pelayanan yang lebih besar.",
+];
 
 const state = {
   dil: [],
@@ -51,6 +68,7 @@ const els = {
   tableFoot: document.querySelector("#tableFoot"),
   tableDate: document.querySelector("#tableDate"),
   reportDate: document.querySelector("#reportDate"),
+  overviewQuote: document.querySelector("#overviewQuote"),
   searchInput: document.querySelector("#searchInput"),
   sortSelect: document.querySelector("#sortSelect"),
   exportButton: document.querySelector("#exportButton"),
@@ -3228,14 +3246,35 @@ function setStatus(kind, count, label) {
 }
 
 function setReportDate() {
+  renderOverviewDateTime();
+  renderOverviewMotivation();
+  window.setInterval(renderOverviewDateTime, 1000);
+}
+
+function renderOverviewDateTime() {
+  const now = new Date();
   const date = new Intl.DateTimeFormat("id-ID", {
     weekday: "long",
     day: "2-digit",
     month: "long",
     year: "numeric",
-  }).format(new Date());
-  els.reportDate.textContent = `Laporan ${date}. DIL dan saldo awal bisa disimpan lokal.`;
-  els.tableDate.textContent = date.toUpperCase();
+  }).format(now);
+  const time = new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(now).replace(/\./g, ":");
+  if (els.reportDate) els.reportDate.textContent = `${date}   ${time}`;
+  if (els.tableDate) els.tableDate.textContent = date.toUpperCase();
+}
+
+function renderOverviewMotivation() {
+  if (!els.overviewQuote) return;
+  const now = new Date();
+  const dateKey = Number(`${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`);
+  const index = (dateKey * 7 + now.getDay()) % WORK_MOTIVATION_QUOTES.length;
+  els.overviewQuote.textContent = WORK_MOTIVATION_QUOTES[index];
 }
 
 function openDb() {

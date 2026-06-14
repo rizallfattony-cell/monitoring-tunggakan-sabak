@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="apple-touch-icon" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260614-upload-copy" />
+    <link rel="stylesheet" href="./styles.css?v=20260614-clean-overview" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -107,36 +107,10 @@
 
             <section class="tab-panel is-active" data-tab-panel="overview">
               <div class="overview-panel">
-                <div>
-                  <p class="eyebrow">Simontok Super Web</p>
-                  <h1>Overview</h1>
-                  <p class="subtitle" id="reportDate">Memuat tanggal laporan...</p>
-                </div>
-                <div class="overview-grid">
-                  <button class="overview-card" type="button" data-tab="upload" data-upload-view="database">
-                    <span>Upload Data</span>
-                    <strong>DIL, saldo awal, saldo akhir, stand meter</strong>
-                  </button>
-                  <button class="overview-card" type="button" data-tab="laporan">
-                    <span>Laporan</span>
-                    <strong>Monitoring, export Excel, dan JPG</strong>
-                  </button>
-                  <button class="overview-card admin-only-menu" type="button" data-tab="pelunasan-harian">
-                    <span>Pelunasan Harian</span>
-                    <strong>Upload harian, undo, dan detail lunas</strong>
-                  </button>
-                  <button class="overview-card admin-only-menu" type="button" data-tab="saldo-rata">
-                    <span>Saldo Akhir Rata Rata</span>
-                    <strong>Input KOGOL dan copy laporan</strong>
-                  </button>
-                  <button class="overview-card" type="button" data-tab="online">
-                    <span>Online & Sinkron</span>
-                    <strong>Status Supabase dan simpan online</strong>
-                  </button>
-                  <button class="overview-card admin-only-menu" type="button" data-tab="premium">
-                    <span>Premium</span>
-                    <strong>Pengajuan premium dan verifikasi device</strong>
-                  </button>
+                <div class="overview-clean">
+                  <h1>Simontok Super Web</h1>
+                  <p class="overview-clock" id="reportDate">Memuat waktu device...</p>
+                  <p class="overview-quote" id="overviewQuote">Menyiapkan motivasi kerja hari ini...</p>
                 </div>
               </div>
             </section>
@@ -519,6 +493,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260614-upload-copy"></script>
+    <script src="./app.js?v=20260614-clean-overview"></script>
   </body>
 </html>
