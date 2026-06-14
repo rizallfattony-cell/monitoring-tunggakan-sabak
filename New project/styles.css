@@ -390,6 +390,10 @@ p {
   flex-wrap: wrap;
 }
 
+.field.is-hidden {
+  display: none !important;
+}
+
 .topbar {
   position: sticky;
   top: 0;

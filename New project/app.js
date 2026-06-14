@@ -151,6 +151,7 @@ const els = {
 boot();
 
 async function boot() {
+  if (els.sortSelect) els.sortSelect.value = "persenDesc";
   setReportDate();
   renderSaldoAverageInputs();
   initializeDailyPelunasanControls();

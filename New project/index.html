@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="apple-touch-icon" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260614-upload-time" />
+    <link rel="stylesheet" href="./styles.css?v=20260614-laporan-copy" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -186,9 +186,7 @@
       <section class="tab-panel" data-tab-panel="laporan" hidden>
         <div class="section-head">
           <div>
-            <p class="eyebrow">Langkah 2</p>
-            <h2>Laporan & Evaluasi</h2>
-            <p>Cek ringkasan, cari petugas, lihat pelanggan tersisa, dan export laporan.</p>
+            <h2>Tabel Monitoring Tunggakan</h2>
           </div>
           <div class="section-actions">
             <button class="button secondary" id="exportJpgButton" type="button">Download JPG</button>
@@ -216,7 +214,7 @@
         </section>
 
         <section class="toolbar">
-          <div class="field">
+          <div class="field is-hidden">
             <label for="searchInput">Cari Petugas</label>
             <input id="searchInput" type="search" placeholder="Nama petugas" autocomplete="off" />
           </div>
@@ -225,12 +223,12 @@
             <select id="sortSelect">
               <option value="tagihanDesc">Tagihan terbesar</option>
               <option value="persenAsc">Persentase terendah</option>
-              <option value="persenDesc">Persentase tertinggi</option>
+              <option value="persenDesc" selected>Persentase Tertinggi</option>
               <option value="awalDesc">Saldo awal terbesar</option>
               <option value="nameAsc">Nama petugas A-Z</option>
             </select>
           </div>
-          <p class="auto-note">Klik angka saldo akhir untuk membuka daftar pelanggan tersisa per petugas.</p>
+          <p class="auto-note">Klik Angka Saldo akhir Untuk Export Exel Detail Pelanggan</p>
         </section>
 
         <section class="table-section">
@@ -493,6 +491,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260614-upload-time"></script>
+    <script src="./app.js?v=20260614-laporan-copy"></script>
   </body>
 </html>
