@@ -1184,11 +1184,23 @@ td {
 th {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 4;
   background: var(--header);
   color: #203244;
   font-size: 12px;
   font-weight: 900;
+}
+
+#monitoringTable thead tr:first-child th,
+#dailyTable thead tr:first-child th {
+  top: 0;
+  z-index: 6;
+}
+
+#monitoringTable thead tr:nth-child(2) th,
+#dailyTable thead tr:nth-child(2) th {
+  top: 35px;
+  z-index: 5;
 }
 
 td {

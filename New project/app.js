@@ -21,6 +21,7 @@ const state = {
   remainingByPetugas: new Map(),
   pendingExport: null,
   activeTab: "overview",
+  uploadView: "database",
   supabaseClient: null,
   user: null,
   profile: null,
@@ -63,6 +64,9 @@ const els = {
   progressPercent: document.querySelector("#progressPercent"),
   progressFill: document.querySelector("#progressFill"),
   progressText: document.querySelector("#progressText"),
+  uploadPanelTitle: document.querySelector("#uploadPanelTitle"),
+  uploadPanelDescription: document.querySelector("#uploadPanelDescription"),
+  uploadPanels: [...document.querySelectorAll("[data-upload-panel]")],
   premiumPanel: document.querySelector("#premiumPanel"),
   premiumStatus: document.querySelector("#premiumStatus"),
   premiumList: document.querySelector("#premiumList"),
@@ -206,7 +210,10 @@ function attachEvents() {
   });
   els.tabButtons.forEach((button) => {
     if (button.hasAttribute("data-tree-toggle")) return;
-    button.addEventListener("click", () => switchTab(button.dataset.tab));
+    button.addEventListener("click", () => {
+      if (button.dataset.uploadView) setUploadView(button.dataset.uploadView);
+      switchTab(button.dataset.tab);
+    });
   });
 }
 
@@ -232,7 +239,29 @@ function switchTab(tabName) {
     panel.classList.toggle("is-active", panel.dataset.tabPanel === tabName);
   });
   if (els.workspaceTabTitle) els.workspaceTabTitle.textContent = tabTitle(tabName);
+  if (tabName === "upload") renderUploadView();
   updateHeaderActions();
+}
+
+function setUploadView(viewName) {
+  state.uploadView = viewName === "stand-meter" ? "stand-meter" : "database";
+}
+
+function renderUploadView() {
+  const standMeterOnly = state.uploadView === "stand-meter";
+  els.uploadPanels.forEach((panel) => {
+    panel.hidden = standMeterOnly
+      ? panel.dataset.uploadPanel !== "stand-meter"
+      : panel.dataset.uploadPanel !== "database";
+  });
+  if (els.uploadPanelTitle) {
+    els.uploadPanelTitle.textContent = standMeterOnly ? "Upload Stand Meter" : "Upload Data Operasional";
+  }
+  if (els.uploadPanelDescription) {
+    els.uploadPanelDescription.textContent = standMeterOnly
+      ? "Upload stand meter untuk kebutuhan struk petugas di aplikasi SIMONTOK."
+      : "Masukkan Upload DIL, Saldo Awal, dan Saldo Akhir sesuai urutan kerja harian.";
+  }
 }
 
 function tabTitle(tabName) {

@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="apple-touch-icon" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260614-simple-menu" />
+    <link rel="stylesheet" href="./styles.css?v=20260614-upload-sticky" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -56,10 +56,7 @@
                 Database
               </button>
               <div class="tree-children">
-                <button class="tree-child" type="button" data-tab="upload">Upload Data</button>
-                <button class="tree-child" type="button" data-tab="upload">Upload DIL</button>
-                <button class="tree-child" type="button" data-tab="upload">Upload Saldo Awal</button>
-                <button class="tree-child" type="button" data-tab="upload">Upload Saldo Akhir</button>
+                <button class="tree-child" type="button" data-tab="upload" data-upload-view="database">Upload Data</button>
               </div>
             </section>
 
@@ -83,7 +80,7 @@
                 Simontok Super App
               </button>
               <div class="tree-children">
-                <button class="tree-child" type="button" data-tab="upload">Upload Stand Meter</button>
+                <button class="tree-child" type="button" data-tab="upload" data-upload-view="stand-meter">Upload Stand Meter</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="premium">Premium</button>
               </div>
             </section>
@@ -116,7 +113,7 @@
                   <p class="subtitle" id="reportDate">Memuat tanggal laporan...</p>
                 </div>
                 <div class="overview-grid">
-                  <button class="overview-card" type="button" data-tab="upload">
+                  <button class="overview-card" type="button" data-tab="upload" data-upload-view="database">
                     <span>Upload Data</span>
                     <strong>DIL, saldo awal, saldo akhir, stand meter</strong>
                   </button>
@@ -148,14 +145,14 @@
         <div class="section-head">
           <div>
             <p class="eyebrow">Langkah 1</p>
-            <h2>Upload Data Operasional</h2>
-            <p>Masukkan file sesuai urutan kerja harian. Saldo akhir akan menjadi data tunggakan petugas di APK.</p>
+            <h2 id="uploadPanelTitle">Upload Data Operasional</h2>
+            <p id="uploadPanelDescription">Masukkan file sesuai urutan kerja harian. Saldo akhir akan menjadi data tunggakan petugas di APK.</p>
           </div>
           <button class="button secondary" id="resetButton" type="button">Reset Lokal</button>
         </div>
 
         <section class="upload-grid">
-          <article class="upload-panel">
+          <article class="upload-panel" data-upload-panel="database">
             <span class="step-badge">1</span>
             <div>
               <span class="upload-label">Data Induk Langganan</span>
@@ -169,7 +166,7 @@
             <span class="file-status" id="dilStatus">Belum ada file.</span>
           </article>
 
-          <article class="upload-panel">
+          <article class="upload-panel" data-upload-panel="database">
             <span class="step-badge">2</span>
             <div>
               <span class="upload-label">Saldo Pembanding</span>
@@ -183,7 +180,7 @@
             <span class="file-status" id="awalStatus">Belum ada file.</span>
           </article>
 
-          <article class="upload-panel">
+          <article class="upload-panel" data-upload-panel="database">
             <span class="step-badge">3</span>
             <div>
               <span class="upload-label">Saldo Terbaru</span>
@@ -197,7 +194,7 @@
             <span class="file-status" id="akhirStatus">Belum ada file.</span>
           </article>
 
-          <article class="upload-panel">
+          <article class="upload-panel" data-upload-panel="stand-meter" hidden>
             <span class="step-badge">4</span>
             <div>
               <span class="upload-label">Struk Petugas</span>
@@ -523,6 +520,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260614-simple-menu"></script>
+    <script src="./app.js?v=20260614-upload-sticky"></script>
   </body>
 </html>
