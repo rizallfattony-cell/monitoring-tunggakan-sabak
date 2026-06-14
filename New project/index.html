@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="apple-touch-icon" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260614-login-gate" />
+    <link rel="stylesheet" href="./styles.css?v=20260614-terpusat-layout" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -34,47 +34,177 @@
     </section>
 
     <main class="app-shell" id="appShell" hidden>
-      <header class="topbar">
-        <div class="brand-block">
-          <p class="eyebrow">SIMONTOK Admin</p>
-          <h1>Monitoring Saldo Tunggakan</h1>
-          <p class="subtitle" id="reportDate">Memuat tanggal laporan...</p>
-        </div>
-        <div class="topbar-actions">
-          <button class="button secondary" id="onlineButton" type="button">Online / Login</button>
-          <button class="button secondary" id="resetButton" type="button">Reset Lokal</button>
-          <button class="button secondary" id="exportJpgButton" type="button">Download JPG</button>
-          <button class="button primary" id="exportButton" type="button">Export Excel</button>
-        </div>
+      <header class="top-app-bar">
+        <strong>Selamat Datang : Admin Ganteng</strong>
+        <button class="legacy-logout-button" id="logoutButton" type="button">
+          <span aria-hidden="true"></span>
+          Logout
+        </button>
       </header>
 
-      <nav class="tab-nav" aria-label="Navigasi admin">
-        <button class="tab-button is-active" type="button" data-tab="upload">Upload Data</button>
-        <button class="tab-button" type="button" data-tab="laporan">Laporan</button>
-        <button class="tab-button" type="button" data-tab="pelunasan-harian">Pelunasan Harian</button>
-        <button class="tab-button" type="button" data-tab="saldo-rata">Saldo Akhir Rata Rata</button>
-        <button class="tab-button" type="button" data-tab="online">Online & Sinkron</button>
-        <button class="tab-button" type="button" data-tab="premium">Premium</button>
-      </nav>
+      <div class="workspace-layout">
+        <aside class="side-menu" aria-label="Menu Simontok Super Web">
+          <div class="side-menu-title">
+            <strong>Simontok Super Web</strong>
+            <button class="collapse-menu-button" type="button" aria-label="Minimize menu">&laquo;</button>
+          </div>
+          <nav class="tree-menu">
+            <section class="tree-group is-open">
+              <button class="tree-parent is-active" type="button" data-tab="overview" data-tree-toggle="overview">
+                <span class="tree-arrow" aria-hidden="true"></span>
+                <span class="tree-folder" aria-hidden="true"></span>
+                Overview
+              </button>
+              <div class="tree-children">
+                <button class="tree-child is-active" type="button" data-tab="overview">Ringkasan Utama</button>
+              </div>
+            </section>
 
-      <section class="progress-panel" id="progressPanel" hidden>
-        <div class="progress-head">
-          <strong id="progressTitle">Memproses...</strong>
-          <span id="progressPercent">0%</span>
-        </div>
-        <div class="progress-track">
-          <div class="progress-fill" id="progressFill"></div>
-        </div>
-        <p id="progressText">Menyiapkan proses.</p>
-      </section>
+            <section class="tree-group is-open">
+              <button class="tree-parent" type="button" data-tab="upload" data-tree-toggle="upload">
+                <span class="tree-arrow" aria-hidden="true"></span>
+                <span class="tree-folder" aria-hidden="true"></span>
+                Upload Data
+              </button>
+              <div class="tree-children">
+                <button class="tree-child" type="button" data-tab="upload">Upload DIL</button>
+                <button class="tree-child" type="button" data-tab="upload">Upload Saldo Awal</button>
+                <button class="tree-child" type="button" data-tab="upload">Upload Saldo Akhir</button>
+                <button class="tree-child" type="button" data-tab="upload">Upload Stand Meter</button>
+              </div>
+            </section>
 
-      <section class="tab-panel is-active" data-tab-panel="upload">
+            <section class="tree-group is-open">
+              <button class="tree-parent" type="button" data-tab="laporan" data-tree-toggle="laporan">
+                <span class="tree-arrow" aria-hidden="true"></span>
+                <span class="tree-folder" aria-hidden="true"></span>
+                Laporan
+              </button>
+              <div class="tree-children">
+                <button class="tree-child" type="button" data-tab="laporan">Monitoring Saldo Tunggakan</button>
+                <button class="tree-child" type="button" data-tab="laporan">Export Excel</button>
+                <button class="tree-child" type="button" data-tab="laporan">Download JPG</button>
+                <button class="tree-child" type="button" data-tab="laporan">Anomali Data</button>
+              </div>
+            </section>
+
+            <section class="tree-group is-open admin-only-menu">
+              <button class="tree-parent" type="button" data-tab="pelunasan-harian" data-tree-toggle="pelunasan-harian">
+                <span class="tree-arrow" aria-hidden="true"></span>
+                <span class="tree-folder" aria-hidden="true"></span>
+                Pelunasan Harian
+              </button>
+              <div class="tree-children">
+                <button class="tree-child" type="button" data-tab="pelunasan-harian">Upload Saldo Akhir Harian</button>
+                <button class="tree-child" type="button" data-tab="pelunasan-harian">Undo Upload Tanggal</button>
+                <button class="tree-child" type="button" data-tab="pelunasan-harian">Export Excel</button>
+                <button class="tree-child" type="button" data-tab="pelunasan-harian">Download JPG</button>
+              </div>
+            </section>
+
+            <section class="tree-group is-open admin-only-menu">
+              <button class="tree-parent" type="button" data-tab="saldo-rata" data-tree-toggle="saldo-rata">
+                <span class="tree-arrow" aria-hidden="true"></span>
+                <span class="tree-folder" aria-hidden="true"></span>
+                Saldo Akhir Rata Rata
+              </button>
+              <div class="tree-children">
+                <button class="tree-child" type="button" data-tab="saldo-rata">Isi Saldo Awal</button>
+                <button class="tree-child" type="button" data-tab="saldo-rata">Isi Saldo Akhir</button>
+                <button class="tree-child" type="button" data-tab="saldo-rata">Target Saldo Akhir</button>
+                <button class="tree-child" type="button" data-tab="saldo-rata">Copy Laporan</button>
+              </div>
+            </section>
+
+            <section class="tree-group is-open">
+              <button class="tree-parent" type="button" data-tab="online" data-tree-toggle="online">
+                <span class="tree-arrow" aria-hidden="true"></span>
+                <span class="tree-folder" aria-hidden="true"></span>
+                Online & Sinkron
+              </button>
+              <div class="tree-children">
+                <button class="tree-child" type="button" data-tab="online">Status Supabase</button>
+                <button class="tree-child" type="button" data-tab="online">Ambil Data Online</button>
+                <button class="tree-child" type="button" data-tab="online">Simpan ke Online</button>
+              </div>
+            </section>
+
+            <section class="tree-group is-open admin-only-menu">
+              <button class="tree-parent" type="button" data-tab="premium" data-tree-toggle="premium">
+                <span class="tree-arrow" aria-hidden="true"></span>
+                <span class="tree-folder" aria-hidden="true"></span>
+                Premium
+              </button>
+              <div class="tree-children">
+                <button class="tree-child" type="button" data-tab="premium">Pengajuan Premium</button>
+                <button class="tree-child" type="button" data-tab="premium">Verifikasi Device</button>
+              </div>
+            </section>
+          </nav>
+          <button class="side-online-button" id="onlineButton" type="button">Online Aktif</button>
+        </aside>
+
+        <section class="content-workspace">
+          <div class="workspace-tab-strip">
+            <span class="workspace-tab-title" id="workspaceTabTitle">Overview</span>
+          </div>
+
+          <div class="workspace-body">
+            <section class="progress-panel" id="progressPanel" hidden>
+              <div class="progress-head">
+                <strong id="progressTitle">Memproses...</strong>
+                <span id="progressPercent">0%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" id="progressFill"></div>
+              </div>
+              <p id="progressText">Menyiapkan proses.</p>
+            </section>
+
+            <section class="tab-panel is-active" data-tab-panel="overview">
+              <div class="overview-panel">
+                <div>
+                  <p class="eyebrow">Simontok Super Web</p>
+                  <h1>Overview</h1>
+                  <p class="subtitle" id="reportDate">Memuat tanggal laporan...</p>
+                </div>
+                <div class="overview-grid">
+                  <button class="overview-card" type="button" data-tab="upload">
+                    <span>Upload Data</span>
+                    <strong>DIL, saldo awal, saldo akhir, stand meter</strong>
+                  </button>
+                  <button class="overview-card" type="button" data-tab="laporan">
+                    <span>Laporan</span>
+                    <strong>Monitoring, export Excel, dan JPG</strong>
+                  </button>
+                  <button class="overview-card admin-only-menu" type="button" data-tab="pelunasan-harian">
+                    <span>Pelunasan Harian</span>
+                    <strong>Upload harian, undo, dan detail lunas</strong>
+                  </button>
+                  <button class="overview-card admin-only-menu" type="button" data-tab="saldo-rata">
+                    <span>Saldo Akhir Rata Rata</span>
+                    <strong>Input KOGOL dan copy laporan</strong>
+                  </button>
+                  <button class="overview-card" type="button" data-tab="online">
+                    <span>Online & Sinkron</span>
+                    <strong>Status Supabase dan simpan online</strong>
+                  </button>
+                  <button class="overview-card admin-only-menu" type="button" data-tab="premium">
+                    <span>Premium</span>
+                    <strong>Pengajuan premium dan verifikasi device</strong>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+      <section class="tab-panel" data-tab-panel="upload" hidden>
         <div class="section-head">
           <div>
             <p class="eyebrow">Langkah 1</p>
             <h2>Upload Data Operasional</h2>
             <p>Masukkan file sesuai urutan kerja harian. Saldo akhir akan menjadi data tunggakan petugas di APK.</p>
           </div>
+          <button class="button secondary" id="resetButton" type="button">Reset Lokal</button>
         </div>
 
         <section class="upload-grid">
@@ -142,6 +272,10 @@
             <p class="eyebrow">Langkah 2</p>
             <h2>Laporan & Evaluasi</h2>
             <p>Cek ringkasan, cari petugas, lihat pelanggan tersisa, dan export laporan.</p>
+          </div>
+          <div class="section-actions">
+            <button class="button secondary" id="exportJpgButton" type="button">Download JPG</button>
+            <button class="button primary" id="exportButton" type="button">Export Excel</button>
           </div>
         </div>
 
@@ -393,7 +527,6 @@
           <div class="online-actions" id="syncActions" hidden>
             <button class="button secondary" id="loadCloudButton" type="button">Ambil Data Online</button>
             <button class="button primary" id="saveCloudButton" type="button">Simpan ke Online</button>
-            <button class="button secondary" id="logoutButton" type="button">Logout</button>
           </div>
         </section>
       </section>
@@ -421,6 +554,9 @@
           <div class="premium-list" id="premiumList"></div>
         </section>
       </section>
+          </div>
+        </section>
+      </div>
     </main>
 
     <div class="modal-backdrop" id="exportModal" hidden>
@@ -440,6 +576,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260614-login-gate"></script>
+    <script src="./app.js?v=20260614-terpusat-layout"></script>
   </body>
 </html>

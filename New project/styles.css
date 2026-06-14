@@ -69,9 +69,297 @@ p {
 }
 
 .app-shell {
-  width: min(1440px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 18px 0 40px;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: #dbe9fb;
+}
+
+.top-app-bar {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 4px;
+  border-bottom: 1px solid #062f6b;
+  background: linear-gradient(#24579d, #123876 62%, #0c2d62);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.top-app-bar strong {
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.legacy-logout-button {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #8aa8c8;
+  border-radius: 3px;
+  padding: 2px 9px 2px 5px;
+  background: linear-gradient(#ffffff, #d9e8fb);
+  color: #10202f;
+  cursor: pointer;
+  font-weight: 400;
+}
+
+.legacy-logout-button span {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffb199, #f04a32 55%, #b91f18);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45);
+}
+
+.workspace-layout {
+  height: calc(100vh - 40px);
+  display: grid;
+  grid-template-columns: 282px minmax(0, 1fr);
+  gap: 8px;
+  padding: 12px 6px 6px;
+  overflow: hidden;
+}
+
+.side-menu,
+.content-workspace {
+  min-height: 0;
+  border: 1px solid #7da8e6;
+  background: #fff;
+}
+
+.side-menu {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.side-menu-title {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 6px;
+  border-bottom: 1px solid #94b8e9;
+  background: linear-gradient(#e3f0ff, #bcd7f7);
+  color: #003f8c;
+  font-size: 14px;
+}
+
+.collapse-menu-button {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #8ab3ea;
+  border-radius: 4px;
+  background: linear-gradient(#ffffff, #c8dfff);
+  color: #437abf;
+  cursor: pointer;
+  font-weight: 800;
+  line-height: 16px;
+}
+
+.tree-menu {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 3px 12px;
+}
+
+.tree-group {
+  margin-bottom: 1px;
+}
+
+.tree-parent,
+.tree-child,
+.overview-card {
+  font: inherit;
+}
+
+.tree-parent,
+.tree-child {
+  width: 100%;
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: #000;
+  cursor: pointer;
+  text-align: left;
+  white-space: normal;
+}
+
+.tree-parent {
+  padding: 3px 5px;
+  font-weight: 400;
+}
+
+.tree-parent.is-active,
+.tree-child.is-active,
+.tree-parent:hover,
+.tree-child:hover {
+  background: #dcecff;
+  color: #003f8c;
+}
+
+.tree-arrow {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid #8da3bc;
+}
+
+.tree-group.is-open > .tree-parent .tree-arrow {
+  transform: rotate(90deg);
+}
+
+.tree-folder {
+  width: 17px;
+  height: 13px;
+  display: inline-block;
+  border: 1px solid #6e9de3;
+  border-radius: 2px;
+  background: linear-gradient(#8fc4ff, #2f73d2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.tree-folder::before {
+  content: "";
+  display: block;
+  width: 8px;
+  height: 3px;
+  margin: -4px 0 0 1px;
+  border: 1px solid #6e9de3;
+  border-bottom: 0;
+  border-radius: 2px 2px 0 0;
+  background: #b9d9ff;
+}
+
+.tree-children {
+  padding-left: 23px;
+}
+
+.tree-group:not(.is-open) .tree-children {
+  display: none;
+}
+
+.tree-child {
+  padding: 3px 5px 3px 2px;
+  font-size: 14px;
+}
+
+.tree-child::before {
+  content: "";
+  width: 8px;
+  height: 1px;
+  background: #aebdcd;
+}
+
+.side-online-button {
+  margin: 6px;
+  min-height: 30px;
+  border: 1px solid #8fb0d8;
+  border-radius: 4px;
+  background: linear-gradient(#ffffff, #d8e9ff);
+  color: #003f8c;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.content-workspace {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.workspace-tab-strip {
+  min-height: 32px;
+  display: flex;
+  align-items: end;
+  padding-left: 2px;
+  border-bottom: 1px solid #9abcf0;
+  background: linear-gradient(#ecf5ff, #c7ddf7);
+}
+
+.workspace-tab-title {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid #8fb5ec;
+  border-bottom-color: #fff;
+  border-radius: 4px 4px 0 0;
+  background: #fff;
+  color: #003f8c;
+  font-weight: 800;
+}
+
+.workspace-body {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+  background: #fff;
+}
+
+.overview-panel {
+  min-height: calc(100vh - 110px);
+  padding: 18px;
+}
+
+.overview-panel h1 {
+  margin-bottom: 4px;
+  color: #003f8c;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.overview-card {
+  min-height: 96px;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  border: 1px solid #9abcf0;
+  border-radius: 4px;
+  padding: 14px;
+  background: linear-gradient(#ffffff, #eef6ff);
+  color: #10202f;
+  cursor: pointer;
+  text-align: left;
+}
+
+.overview-card:hover {
+  border-color: #24579d;
+  background: #e9f3ff;
+}
+
+.overview-card span {
+  color: #003f8c;
+  font-weight: 800;
+}
+
+.overview-card strong {
+  font-size: 13px;
+  font-weight: 400;
+  color: #4d5f73;
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .topbar {
@@ -1164,12 +1452,62 @@ tfoot td {
   .saldo-target-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .workspace-layout {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+
+  .overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 680px) {
   .app-shell {
-    width: min(100% - 20px, 1440px);
-    padding-top: 10px;
+    width: 100%;
+    padding: 0;
+  }
+
+  .top-app-bar {
+    height: auto;
+    min-height: 40px;
+    align-items: flex-start;
+    padding: 6px;
+  }
+
+  .top-app-bar strong {
+    font-size: 16px;
+    line-height: 1.25;
+  }
+
+  .workspace-layout {
+    height: auto;
+    min-height: calc(100vh - 40px);
+    display: block;
+    overflow: visible;
+    padding: 6px;
+  }
+
+  .side-menu {
+    max-height: 260px;
+    margin-bottom: 6px;
+  }
+
+  .content-workspace {
+    min-height: 70vh;
+  }
+
+  .workspace-body {
+    padding: 8px;
+  }
+
+  .overview-panel {
+    min-height: auto;
+    padding: 12px;
+  }
+
+  .overview-grid {
+    grid-template-columns: 1fr;
   }
 
   .topbar {

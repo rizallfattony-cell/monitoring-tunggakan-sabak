@@ -20,7 +20,7 @@ const state = {
   anomalies: [],
   remainingByPetugas: new Map(),
   pendingExport: null,
-  activeTab: "upload",
+  activeTab: "overview",
   supabaseClient: null,
   user: null,
   profile: null,
@@ -118,6 +118,9 @@ const els = {
   exportDailyJpgButton: document.querySelector("#exportDailyJpgButton"),
   exportDailyExcelTopButton: document.querySelector("#exportDailyExcelTopButton"),
   exportDailyJpgTopButton: document.querySelector("#exportDailyJpgTopButton"),
+  workspaceTabTitle: document.querySelector("#workspaceTabTitle"),
+  treeToggleButtons: [...document.querySelectorAll("[data-tree-toggle]")],
+  adminOnlyMenus: [...document.querySelectorAll(".admin-only-menu")],
   tabButtons: [...document.querySelectorAll("[data-tab]")],
   tabPanels: [...document.querySelectorAll("[data-tab-panel]")],
 };
@@ -195,6 +198,12 @@ function attachEvents() {
   els.exportDailyExcelTopButton?.addEventListener("click", exportDailyPelunasanExcel);
   els.exportDailyJpgTopButton?.addEventListener("click", exportDailyPelunasanJpg);
   els.dailyTableBody?.addEventListener("click", handleDailyDetailClick);
+  els.treeToggleButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const group = button.closest(".tree-group");
+      group?.classList.toggle("is-open");
+    });
+  });
   els.tabButtons.forEach((button) => {
     button.addEventListener("click", () => switchTab(button.dataset.tab));
   });
@@ -205,14 +214,36 @@ function switchTab(tabName) {
   state.activeTab = tabName;
   els.tabButtons.forEach((button) => {
     const active = button.dataset.tab === tabName;
-    button.classList.toggle("is-active", active);
+    const isRepeatedSubMenu = button.classList.contains("tree-child");
+    const isOverviewCard = button.classList.contains("overview-card");
+    const shouldHighlight = active && !isOverviewCard && (!isRepeatedSubMenu || document.activeElement === button);
+    button.classList.toggle("is-active", shouldHighlight);
     button.setAttribute("aria-selected", active ? "true" : "false");
+  });
+  els.treeToggleButtons.forEach((button) => {
+    const active = button.dataset.tab === tabName;
+    button.classList.toggle("is-active", active);
+    if (active) button.closest(".tree-group")?.classList.add("is-open");
   });
   els.tabPanels.forEach((panel) => {
     panel.hidden = panel.dataset.tabPanel !== tabName;
     panel.classList.toggle("is-active", panel.dataset.tabPanel === tabName);
   });
+  if (els.workspaceTabTitle) els.workspaceTabTitle.textContent = tabTitle(tabName);
   updateHeaderActions();
+}
+
+function tabTitle(tabName) {
+  const titles = {
+    overview: "Overview",
+    upload: "Upload Data",
+    laporan: "Laporan",
+    "pelunasan-harian": "Pelunasan Harian",
+    "saldo-rata": "Saldo Akhir Rata Rata",
+    online: "Online & Sinkron",
+    premium: "Premium",
+  };
+  return titles[tabName] || "Overview";
 }
 
 async function hydrate() {
@@ -1035,11 +1066,14 @@ function applyRoleView() {
   const saldoAveragePanel = document.querySelector('[data-tab-panel="saldo-rata"]');
   const dailyTab = document.querySelector('[data-tab="pelunasan-harian"]');
   const dailyPanel = document.querySelector('[data-tab-panel="pelunasan-harian"]');
+  els.adminOnlyMenus.forEach((item) => {
+    item.hidden = petugasMode;
+  });
   if (saldoAverageTab) saldoAverageTab.hidden = petugasMode;
   if (saldoAveragePanel && petugasMode) saldoAveragePanel.hidden = true;
   if (dailyTab) dailyTab.hidden = petugasMode;
   if (dailyPanel && petugasMode) dailyPanel.hidden = true;
-  if (petugasMode && (state.activeTab === "saldo-rata" || state.activeTab === "pelunasan-harian")) switchTab("laporan");
+  if (petugasMode && ["saldo-rata", "pelunasan-harian", "premium"].includes(state.activeTab)) switchTab("laporan");
   els.uploadGrid.hidden = petugasMode;
   els.summaryGrid.hidden = petugasMode;
   els.toolbar.hidden = false;
