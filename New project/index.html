@@ -6,7 +6,7 @@
     <title>Monitoring Saldo Tunggakan SIMONTOK</title>
     <meta name="theme-color" content="#006b8f" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260611-daily-excel-sheets" />
+    <link rel="stylesheet" href="./styles.css?v=20260614-login-simontok" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -354,10 +354,20 @@
             <h2>Mode Online Supabase</h2>
             <p id="onlineStatus">Supabase belum dikonfigurasi.</p>
           </div>
-          <div class="online-form" id="loginForm">
-            <input id="emailInput" type="email" placeholder="Email admin/petugas" autocomplete="username" />
-            <input id="passwordInput" type="password" placeholder="Password" autocomplete="current-password" />
-            <button class="button primary" id="loginButton" type="button">Login</button>
+          <div class="login-card" id="loginForm">
+            <div class="login-card-title">
+              <span aria-hidden="true">&#9889;</span>
+              <strong>Login Simontok Terpusat</strong>
+            </div>
+            <div class="online-form">
+              <label for="emailInput">Email:</label>
+              <input id="emailInput" type="email" placeholder="-ISI USERID-" autocomplete="username" />
+              <label for="passwordInput">Password:</label>
+              <input id="passwordInput" type="password" placeholder="Password" autocomplete="current-password" />
+              <div class="login-button-row">
+                <button class="button primary login-eis-button" id="loginButton" type="button">Login</button>
+              </div>
+            </div>
           </div>
           <div class="online-actions" id="syncActions" hidden>
             <button class="button secondary" id="loadCloudButton" type="button">Ambil Data Online</button>
@@ -409,6 +419,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260611-daily-excel-sheets"></script>
+    <script src="./app.js?v=20260614-login-simontok"></script>
   </body>
 </html>

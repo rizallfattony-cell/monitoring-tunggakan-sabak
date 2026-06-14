@@ -229,6 +229,7 @@ h1 {
 .progress-panel[hidden],
 .premium-panel[hidden],
 .online-panel[hidden],
+.login-card[hidden],
 .online-form[hidden],
 .online-actions[hidden] {
   display: none;
@@ -668,6 +669,79 @@ h1 {
   font-size: 13px;
 }
 
+.login-card {
+  width: 340px;
+  border: 1px solid #8aaed5;
+  border-radius: 3px;
+  padding: 5px;
+  background: #dce8f7;
+  box-shadow: 0 8px 18px rgba(16, 32, 47, 0.16);
+}
+
+.login-card-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 20px;
+  color: #003b7a;
+  font-size: 12px;
+}
+
+.login-card-title span {
+  color: #f0a400;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.login-card .online-form {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 7px 10px;
+  align-items: center;
+  border: 1px solid #9ac5f7;
+  padding: 12px 10px;
+  background: #d7e4f5;
+}
+
+.login-card .online-form label {
+  color: #000;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.login-card .online-form input {
+  min-height: 22px;
+  border: 1px solid #aeb8c6;
+  border-radius: 0;
+  padding: 2px 5px;
+  background: #fff;
+  box-shadow: inset 0 1px 2px rgba(16, 32, 47, 0.08);
+  font-size: 12px;
+}
+
+.login-button-row {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  padding-top: 14px;
+}
+
+.login-eis-button {
+  min-height: 24px;
+  border-color: #2d5d94;
+  border-radius: 3px;
+  padding: 2px 16px;
+  background: linear-gradient(#ffffff, #d9e8f8);
+  color: #000;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.login-eis-button:hover {
+  background: linear-gradient(#ffffff, #c8dcf2);
+  color: #000;
+}
+
 .premium-panel {
   padding: 14px 16px;
 }
@@ -1095,6 +1169,7 @@ tfoot td {
   .toolbar,
   .daily-controls,
   .daily-report-actions,
+  .login-card,
   .online-form,
   .online-actions,
   .premium-actions {
