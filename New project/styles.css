@@ -609,6 +609,10 @@ h1 {
   padding: 16px;
 }
 
+.upload-panel[hidden] {
+  display: none !important;
+}
+
 .step-badge {
   position: absolute;
   top: 14px;
