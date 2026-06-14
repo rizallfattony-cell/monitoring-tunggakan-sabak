@@ -1,0 +1,17 @@
+{
+  "name": "Simontok Super Web",
+  "short_name": "Simontok",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#eef3f7",
+  "theme_color": "#145ea8",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "simontok-super-web.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
