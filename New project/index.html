@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="apple-touch-icon" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260614-hide-stand-meter" />
+    <link rel="stylesheet" href="./styles.css?v=20260614-upload-copy" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -144,9 +144,8 @@
       <section class="tab-panel" data-tab-panel="upload" hidden>
         <div class="section-head">
           <div>
-            <p class="eyebrow">Langkah 1</p>
-            <h2 id="uploadPanelTitle">Upload Data Operasional</h2>
-            <p id="uploadPanelDescription">Masukkan file sesuai urutan kerja harian. Saldo akhir akan menjadi data tunggakan petugas di APK.</p>
+            <h2 id="uploadPanelTitle">UPLOAD DATABASE</h2>
+            <p id="uploadPanelDescription">Silahkan Upload Data Exel Anda Sesuai Format yang berlaku.</p>
           </div>
           <button class="button secondary" id="resetButton" type="button">Reset Lokal</button>
         </div>
@@ -155,9 +154,9 @@
           <article class="upload-panel" data-upload-panel="database">
             <span class="step-badge">1</span>
             <div>
-              <span class="upload-label">Data Induk Langganan</span>
+              <span class="upload-label">DIL</span>
               <h2>DIL</h2>
-              <p>Kolom: IDPEL, NAMA, RBM, KOLOK, KOKED, PETUGAS.</p>
+              <p>Format : IDPEL,NAMA,RBM,KOLOK,KOKED,PETUGAS.</p>
             </div>
             <label class="file-button">
               Upload DIL
@@ -169,9 +168,9 @@
           <article class="upload-panel" data-upload-panel="database">
             <span class="step-badge">2</span>
             <div>
-              <span class="upload-label">Saldo Pembanding</span>
-              <h2>Saldo Awal</h2>
-              <p>Kolom: IDPEL, NAMA, RPTAG, RPBK.</p>
+              <span class="upload-label">SALDO AWAL</span>
+              <h2>SALDO AWAL</h2>
+              <p>Format : Langsung Upload File Hasil Download EIS.</p>
             </div>
             <label class="file-button">
               Upload Saldo Awal
@@ -183,9 +182,9 @@
           <article class="upload-panel" data-upload-panel="database">
             <span class="step-badge">3</span>
             <div>
-              <span class="upload-label">Saldo Terbaru</span>
-              <h2>Saldo Akhir</h2>
-              <p>Data ini menjadi daftar tunggakan petugas.</p>
+              <span class="upload-label">SALDO AKHIR</span>
+              <h2>SALDO AKHIR</h2>
+              <p>Format : Langsung Upload File Hasil Download EIS.</p>
             </div>
             <label class="file-button">
               Upload Saldo Akhir
@@ -520,6 +519,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260614-hide-stand-meter"></script>
+    <script src="./app.js?v=20260614-upload-copy"></script>
   </body>
 </html>

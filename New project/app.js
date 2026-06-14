@@ -255,12 +255,12 @@ function renderUploadView() {
       : panel.dataset.uploadPanel !== "database";
   });
   if (els.uploadPanelTitle) {
-    els.uploadPanelTitle.textContent = standMeterOnly ? "Upload Stand Meter" : "Upload Data Operasional";
+    els.uploadPanelTitle.textContent = standMeterOnly ? "Upload Stand Meter" : "UPLOAD DATABASE";
   }
   if (els.uploadPanelDescription) {
     els.uploadPanelDescription.textContent = standMeterOnly
       ? "Upload stand meter untuk kebutuhan struk petugas di aplikasi SIMONTOK."
-      : "Masukkan Upload DIL, Saldo Awal, dan Saldo Akhir sesuai urutan kerja harian.";
+      : "Silahkan Upload Data Exel Anda Sesuai Format yang berlaku.";
   }
 }
 
