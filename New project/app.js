@@ -32,6 +32,7 @@ const state = {
   awal: [],
   akhir: [],
   struk: [],
+  uploadMeta: {},
   report: [],
   totals: emptyTotals(),
   anomalies: [],
@@ -301,6 +302,7 @@ async function hydrate() {
   state.awal = saved.awal || [];
   state.akhir = saved.akhir || [];
   state.struk = saved.struk || [];
+  state.uploadMeta = normalizeUploadMeta(saved.uploadMeta);
   state.saldoAkhirRataRata = normalizeSaldoAverageState(saved.saldoAkhirRataRata);
   state.dailyPelunasan = normalizeDailyPelunasanState(saved.dailyPelunasan);
   updateFileStatuses();
@@ -448,6 +450,7 @@ async function loadCloudData(options = {}) {
   state.awal = payload.awal || [];
   state.akhir = payload.akhir || [];
   state.struk = payload.struk || [];
+  state.uploadMeta = normalizeUploadMeta(payload.uploadMeta);
   state.saldoAkhirRataRata = normalizeSaldoAverageState(payload.saldoAkhirRataRata);
   state.dailyPelunasan = normalizeDailyPelunasanState(payload.dailyPelunasan);
   updateProgress(70, "Menyimpan data ke browser...");
@@ -859,6 +862,7 @@ async function saveCloudData(options = {}) {
     awal: state.awal,
     akhir: state.akhir,
     struk: state.struk,
+    uploadMeta: state.uploadMeta,
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
   });
@@ -906,6 +910,7 @@ async function encodeCloudPayload(payload) {
     awal: payload.awal || [],
     akhir: payload.akhir || [],
     struk: payload.struk || [],
+    uploadMeta: normalizeUploadMeta(payload.uploadMeta),
     saldoAkhirRataRata: normalizeSaldoAverageState(payload.saldoAkhirRataRata),
     dailyPelunasan: normalizeDailyPelunasanState(payload.dailyPelunasan),
   };
@@ -1185,6 +1190,7 @@ async function handleUpload(event, kind) {
     updateProgress(42, `Memproses ${formatNumber(rows.length)} baris ${label}...`);
     await yieldUi();
     state[kind] = kind === "dil" ? normalizeDil(rows) : normalizeSaldo(rows);
+    state.uploadMeta[kind] = { uploadedAt: new Date().toISOString(), fileName: file.name };
     updateProgress(58, "Menyimpan data lokal...");
     await saveStoredData();
     updateProgress(66, "Menghitung ulang laporan...");
@@ -1213,6 +1219,7 @@ async function handleStrukUpload(event) {
     updateProgress(42, `Memproses ${formatNumber(rows.length)} baris stand meter...`);
     await yieldUi();
     state.struk = normalizeStruk(rows);
+    state.uploadMeta.struk = { uploadedAt: new Date().toISOString(), fileName: file.name };
     updateProgress(58, "Menyimpan data lokal...");
     await saveStoredData();
     updateProgress(68, "Memperbarui status file...");
@@ -2152,6 +2159,7 @@ async function resetData() {
   state.awal = [];
   state.akhir = [];
   state.struk = [];
+  state.uploadMeta = {};
   state.dailyPelunasan = emptyDailyPelunasanState();
   await saveStoredData();
   await autoSaveCloudData();
@@ -2814,6 +2822,7 @@ async function saveDailyPelunasanDraft() {
     awal: state.awal,
     akhir: state.akhir,
     struk: state.struk,
+    uploadMeta: state.uploadMeta,
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
   });
@@ -3000,6 +3009,7 @@ async function saveSaldoAverageDraft() {
     awal: state.awal,
     akhir: state.akhir,
     struk: state.struk,
+    uploadMeta: state.uploadMeta,
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
   });
@@ -3241,8 +3251,47 @@ function setStatus(kind, count, label) {
   const status = els[`${kind}Status`];
   const card = document.querySelector(`[data-file-card="${kind}"]`) || status?.closest(".upload-panel");
   if (!status) return;
-  status.textContent = count ? `${label}: ${formatNumber(count)} baris tersimpan` : "Belum ada data";
+  const meta = state.uploadMeta?.[kind] || {};
+  const uploadedAt = formatUploadTimestamp(meta.uploadedAt);
+  status.innerHTML = count
+    ? `
+      <strong>${escapeHtml(label)}: ${formatNumber(count)} baris tersimpan</strong>
+      ${uploadedAt ? `<span>Terakhir upload: ${escapeHtml(uploadedAt)}</span>` : ""}
+    `
+    : "Belum ada data";
   card?.classList.toggle("loaded", count > 0);
+}
+
+function normalizeUploadMeta(meta = {}) {
+  const normalized = {};
+  ["dil", "awal", "akhir", "struk"].forEach((key) => {
+    const item = meta?.[key];
+    if (!item?.uploadedAt) return;
+    normalized[key] = {
+      uploadedAt: item.uploadedAt,
+      fileName: item.fileName || "",
+    };
+  });
+  return normalized;
+}
+
+function formatUploadTimestamp(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const dateText = new Intl.DateTimeFormat("id-ID", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+  const timeText = new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date).replace(/\./g, ":");
+  return `${dateText}, ${timeText}`;
 }
 
 function setReportDate() {
@@ -3305,6 +3354,7 @@ async function saveStoredData() {
     awal: state.awal,
     akhir: state.akhir,
     struk: state.struk,
+    uploadMeta: state.uploadMeta,
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
     savedAt: new Date().toISOString(),

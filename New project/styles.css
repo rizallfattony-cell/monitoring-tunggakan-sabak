@@ -689,10 +689,23 @@ h1 {
 
 .file-status {
   min-height: 30px;
+  display: grid;
+  gap: 3px;
   border-radius: 6px;
   padding: 8px 10px;
   background: var(--panel-soft);
   color: var(--muted);
+}
+
+.file-status strong,
+.file-status span {
+  display: block;
+}
+
+.file-status span {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
 }
 
 .upload-panel.loaded {
