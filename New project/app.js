@@ -137,8 +137,6 @@ const els = {
   dailyTableHead: document.querySelector("#dailyTableHead"),
   dailyTableBody: document.querySelector("#dailyTableBody"),
   undoDailyUploadButton: document.querySelector("#undoDailyUploadButton"),
-  exportDailyExcelButton: document.querySelector("#exportDailyExcelButton"),
-  exportDailyJpgButton: document.querySelector("#exportDailyJpgButton"),
   exportDailyExcelTopButton: document.querySelector("#exportDailyExcelTopButton"),
   exportDailyJpgTopButton: document.querySelector("#exportDailyJpgTopButton"),
   workspaceTabTitle: document.querySelector("#workspaceTabTitle"),
@@ -217,8 +215,6 @@ function attachEvents() {
   els.dailyDateSelect?.addEventListener("change", handleDailyDateChange);
   els.dailySaldoInput?.addEventListener("change", handleDailySaldoUpload);
   els.undoDailyUploadButton?.addEventListener("click", undoDailyPelunasanUpload);
-  els.exportDailyExcelButton?.addEventListener("click", exportDailyPelunasanExcel);
-  els.exportDailyJpgButton?.addEventListener("click", exportDailyPelunasanJpg);
   els.exportDailyExcelTopButton?.addEventListener("click", exportDailyPelunasanExcel);
   els.exportDailyJpgTopButton?.addEventListener("click", exportDailyPelunasanJpg);
   els.dailyTableBody?.addEventListener("click", handleDailyDetailClick);

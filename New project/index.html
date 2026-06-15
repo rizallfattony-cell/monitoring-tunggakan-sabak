@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="apple-touch-icon" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260615-saldo-rata-copy" />
+    <link rel="stylesheet" href="./styles.css?v=20260615-daily-clean" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -287,7 +287,6 @@
       <section class="tab-panel" data-tab-panel="pelunasan-harian" hidden>
         <div class="section-head">
           <div>
-            <p class="eyebrow">Monitoring Bulanan</p>
             <h2>Pelunasan Harian</h2>
             <p>Upload saldo akhir per tanggal untuk menghitung pelunasan harian setiap petugas.</p>
           </div>
@@ -308,8 +307,6 @@
               <input id="dailySaldoInput" type="file" accept=".xlsx,.xls,.csv" />
             </label>
             <button class="button secondary" id="undoDailyUploadButton" type="button" disabled>Undo Tanggal Dipilih</button>
-            <button class="button secondary" id="exportDailyExcelButton" type="button">Export Excel</button>
-            <button class="button secondary" id="exportDailyJpgButton" type="button">Download JPG</button>
           </div>
           <p class="auto-note" id="dailyStatus">Pilih tanggal lalu upload saldo akhir harian. Upload ulang tanggal yang sama akan menimpa data sebelumnya.</p>
         </section>
@@ -490,6 +487,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260615-saldo-rata-copy"></script>
+    <script src="./app.js?v=20260615-daily-clean"></script>
   </body>
 </html>
