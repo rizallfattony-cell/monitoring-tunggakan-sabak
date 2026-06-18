@@ -1224,6 +1224,66 @@ h1 {
   justify-content: flex-end;
 }
 
+.comparison-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.comparison-upload {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--panel-soft);
+}
+
+.comparison-upload strong {
+  font-size: 14px;
+}
+
+.comparison-table-wrap table {
+  min-width: 1880px;
+}
+
+#comparisonTable th {
+  background: #ffff00;
+  color: #000;
+}
+
+#comparisonTable thead tr:first-child th {
+  top: 0;
+  z-index: 6;
+}
+
+#comparisonTable thead tr:nth-child(2) th {
+  top: 35px;
+  z-index: 5;
+}
+
+#comparisonTable .rupiah-cell {
+  text-align: right;
+}
+
+#comparisonTable .negative-value {
+  color: #ff0000;
+}
+
+#comparisonTable tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  background: #d9d9d9;
+  font-weight: 900;
+}
+
 .table-wrap {
   max-height: calc(100vh - 330px);
   min-height: 280px;

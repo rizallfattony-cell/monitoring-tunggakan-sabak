@@ -9,6 +9,7 @@ const SALDO_AVERAGE_FIELDS = [
   { key: "kogol3Pju", label: "KOGOL 3 PJU" },
   { key: "kogol4", label: "KOGOL 4" },
 ];
+const COMPARISON_KOLOK_KEYS = ["A", "B", "C", "D", "E", "F", "G", "J"];
 const WORK_MOTIVATION_QUOTES = [
   "Kerja yang rapi hari ini membuat masalah besok jauh lebih ringan.",
   "Disiplin kecil yang dilakukan konsisten akan mengalahkan semangat besar yang hanya sesekali.",
@@ -46,8 +47,10 @@ const state = {
   premiumRequests: [],
   saldoAkhirRataRata: emptySaldoAverageState(),
   dailyPelunasan: emptyDailyPelunasanState(),
+  comparisonMonitoring: emptyComparisonMonitoringState(),
   saldoAverageSaveTimer: null,
   dailyPelunasanSaveTimer: null,
+  comparisonMonitoringSaveTimer: null,
 };
 
 const els = {
@@ -139,6 +142,21 @@ const els = {
   undoDailyUploadButton: document.querySelector("#undoDailyUploadButton"),
   exportDailyExcelTopButton: document.querySelector("#exportDailyExcelTopButton"),
   exportDailyJpgTopButton: document.querySelector("#exportDailyJpgTopButton"),
+  comparisonAwalLabel: document.querySelector("#comparisonAwalLabel"),
+  comparisonPagiLabel: document.querySelector("#comparisonPagiLabel"),
+  comparisonSoreLabel: document.querySelector("#comparisonSoreLabel"),
+  comparisonPagiInput: document.querySelector("#comparisonPagiInput"),
+  comparisonSoreInput: document.querySelector("#comparisonSoreInput"),
+  comparisonLastMonthInput: document.querySelector("#comparisonLastMonthInput"),
+  comparisonPagiStatus: document.querySelector("#comparisonPagiStatus"),
+  comparisonSoreStatus: document.querySelector("#comparisonSoreStatus"),
+  comparisonLastMonthStatus: document.querySelector("#comparisonLastMonthStatus"),
+  comparisonTableHead: document.querySelector("#comparisonTableHead"),
+  comparisonTableBody: document.querySelector("#comparisonTableBody"),
+  comparisonTableFoot: document.querySelector("#comparisonTableFoot"),
+  comparisonTableDate: document.querySelector("#comparisonTableDate"),
+  exportComparisonExcelButton: document.querySelector("#exportComparisonExcelButton"),
+  exportComparisonJpgButton: document.querySelector("#exportComparisonJpgButton"),
   workspaceTabTitle: document.querySelector("#workspaceTabTitle"),
   treeToggleButtons: [...document.querySelectorAll("[data-tree-toggle]")],
   adminOnlyMenus: [...document.querySelectorAll(".admin-only-menu")],
@@ -217,6 +235,14 @@ function attachEvents() {
   els.undoDailyUploadButton?.addEventListener("click", undoDailyPelunasanUpload);
   els.exportDailyExcelTopButton?.addEventListener("click", exportDailyPelunasanExcel);
   els.exportDailyJpgTopButton?.addEventListener("click", exportDailyPelunasanJpg);
+  els.comparisonAwalLabel?.addEventListener("input", handleComparisonLabelInput);
+  els.comparisonPagiLabel?.addEventListener("input", handleComparisonLabelInput);
+  els.comparisonSoreLabel?.addEventListener("input", handleComparisonLabelInput);
+  els.comparisonPagiInput?.addEventListener("change", (event) => handleComparisonUpload(event, "saldoPagi"));
+  els.comparisonSoreInput?.addEventListener("change", (event) => handleComparisonUpload(event, "saldoSore"));
+  els.comparisonLastMonthInput?.addEventListener("change", (event) => handleComparisonUpload(event, "sisaBulanLalu"));
+  els.exportComparisonExcelButton?.addEventListener("click", exportComparisonMonitoringExcel);
+  els.exportComparisonJpgButton?.addEventListener("click", exportComparisonMonitoringJpg);
   els.dailyTableBody?.addEventListener("click", handleDailyDetailClick);
   els.treeToggleButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -286,6 +312,7 @@ function tabTitle(tabName) {
     upload: "Upload Data",
     laporan: "Laporan",
     "pelunasan-harian": "Pelunasan Harian",
+    comparison: "Perbandingan Monitoring",
     "saldo-rata": "Saldo Akhir Rata Rata",
     online: "Online & Sinkron",
     premium: "Premium",
@@ -302,10 +329,12 @@ async function hydrate() {
   state.uploadMeta = normalizeUploadMeta(saved.uploadMeta);
   state.saldoAkhirRataRata = normalizeSaldoAverageState(saved.saldoAkhirRataRata);
   state.dailyPelunasan = normalizeDailyPelunasanState(saved.dailyPelunasan);
+  state.comparisonMonitoring = normalizeComparisonMonitoringState(saved.comparisonMonitoring);
   updateFileStatuses();
   renderSaldoAverage();
   syncDailyPelunasanControls();
   renderDailyPelunasanTable();
+  renderComparisonMonitoring();
 }
 
 function initSupabase() {
@@ -450,6 +479,7 @@ async function loadCloudData(options = {}) {
   state.uploadMeta = normalizeUploadMeta(payload.uploadMeta);
   state.saldoAkhirRataRata = normalizeSaldoAverageState(payload.saldoAkhirRataRata);
   state.dailyPelunasan = normalizeDailyPelunasanState(payload.dailyPelunasan);
+  state.comparisonMonitoring = normalizeComparisonMonitoringState(payload.comparisonMonitoring);
   updateProgress(70, "Menyimpan data ke browser...");
   await saveStoredData();
   updateProgress(85, "Menghitung ulang laporan...");
@@ -458,6 +488,7 @@ async function loadCloudData(options = {}) {
   syncDailyPelunasanControls();
   syncDailyUndoButton();
   renderDailyPelunasanTable();
+  renderComparisonMonitoring();
   finishProgress(`Data online dimuat. Update terakhir: ${formatDateTime(data.updated_at)}.`);
   setOnlineStatus(`Data online dimuat. Update terakhir: ${formatDateTime(data.updated_at)}.`);
 }
@@ -862,6 +893,7 @@ async function saveCloudData(options = {}) {
     uploadMeta: state.uploadMeta,
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
+    comparisonMonitoring: state.comparisonMonitoring,
   });
 
   const { error } = await state.supabaseClient
@@ -910,6 +942,7 @@ async function encodeCloudPayload(payload) {
     uploadMeta: normalizeUploadMeta(payload.uploadMeta),
     saldoAkhirRataRata: normalizeSaldoAverageState(payload.saldoAkhirRataRata),
     dailyPelunasan: normalizeDailyPelunasanState(payload.dailyPelunasan),
+    comparisonMonitoring: normalizeComparisonMonitoringState(payload.comparisonMonitoring),
   };
 
   if (!window.CompressionStream) return basePayload;
@@ -1117,6 +1150,7 @@ function applyRoleView() {
   const saldoAveragePanel = document.querySelector('[data-tab-panel="saldo-rata"]');
   const dailyTab = document.querySelector('[data-tab="pelunasan-harian"]');
   const dailyPanel = document.querySelector('[data-tab-panel="pelunasan-harian"]');
+  const comparisonPanel = document.querySelector('[data-tab-panel="comparison"]');
   els.adminOnlyMenus.forEach((item) => {
     item.hidden = petugasMode;
   });
@@ -1124,7 +1158,8 @@ function applyRoleView() {
   if (saldoAveragePanel && petugasMode) saldoAveragePanel.hidden = true;
   if (dailyTab) dailyTab.hidden = petugasMode;
   if (dailyPanel && petugasMode) dailyPanel.hidden = true;
-  if (petugasMode && ["saldo-rata", "pelunasan-harian", "premium"].includes(state.activeTab)) switchTab("laporan");
+  if (comparisonPanel && petugasMode) comparisonPanel.hidden = true;
+  if (petugasMode && ["saldo-rata", "pelunasan-harian", "comparison", "premium"].includes(state.activeTab)) switchTab("laporan");
   els.uploadGrid.hidden = petugasMode;
   els.summaryGrid.hidden = petugasMode;
   els.toolbar.hidden = false;
@@ -1355,6 +1390,7 @@ function recompute() {
   updateFileStatuses();
   render();
   renderDailyPelunasanTable();
+  renderComparisonMonitoring();
 }
 
 function buildDilMap(rows) {
@@ -2158,11 +2194,492 @@ async function resetData() {
   state.struk = [];
   state.uploadMeta = {};
   state.dailyPelunasan = emptyDailyPelunasanState();
+  state.comparisonMonitoring = emptyComparisonMonitoringState();
   await saveStoredData();
   await autoSaveCloudData();
   syncDailyPelunasanControls();
   syncDailyUndoButton();
   recompute();
+}
+
+function emptyComparisonMonitoringState() {
+  return {
+    saldoPagi: [],
+    saldoSore: [],
+    sisaBulanLalu: [],
+    labels: {
+      saldoAwal: "SALDO AWAL",
+      saldoPagi: "SALDO PAGI",
+      saldoSore: "SALDO SORE",
+    },
+    uploadMeta: {},
+  };
+}
+
+function normalizeComparisonMonitoringState(value) {
+  const base = emptyComparisonMonitoringState();
+  const source = value || {};
+  return {
+    saldoPagi: Array.isArray(source.saldoPagi) ? source.saldoPagi : [],
+    saldoSore: Array.isArray(source.saldoSore) ? source.saldoSore : [],
+    sisaBulanLalu: Array.isArray(source.sisaBulanLalu) ? source.sisaBulanLalu : [],
+    labels: {
+      saldoAwal: source.labels?.saldoAwal || base.labels.saldoAwal,
+      saldoPagi: source.labels?.saldoPagi || base.labels.saldoPagi,
+      saldoSore: source.labels?.saldoSore || base.labels.saldoSore,
+    },
+    uploadMeta: normalizeUploadMeta(source.uploadMeta),
+  };
+}
+
+function syncComparisonControls() {
+  if (els.comparisonAwalLabel) els.comparisonAwalLabel.value = state.comparisonMonitoring.labels.saldoAwal;
+  if (els.comparisonPagiLabel) els.comparisonPagiLabel.value = state.comparisonMonitoring.labels.saldoPagi;
+  if (els.comparisonSoreLabel) els.comparisonSoreLabel.value = state.comparisonMonitoring.labels.saldoSore;
+  setComparisonStatus("saldoPagi", "Saldo pagi");
+  setComparisonStatus("saldoSore", "Saldo sore");
+  setComparisonStatus("sisaBulanLalu", "Sisa bulan lalu");
+}
+
+function setComparisonStatus(kind, label) {
+  const statusMap = {
+    saldoPagi: els.comparisonPagiStatus,
+    saldoSore: els.comparisonSoreStatus,
+    sisaBulanLalu: els.comparisonLastMonthStatus,
+  };
+  const status = statusMap[kind];
+  if (!status) return;
+  const rows = state.comparisonMonitoring[kind] || [];
+  const uploadedAt = formatUploadTimestamp(state.comparisonMonitoring.uploadMeta?.[kind]?.uploadedAt);
+  status.innerHTML = rows.length
+    ? `<strong>${escapeHtml(label)}: ${formatNumber(rows.length)} baris tersimpan</strong>${uploadedAt ? `<span>Terakhir upload: ${escapeHtml(uploadedAt)}</span>` : ""}`
+    : "Belum ada data";
+}
+
+function handleComparisonLabelInput() {
+  state.comparisonMonitoring.labels = {
+    saldoAwal: els.comparisonAwalLabel?.value.trim() || "SALDO AWAL",
+    saldoPagi: els.comparisonPagiLabel?.value.trim() || "SALDO PAGI",
+    saldoSore: els.comparisonSoreLabel?.value.trim() || "SALDO SORE",
+  };
+  renderComparisonMonitoringTable();
+  scheduleComparisonMonitoringSave();
+}
+
+async function handleComparisonUpload(event, kind) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const labels = {
+    saldoPagi: "Saldo Pagi",
+    saldoSore: "Saldo Sore",
+    sisaBulanLalu: "Sisa Bulan Lalu",
+  };
+  const label = labels[kind] || "Data";
+  startProgress(`Upload ${label}`, `Membaca file ${file.name}...`);
+  try {
+    const rows = await readWorkbook(file, (percent) => {
+      updateProgress(percent * 0.35, `Membaca file ${file.name}...`);
+    });
+    updateProgress(45, `Memproses ${formatNumber(rows.length)} baris ${label}...`);
+    await yieldUi();
+    state.comparisonMonitoring[kind] = normalizeSaldo(rows);
+    state.comparisonMonitoring.uploadMeta[kind] = { uploadedAt: new Date().toISOString(), fileName: file.name };
+    syncComparisonControls();
+    renderComparisonMonitoringTable();
+    updateProgress(72, "Menyimpan data perbandingan...");
+    await saveComparisonMonitoringDraft();
+    finishProgress(`${label} selesai diproses: ${formatNumber(state.comparisonMonitoring[kind].length)} baris.`);
+  } catch (error) {
+    failProgress(`Gagal membaca file ${file.name}: ${error.message}`);
+    alert(`Gagal membaca file ${file.name}: ${error.message}`);
+  } finally {
+    event.target.value = "";
+  }
+}
+
+function renderComparisonMonitoring() {
+  syncComparisonControls();
+  renderComparisonMonitoringTable();
+}
+
+function calculateComparisonMonitoringRows() {
+  const dilMap = buildDilMap(state.dil);
+  const awalGrouped = groupSaldoByPetugas(state.awal, dilMap, "saldo awal perbandingan");
+  const pagiGrouped = groupSaldoByPetugas(state.comparisonMonitoring.saldoPagi, dilMap, "saldo pagi");
+  const soreGrouped = groupSaldoByPetugas(state.comparisonMonitoring.saldoSore, dilMap, "saldo sore");
+  const lastGrouped = groupSaldoByPetugas(state.comparisonMonitoring.sisaBulanLalu, dilMap, "sisa bulan lalu");
+  const names = new Set([...awalGrouped.keys(), ...pagiGrouped.keys(), ...soreGrouped.keys(), ...lastGrouped.keys()]);
+
+  return [...names].sort((a, b) => a.localeCompare(b, "id-ID")).map((petugas) => {
+    const awal = awalGrouped.get(petugas) || emptySide();
+    const pagi = pagiGrouped.get(petugas) || emptySide();
+    const sore = soreGrouped.get(petugas) || emptySide();
+    const last = lastGrouped.get(petugas) || emptySide();
+    const kolok = Object.fromEntries(COMPARISON_KOLOK_KEYS.map((key) => [key, 0]));
+    for (const row of pagi.rowMap.values()) {
+      const key = normalizeComparisonKolok(row.kolok);
+      if (Object.prototype.hasOwnProperty.call(kolok, key)) kolok[key] += 1;
+    }
+    return {
+      petugas,
+      awalId: awal.count,
+      awalRupiah: awal.rupiah,
+      kolok,
+      pagiId: pagi.count,
+      pagiRupiah: pagi.rupiah,
+      persen: percentage(awal.rupiah - pagi.rupiah, awal.rupiah),
+      soreId: sore.count,
+      soreRupiah: sore.rupiah,
+      pelunasanId: pagi.count - sore.count,
+      pelunasanRupiah: pagi.rupiah - sore.rupiah,
+      lastId: last.count,
+      lastRupiah: last.rupiah,
+      progressId: sore.count - last.count,
+      progressRupiah: sore.rupiah - last.rupiah,
+    };
+  }).filter((row) => row.awalId || row.pagiId || row.soreId || row.lastId);
+}
+
+function normalizeComparisonKolok(value) {
+  const text = cleanText(value).toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return text ? text.slice(-1) : "";
+}
+
+function calculateComparisonMonitoringTotals(rows) {
+  const totals = {
+    awalId: 0,
+    awalRupiah: 0,
+    pagiId: 0,
+    pagiRupiah: 0,
+    soreId: 0,
+    soreRupiah: 0,
+    pelunasanId: 0,
+    pelunasanRupiah: 0,
+    lastId: 0,
+    lastRupiah: 0,
+    progressId: 0,
+    progressRupiah: 0,
+    kolok: Object.fromEntries(COMPARISON_KOLOK_KEYS.map((key) => [key, 0])),
+  };
+  rows.forEach((row) => {
+    totals.awalId += row.awalId;
+    totals.awalRupiah += row.awalRupiah;
+    totals.pagiId += row.pagiId;
+    totals.pagiRupiah += row.pagiRupiah;
+    totals.soreId += row.soreId;
+    totals.soreRupiah += row.soreRupiah;
+    totals.pelunasanId += row.pelunasanId;
+    totals.pelunasanRupiah += row.pelunasanRupiah;
+    totals.lastId += row.lastId;
+    totals.lastRupiah += row.lastRupiah;
+    totals.progressId += row.progressId;
+    totals.progressRupiah += row.progressRupiah;
+    COMPARISON_KOLOK_KEYS.forEach((key) => {
+      totals.kolok[key] += row.kolok[key] || 0;
+    });
+  });
+  totals.persen = percentage(totals.awalRupiah - totals.pagiRupiah, totals.awalRupiah);
+  return totals;
+}
+
+function renderComparisonMonitoringTable() {
+  if (!els.comparisonTableHead || !els.comparisonTableBody || !els.comparisonTableFoot) return;
+  const labels = state.comparisonMonitoring.labels;
+  const rows = calculateComparisonMonitoringRows();
+  const totals = calculateComparisonMonitoringTotals(rows);
+  if (els.comparisonTableDate) {
+    els.comparisonTableDate.textContent = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).format(new Date()).toUpperCase();
+  }
+  els.comparisonTableHead.innerHTML = comparisonTableHeaderTemplate(labels);
+  if (!rows.length) {
+    els.comparisonTableBody.innerHTML = `<tr><td class="empty-state" colspan="23">Upload DIL, Saldo Awal, Saldo Pagi, Saldo Sore, dan Sisa Bulan Lalu untuk menampilkan perbandingan.</td></tr>`;
+    els.comparisonTableFoot.innerHTML = "";
+    return;
+  }
+  els.comparisonTableBody.innerHTML = rows.map((row, index) => comparisonTableRowTemplate(row, index + 1)).join("");
+  els.comparisonTableFoot.innerHTML = comparisonTotalRowTemplate(totals);
+}
+
+function comparisonTableHeaderTemplate(labels) {
+  return `
+    <tr>
+      <th rowspan="2">NO</th>
+      <th rowspan="2">PETUGAS</th>
+      <th colspan="2">${escapeHtml(labels.saldoAwal)}</th>
+      <th colspan="${COMPARISON_KOLOK_KEYS.length}">SISA PER KOLOK</th>
+      <th colspan="2">${escapeHtml(labels.saldoPagi)}</th>
+      <th rowspan="2">%</th>
+      <th colspan="2">${escapeHtml(labels.saldoSore)}</th>
+      <th colspan="2">PELUNASAN HARIAN</th>
+      <th colspan="2">SISA BULAN LALU</th>
+      <th colspan="2">PROGRES DG BULAN LALU</th>
+    </tr>
+    <tr>
+      <th>ID PEL</th><th>RPTAG</th>
+      ${COMPARISON_KOLOK_KEYS.map((key) => `<th>${key}</th>`).join("")}
+      <th>ID PEL</th><th>RP TAG</th>
+      <th>ID</th><th>RPTAG</th>
+      <th>ID PEL</th><th>RPTAG</th>
+      <th>ID PEL</th><th>RPTAG</th>
+      <th>ID PEL</th><th>RPTAG</th>
+    </tr>
+  `;
+}
+
+function comparisonTableRowTemplate(row, index) {
+  return `
+    <tr>
+      <td>${index}</td>
+      <td class="name-cell">${escapeHtml(row.petugas)}</td>
+      <td>${formatNumber(row.awalId)}</td>
+      <td class="rupiah-cell">${formatRupiah(row.awalRupiah)}</td>
+      ${COMPARISON_KOLOK_KEYS.map((key) => `<td>${formatNumber(row.kolok[key] || 0)}</td>`).join("")}
+      <td>${formatNumber(row.pagiId)}</td>
+      <td class="rupiah-cell">${formatRupiah(row.pagiRupiah)}</td>
+      <td>${Math.round(row.persen)}%</td>
+      <td>${formatNumber(row.soreId)}</td>
+      <td class="rupiah-cell">${formatRupiah(row.soreRupiah)}</td>
+      <td class="${row.pelunasanId < 0 ? "negative-value" : ""}">${formatNumber(row.pelunasanId)}</td>
+      <td class="rupiah-cell ${row.pelunasanRupiah < 0 ? "negative-value" : ""}">${formatRupiah(row.pelunasanRupiah)}</td>
+      <td>${formatNumber(row.lastId)}</td>
+      <td class="rupiah-cell">${formatRupiah(row.lastRupiah)}</td>
+      <td class="${row.progressId < 0 ? "negative-value" : ""}">${formatNumber(row.progressId)}</td>
+      <td class="rupiah-cell ${row.progressRupiah < 0 ? "negative-value" : ""}">${formatRupiah(row.progressRupiah)}</td>
+    </tr>
+  `;
+}
+
+function comparisonTotalRowTemplate(totals) {
+  return `
+    <tr class="comparison-total-row">
+      <td></td>
+      <td>TOTAL</td>
+      <td>${formatNumber(totals.awalId)}</td>
+      <td class="rupiah-cell">${formatRupiah(totals.awalRupiah)}</td>
+      ${COMPARISON_KOLOK_KEYS.map((key) => `<td>${formatNumber(totals.kolok[key] || 0)}</td>`).join("")}
+      <td>${formatNumber(totals.pagiId)}</td>
+      <td class="rupiah-cell">${formatRupiah(totals.pagiRupiah)}</td>
+      <td>${Math.round(totals.persen)}%</td>
+      <td>${formatNumber(totals.soreId)}</td>
+      <td class="rupiah-cell">${formatRupiah(totals.soreRupiah)}</td>
+      <td class="${totals.pelunasanId < 0 ? "negative-value" : ""}">${formatNumber(totals.pelunasanId)}</td>
+      <td class="rupiah-cell ${totals.pelunasanRupiah < 0 ? "negative-value" : ""}">${formatRupiah(totals.pelunasanRupiah)}</td>
+      <td>${formatNumber(totals.lastId)}</td>
+      <td class="rupiah-cell">${formatRupiah(totals.lastRupiah)}</td>
+      <td class="${totals.progressId < 0 ? "negative-value" : ""}">${formatNumber(totals.progressId)}</td>
+      <td class="rupiah-cell ${totals.progressRupiah < 0 ? "negative-value" : ""}">${formatRupiah(totals.progressRupiah)}</td>
+    </tr>
+  `;
+}
+
+function getComparisonExportRows() {
+  const rows = calculateComparisonMonitoringRows();
+  return { rows, totals: calculateComparisonMonitoringTotals(rows), labels: state.comparisonMonitoring.labels };
+}
+
+function exportComparisonMonitoringExcel() {
+  const { rows, totals, labels } = getComparisonExportRows();
+  if (!rows.length) {
+    alert("Belum ada data Perbandingan Monitoring untuk diexport.");
+    return;
+  }
+  startProgress("Download Excel", "Menyiapkan workbook perbandingan...");
+  const headerGroup = ["NO", "PETUGAS", labels.saldoAwal, "", "SISA PER KOLOK", ...Array(COMPARISON_KOLOK_KEYS.length - 1).fill(""), labels.saldoPagi, "", "%", labels.saldoSore, "", "PELUNASAN HARIAN", "", "SISA BULAN LALU", "", "PROGRES DG BULAN LALU", ""];
+  const headerSub = ["", "", "ID PEL", "RPTAG", ...COMPARISON_KOLOK_KEYS, "ID PEL", "RP TAG", "", "ID", "RPTAG", "ID PEL", "RPTAG", "ID PEL", "RPTAG", "ID PEL", "RPTAG"];
+  const dataRows = rows.map((row, index) => comparisonRowToArray(row, index + 1));
+  const tableRows = [
+    ["PERBANDINGAN MONITORING SALDO TUNGGAKAN"],
+    [new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).format(new Date()).toUpperCase()],
+    [],
+    headerGroup,
+    headerSub,
+    ...dataRows,
+    comparisonRowToArray(totals, "TOTAL", true),
+  ];
+  const worksheet = XLSX.utils.aoa_to_sheet(tableRows);
+  worksheet["!merges"] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 22 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 22 } },
+    { s: { r: 3, c: 0 }, e: { r: 4, c: 0 } },
+    { s: { r: 3, c: 1 }, e: { r: 4, c: 1 } },
+    { s: { r: 3, c: 2 }, e: { r: 3, c: 3 } },
+    { s: { r: 3, c: 4 }, e: { r: 3, c: 11 } },
+    { s: { r: 3, c: 12 }, e: { r: 3, c: 13 } },
+    { s: { r: 3, c: 14 }, e: { r: 4, c: 14 } },
+    { s: { r: 3, c: 15 }, e: { r: 3, c: 16 } },
+    { s: { r: 3, c: 17 }, e: { r: 3, c: 18 } },
+    { s: { r: 3, c: 19 }, e: { r: 3, c: 20 } },
+    { s: { r: 3, c: 21 }, e: { r: 3, c: 22 } },
+  ];
+  worksheet["!cols"] = [
+    { wch: 6 }, { wch: 24 }, { wch: 10 }, { wch: 18 },
+    ...COMPARISON_KOLOK_KEYS.map(() => ({ wch: 7 })),
+    { wch: 10 }, { wch: 18 }, { wch: 8 }, { wch: 10 }, { wch: 18 },
+    { wch: 10 }, { wch: 18 }, { wch: 10 }, { wch: 18 }, { wch: 10 }, { wch: 18 },
+  ];
+  applyWorksheetTableBorders(worksheet);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Perbandingan");
+  XLSX.writeFile(workbook, `perbandingan-monitoring-saldo-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  finishProgress("Download Excel Perbandingan selesai.");
+}
+
+function comparisonRowToArray(row, number, total = false) {
+  return [
+    total ? "" : number,
+    total ? "TOTAL" : row.petugas,
+    row.awalId,
+    row.awalRupiah,
+    ...COMPARISON_KOLOK_KEYS.map((key) => row.kolok[key] || 0),
+    row.pagiId,
+    row.pagiRupiah,
+    Math.round(row.persen || 0) / 100,
+    row.soreId,
+    row.soreRupiah,
+    row.pelunasanId,
+    row.pelunasanRupiah,
+    row.lastId,
+    row.lastRupiah,
+    row.progressId,
+    row.progressRupiah,
+  ];
+}
+
+function exportComparisonMonitoringJpg() {
+  const { rows, totals, labels } = getComparisonExportRows();
+  if (!rows.length) {
+    alert("Belum ada data Perbandingan Monitoring untuk didownload.");
+    return;
+  }
+  startProgress("Download JPG", "Menggambar tabel perbandingan...");
+  const exportRows = [...rows, { ...totals, petugas: "TOTAL", total: true }];
+  const columns = [
+    { key: "no", label: "NO", width: 42, align: "center" },
+    { key: "petugas", label: "PETUGAS", width: 170, align: "left" },
+    { key: "awalId", group: labels.saldoAwal, label: "ID PEL", width: 72, align: "center" },
+    { key: "awalRupiah", group: labels.saldoAwal, label: "RPTAG", width: 135, align: "right", rupiah: true },
+    ...COMPARISON_KOLOK_KEYS.map((key) => ({ key: `kolok.${key}`, group: "SISA PER KOLOK", label: key, width: 42, align: "center" })),
+    { key: "pagiId", group: labels.saldoPagi, label: "ID PEL", width: 72, align: "center" },
+    { key: "pagiRupiah", group: labels.saldoPagi, label: "RP TAG", width: 135, align: "right", rupiah: true },
+    { key: "persen", label: "%", width: 48, align: "center", percent: true },
+    { key: "soreId", group: labels.saldoSore, label: "ID", width: 72, align: "center" },
+    { key: "soreRupiah", group: labels.saldoSore, label: "RPTAG", width: 135, align: "right", rupiah: true },
+    { key: "pelunasanId", group: "PELUNASAN HARIAN", label: "ID PEL", width: 72, align: "center" },
+    { key: "pelunasanRupiah", group: "PELUNASAN HARIAN", label: "RPTAG", width: 135, align: "right", rupiah: true },
+    { key: "lastId", group: "SISA BULAN LALU", label: "ID PEL", width: 72, align: "center" },
+    { key: "lastRupiah", group: "SISA BULAN LALU", label: "RPTAG", width: 135, align: "right", rupiah: true },
+    { key: "progressId", group: "PROGRES DG BULAN LALU", label: "ID PEL", width: 72, align: "center" },
+    { key: "progressRupiah", group: "PROGRES DG BULAN LALU", label: "RPTAG", width: 135, align: "right", rupiah: true },
+  ];
+  const scale = 2;
+  const margin = 12;
+  const rowHeight = 28;
+  const groupHeight = 26;
+  const headerHeight = 26;
+  const titleHeight = 58;
+  const width = columns.reduce((sum, column) => sum + column.width, 0) + margin * 2;
+  const height = titleHeight + groupHeight + headerHeight + exportRows.length * rowHeight + margin;
+  const canvas = document.createElement("canvas");
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#000";
+  ctx.font = "700 18px Arial";
+  ctx.fillText("PERBANDINGAN MONITORING SALDO TUNGGAKAN", margin, 28);
+  ctx.font = "700 12px Arial";
+  ctx.fillText(new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).format(new Date()).toUpperCase(), margin, 48);
+  drawComparisonCanvasHeader(ctx, columns, margin, titleHeight, groupHeight, headerHeight);
+  let y = titleHeight + groupHeight + headerHeight;
+  exportRows.forEach((row, index) => {
+    let x = margin;
+    const fill = row.total ? "#d9d9d9" : "#ffffff";
+    columns.forEach((column) => {
+      const value = column.key === "no" ? (row.total ? "" : index + 1) : getComparisonCanvasValue(row, column);
+      drawCell(ctx, x, y, column.width, rowHeight, value, {
+        fill,
+        align: column.align,
+        bold: row.total || column.key === "petugas",
+        danger: (column.key === "progressId" && row.progressId < 0) || (column.key === "progressRupiah" && row.progressRupiah < 0),
+      });
+      x += column.width;
+    });
+    y += rowHeight;
+  });
+  const link = document.createElement("a");
+  link.download = `perbandingan-monitoring-saldo-${new Date().toISOString().slice(0, 10)}.jpg`;
+  link.href = canvas.toDataURL("image/jpeg", 0.94);
+  link.click();
+  finishProgress("Download JPG Perbandingan selesai.");
+}
+
+function drawComparisonCanvasHeader(ctx, columns, startX, y, groupHeight, headerHeight) {
+  let x = startX;
+  for (let index = 0; index < columns.length;) {
+    const column = columns[index];
+    if (!column.group) {
+      drawCell(ctx, x, y, column.width, groupHeight + headerHeight, column.label, { fill: "#ffff00", bold: true, align: "center" });
+      x += column.width;
+      index += 1;
+      continue;
+    }
+    const group = column.group;
+    let width = 0;
+    let cursor = index;
+    while (cursor < columns.length && columns[cursor].group === group) {
+      width += columns[cursor].width;
+      cursor += 1;
+    }
+    drawCell(ctx, x, y, width, groupHeight, group, { fill: "#ffff00", bold: true, align: "center" });
+    for (let child = index; child < cursor; child += 1) {
+      drawCell(ctx, x, y + groupHeight, columns[child].width, headerHeight, columns[child].label, { fill: "#ffff00", bold: true, align: "center" });
+      x += columns[child].width;
+    }
+    index = cursor;
+  }
+}
+
+function getComparisonCanvasValue(row, column) {
+  if (column.key.startsWith("kolok.")) return formatNumber(row.kolok[column.key.split(".")[1]] || 0);
+  const value = row[column.key];
+  if (column.percent) return `${Math.round(value || 0)}%`;
+  if (column.rupiah) return formatRupiah(value || 0);
+  return formatNumber(value || 0);
+}
+
+function scheduleComparisonMonitoringSave() {
+  window.clearTimeout(state.comparisonMonitoringSaveTimer);
+  state.comparisonMonitoringSaveTimer = window.setTimeout(saveComparisonMonitoringDraft, 900);
+}
+
+async function saveComparisonMonitoringDraft() {
+  await saveStoredData();
+  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") return;
+  const cloudPayload = await encodeCloudPayload({
+    dil: state.dil,
+    awal: state.awal,
+    akhir: state.akhir,
+    struk: state.struk,
+    uploadMeta: state.uploadMeta,
+    saldoAkhirRataRata: state.saldoAkhirRataRata,
+    dailyPelunasan: state.dailyPelunasan,
+    comparisonMonitoring: state.comparisonMonitoring,
+  });
+  const { error } = await state.supabaseClient
+    .from("monitoring_app_state")
+    .upsert({
+      id: CLOUD_STATE_ID,
+      payload: cloudPayload,
+      updated_by: state.user.id,
+      updated_at: new Date().toISOString(),
+    });
+  if (error) {
+    setOnlineStatus(`Gagal simpan Perbandingan Monitoring: ${error.message}`);
+    return;
+  }
+  setOnlineStatus(`Perbandingan Monitoring tersimpan online: ${formatDateTime(new Date().toISOString())}.`);
 }
 
 function initializeDailyPelunasanControls() {
@@ -2822,6 +3339,7 @@ async function saveDailyPelunasanDraft() {
     uploadMeta: state.uploadMeta,
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
+    comparisonMonitoring: state.comparisonMonitoring,
   });
   const { error } = await state.supabaseClient
     .from("monitoring_app_state")
@@ -3009,6 +3527,7 @@ async function saveSaldoAverageDraft() {
     uploadMeta: state.uploadMeta,
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
+    comparisonMonitoring: state.comparisonMonitoring,
   });
   const { error } = await state.supabaseClient
     .from("monitoring_app_state")
@@ -3261,7 +3780,7 @@ function setStatus(kind, count, label) {
 
 function normalizeUploadMeta(meta = {}) {
   const normalized = {};
-  ["dil", "awal", "akhir", "struk"].forEach((key) => {
+  ["dil", "awal", "akhir", "struk", "saldoPagi", "saldoSore", "sisaBulanLalu"].forEach((key) => {
     const item = meta?.[key];
     if (!item?.uploadedAt) return;
     normalized[key] = {
@@ -3354,6 +3873,7 @@ async function saveStoredData() {
     uploadMeta: state.uploadMeta,
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
+    comparisonMonitoring: state.comparisonMonitoring,
     savedAt: new Date().toISOString(),
   };
 
