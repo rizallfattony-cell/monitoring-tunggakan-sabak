@@ -2402,8 +2402,8 @@ function calculateComparisonMonitoringRows() {
       totalSisaRupiah: dailyAkhir.rupiah,
       totalPelunasanId,
       totalPelunasanRupiah,
-      kumulatifIdPercent: percentage(dailyAkhir.count, awal.count),
-      kumulatifRupiahPercent: percentage(dailyAkhir.rupiah, awal.rupiah),
+      kumulatifIdPercent: percentage(totalPelunasanId, awal.count),
+      kumulatifRupiahPercent: percentage(totalPelunasanRupiah, awal.rupiah),
       dailyAwalId: dailyAwal.count,
       dailyAwalRupiah: dailyAwal.rupiah,
       dailyAkhirId: dailyAkhir.count,
@@ -2475,8 +2475,8 @@ function calculateComparisonMonitoringTotals(rows) {
     });
   });
   totals.topKolokKeys = getTopComparisonKolokKeys(totals.kolok);
-  totals.kumulatifIdPercent = percentage(totals.totalSisaId, totals.saldoAwalId);
-  totals.kumulatifRupiahPercent = percentage(totals.totalSisaRupiah, totals.saldoAwalRupiah);
+  totals.kumulatifIdPercent = percentage(totals.totalPelunasanId, totals.saldoAwalId);
+  totals.kumulatifRupiahPercent = percentage(totals.totalPelunasanRupiah, totals.saldoAwalRupiah);
   totals.progressIdPercent = percentage(totals.progressId, totals.lastId);
   totals.progressRupiahPercent = percentage(totals.progressRupiah, totals.lastRupiah);
   return totals;
