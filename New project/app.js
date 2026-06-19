@@ -2414,8 +2414,8 @@ function calculateComparisonMonitoringRows() {
       lastRupiah: last.rupiah,
       progressId,
       progressRupiah,
-      progressIdPercent: percentage(progressId, last.count),
-      progressRupiahPercent: percentage(progressRupiah, last.rupiah),
+      progressIdPercent: comparisonProgressPercent(last.count, dailyAkhir.count),
+      progressRupiahPercent: comparisonProgressPercent(last.rupiah, dailyAkhir.rupiah),
     };
   }).filter((row) => row.saldoAwalId || row.totalSisaId || row.dailyAwalId || row.dailyAkhirId || row.lastId);
 }
@@ -2477,9 +2477,14 @@ function calculateComparisonMonitoringTotals(rows) {
   totals.topKolokKeys = getTopComparisonKolokKeys(totals.kolok);
   totals.kumulatifIdPercent = percentage(totals.totalPelunasanId, totals.saldoAwalId);
   totals.kumulatifRupiahPercent = percentage(totals.totalPelunasanRupiah, totals.saldoAwalRupiah);
-  totals.progressIdPercent = percentage(totals.progressId, totals.lastId);
-  totals.progressRupiahPercent = percentage(totals.progressRupiah, totals.lastRupiah);
+  totals.progressIdPercent = comparisonProgressPercent(totals.lastId, totals.totalSisaId);
+  totals.progressRupiahPercent = comparisonProgressPercent(totals.lastRupiah, totals.totalSisaRupiah);
   return totals;
+}
+
+function comparisonProgressPercent(lastValue, currentValue) {
+  if (!currentValue) return lastValue ? 100 : 0;
+  return (lastValue / currentValue) * 100;
 }
 
 function renderComparisonMonitoringTable() {
