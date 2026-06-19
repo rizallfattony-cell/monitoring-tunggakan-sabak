@@ -1226,7 +1226,7 @@ h1 {
 
 .comparison-controls {
   display: grid;
-  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  grid-template-columns: 220px repeat(3, minmax(210px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
   border: 1px solid var(--line);
@@ -1250,7 +1250,17 @@ h1 {
 }
 
 .comparison-table-wrap table {
-  min-width: 1880px;
+  min-width: 2450px;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+#comparisonTable th,
+#comparisonTable td {
+  border-color: #000;
+  padding: 5px 7px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.15;
 }
 
 #comparisonTable th {
@@ -1260,20 +1270,64 @@ h1 {
 
 #comparisonTable thead tr:first-child th {
   top: 0;
-  z-index: 6;
+  height: 32px;
+  z-index: 8;
 }
 
 #comparisonTable thead tr:nth-child(2) th {
-  top: 35px;
-  z-index: 5;
+  top: 32px;
+  height: 32px;
+  z-index: 7;
+}
+
+#comparisonTable thead tr:nth-child(3) th {
+  top: 64px;
+  height: 32px;
+  z-index: 6;
 }
 
 #comparisonTable .rupiah-cell {
   text-align: right;
 }
 
+#comparisonTable .total-sisa-cell {
+  background: #daab99;
+}
+
+#comparisonTable .last-month-cell {
+  background: #faa41c;
+}
+
+#comparisonTable .kolok-top-value {
+  color: #ff0000;
+  font-weight: 900;
+}
+
 #comparisonTable .negative-value {
   color: #ff0000;
+}
+
+#comparisonTable .comparison-scale {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 58px;
+  min-height: 20px;
+  overflow: hidden;
+  border: 1px solid #8d8d8d;
+  background: #fff;
+}
+
+#comparisonTable .comparison-scale-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  opacity: 0.85;
+}
+
+#comparisonTable .comparison-scale strong {
+  position: relative;
+  z-index: 1;
+  color: #000;
 }
 
 #comparisonTable tfoot td {

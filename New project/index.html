@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="apple-touch-icon" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260619-comparison-monitoring" />
+    <link rel="stylesheet" href="./styles.css?v=20260619-comparison-last-month" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -68,7 +68,7 @@
               </button>
               <div class="tree-children">
                 <button class="tree-child" type="button" data-tab="laporan">Monitoring Saldo Tunggakan</button>
-                <button class="tree-child admin-only-menu" type="button" data-tab="comparison">Perbandingan Monitoring Saldo Tunggakan</button>
+                <button class="tree-child admin-only-menu" type="button" data-tab="comparison">Perbandingan Saldo Dengan Bulan Lalu</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="saldo-rata">Laporan Saldo Akhir Rata-rata</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="pelunasan-harian">Pelunasan Harian</button>
               </div>
@@ -288,8 +288,8 @@
       <section class="tab-panel" data-tab-panel="comparison" hidden>
         <div class="section-head">
           <div>
-            <h2>Perbandingan Monitoring Saldo Tunggakan</h2>
-            <p>Upload Saldo Pagi, Saldo Sore, dan Sisa Bulan Lalu untuk membandingkan progres per petugas dan KOLOK.</p>
+            <h2>Perbandingan Saldo Dengan Bulan Lalu</h2>
+            <p>Upload saldo harian dan saldo bulan lalu berdasarkan tanggal untuk membandingkan pelunasan kumulatif, harian, dan progres bulan lalu.</p>
           </div>
           <div class="section-actions">
             <button class="button secondary" id="exportComparisonJpgButton" type="button">Download JPG</button>
@@ -298,38 +298,42 @@
         </div>
 
         <section class="comparison-controls">
-          <label class="field" for="comparisonAwalLabel">
-            <span>Label Saldo Awal</span>
-            <input id="comparisonAwalLabel" type="text" placeholder="Contoh: SALDO AWAL TANGGAL 2" />
-          </label>
-          <label class="field" for="comparisonPagiLabel">
-            <span>Label Saldo Pagi</span>
-            <input id="comparisonPagiLabel" type="text" placeholder="Contoh: SALDO 18 PAGI" />
-          </label>
-          <label class="field" for="comparisonSoreLabel">
-            <span>Label Saldo Sore</span>
-            <input id="comparisonSoreLabel" type="text" placeholder="Contoh: SALDO 18 SORE" />
+          <label class="field comparison-month-field" for="comparisonMonthInput">
+            <span>Bulan Laporan</span>
+            <input id="comparisonMonthInput" type="month" />
           </label>
           <article class="comparison-upload">
-            <strong>Saldo Pagi</strong>
-            <label class="file-button">
-              Upload Saldo Pagi
-              <input id="comparisonPagiInput" type="file" accept=".xlsx,.xls,.csv" />
+            <strong>Saldo Awal Tanggal</strong>
+            <label class="field compact-field" for="comparisonDailyAwalDateSelect">
+              <span>Tanggal</span>
+              <select id="comparisonDailyAwalDateSelect"></select>
             </label>
-            <span class="file-status" id="comparisonPagiStatus">Belum ada data</span>
+            <label class="file-button">
+              Upload Saldo Awal Tanggal
+              <input id="comparisonDailyAwalInput" type="file" accept=".xlsx,.xls,.csv" />
+            </label>
+            <span class="file-status" id="comparisonDailyAwalStatus">Belum ada data</span>
           </article>
           <article class="comparison-upload">
-            <strong>Saldo Sore</strong>
-            <label class="file-button">
-              Upload Saldo Sore
-              <input id="comparisonSoreInput" type="file" accept=".xlsx,.xls,.csv" />
+            <strong>Saldo Akhir Tanggal</strong>
+            <label class="field compact-field" for="comparisonDailyAkhirDateSelect">
+              <span>Tanggal</span>
+              <select id="comparisonDailyAkhirDateSelect"></select>
             </label>
-            <span class="file-status" id="comparisonSoreStatus">Belum ada data</span>
+            <label class="file-button">
+              Upload Saldo Akhir Tanggal
+              <input id="comparisonDailyAkhirInput" type="file" accept=".xlsx,.xls,.csv" />
+            </label>
+            <span class="file-status" id="comparisonDailyAkhirStatus">Belum ada data</span>
           </article>
           <article class="comparison-upload">
-            <strong>Sisa Bulan Lalu</strong>
+            <strong>Saldo Bulan Lalu</strong>
+            <label class="field compact-field" for="comparisonLastMonthDateSelect">
+              <span>Tanggal</span>
+              <select id="comparisonLastMonthDateSelect"></select>
+            </label>
             <label class="file-button">
-              Upload Sisa Bulan Lalu
+              Upload Saldo Bulan Lalu
               <input id="comparisonLastMonthInput" type="file" accept=".xlsx,.xls,.csv" />
             </label>
             <span class="file-status" id="comparisonLastMonthStatus">Belum ada data</span>
@@ -339,7 +343,7 @@
         <section class="table-section comparison-table-section">
           <div class="report-heading">
             <div>
-              <h2>Perbandingan Monitoring Saldo Tunggakan</h2>
+              <h2>Perbandingan Saldo Dengan Bulan Lalu</h2>
               <p id="comparisonTableDate">-</p>
             </div>
           </div>
@@ -348,7 +352,7 @@
               <thead id="comparisonTableHead"></thead>
               <tbody id="comparisonTableBody">
                 <tr>
-                  <td class="empty-state" colspan="23">Upload DIL, Saldo Awal, Saldo Pagi, Saldo Sore, dan Sisa Bulan Lalu untuk menampilkan perbandingan.</td>
+                  <td class="empty-state" colspan="30">Upload DIL, Saldo Awal Database, Saldo Awal Tanggal, Saldo Akhir Tanggal, dan Saldo Bulan Lalu untuk menampilkan perbandingan.</td>
                 </tr>
               </tbody>
               <tfoot id="comparisonTableFoot"></tfoot>
@@ -560,6 +564,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260619-comparison-monitoring"></script>
+    <script src="./app.js?v=20260619-comparison-last-month"></script>
   </body>
 </html>
