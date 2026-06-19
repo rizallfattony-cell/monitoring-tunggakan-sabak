@@ -2390,8 +2390,8 @@ function calculateComparisonMonitoringRows() {
     }
     const totalPelunasanId = awal.count - dailyAkhir.count;
     const totalPelunasanRupiah = awal.rupiah - dailyAkhir.rupiah;
-    const progressId = dailyAkhir.count - last.count;
-    const progressRupiah = dailyAkhir.rupiah - last.rupiah;
+    const progressId = last.count - dailyAkhir.count;
+    const progressRupiah = last.rupiah - dailyAkhir.rupiah;
     return {
       petugas,
       saldoAwalId: awal.count,
