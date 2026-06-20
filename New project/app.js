@@ -2515,7 +2515,7 @@ function comparisonTableLabels() {
   const dailyAkhirDay = Number(state.comparisonMonitoring.selectedDailyAkhirDate?.slice(-2) || 1);
   const lastMonthDay = Number(state.comparisonMonitoring.selectedLastMonthDate?.slice(-2) || 1);
   return {
-    saldoAwal: `SALDO AWAL TANGGAL ${dailyAkhirDay}`,
+    saldoAwal: "SALDO AWAL",
     dailyAwal: `SALDO AWAL TGL ${dailyAwalDay}`,
     dailyAkhir: `SALDO AKHIR TGL ${dailyAkhirDay}`,
     lunas: `LUNAS TGL ${dailyAkhirDay}`,
