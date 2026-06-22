@@ -82,6 +82,7 @@
               </button>
               <div class="tree-children">
                 <button class="tree-child" type="button" data-tab="upload" data-upload-view="stand-meter">Upload Stand Meter</button>
+                <button class="tree-child admin-only-menu" type="button" data-tab="invoice">Cetak Invoice</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="premium">Premium</button>
               </div>
             </section>
@@ -519,6 +520,92 @@
         </section>
       </section>
 
+      <section class="tab-panel" data-tab-panel="invoice" hidden>
+        <div class="section-head">
+          <div>
+            <h2>Cetak Invoice</h2>
+            <p>Format cetak untuk kertas CF K2 W PRS 9,5&quot; x 11&quot; dan printer Epson LQ-310.</p>
+          </div>
+          <div class="section-actions">
+            <button class="button secondary" id="refreshInvoicePreviewButton" type="button">Refresh Preview</button>
+            <button class="button primary" id="printInvoiceButton" type="button">Cetak Invoice</button>
+          </div>
+        </div>
+
+        <section class="invoice-layout">
+          <form class="invoice-form" id="invoiceForm">
+            <div class="invoice-form-head">
+              <h2>Data Invoice</h2>
+              <p>Isi manual atau ketik ID Pelanggan lalu klik Ambil Data.</p>
+            </div>
+            <div class="invoice-field-row">
+              <label class="field" for="invoiceIdpel">
+                <span>ID Pelanggan</span>
+                <input id="invoiceIdpel" type="text" autocomplete="off" placeholder="Contoh: 143900189110" />
+              </label>
+              <button class="button secondary invoice-load-button" id="loadInvoiceCustomerButton" type="button">Ambil Data</button>
+            </div>
+            <label class="field" for="invoiceNama">
+              <span>Nama</span>
+              <input id="invoiceNama" type="text" autocomplete="off" />
+            </label>
+            <label class="field" for="invoiceKodeKedudukan">
+              <span>Kode Kedudukan</span>
+              <input id="invoiceKodeKedudukan" type="text" autocomplete="off" />
+            </label>
+            <label class="field" for="invoiceAlamat">
+              <span>Alamat</span>
+              <input id="invoiceAlamat" type="text" autocomplete="off" />
+            </label>
+            <div class="invoice-field-row">
+              <label class="field" for="invoiceTarif">
+                <span>Tarif</span>
+                <input id="invoiceTarif" type="text" autocomplete="off" placeholder="R1" />
+              </label>
+              <label class="field" for="invoiceDaya">
+                <span>Daya</span>
+                <input id="invoiceDaya" type="text" autocomplete="off" placeholder="1300" />
+              </label>
+            </div>
+            <div class="invoice-field-row">
+              <label class="field" for="invoiceRekening">
+                <span>Rekening</span>
+                <input id="invoiceRekening" type="text" autocomplete="off" placeholder="JUNI 2026" />
+              </label>
+              <label class="field" for="invoiceKota">
+                <span>Kota</span>
+                <input id="invoiceKota" type="text" autocomplete="off" value="Sabak" />
+              </label>
+            </div>
+            <div class="invoice-field-row">
+              <label class="field" for="invoiceTagihan">
+                <span>Tagihan</span>
+                <input id="invoiceTagihan" type="text" inputmode="numeric" autocomplete="off" placeholder="485323" />
+              </label>
+              <label class="field" for="invoiceTerlambat">
+                <span>Biaya Terlambat</span>
+                <input id="invoiceTerlambat" type="text" inputmode="numeric" autocomplete="off" value="0" />
+              </label>
+            </div>
+            <label class="field" for="invoiceManager">
+              <span>Manager</span>
+              <input id="invoiceManager" type="text" autocomplete="off" value="MARWAN MASALAN" />
+            </label>
+            <p class="auto-note" id="invoiceStatus">Preview akan berubah otomatis saat data diketik.</p>
+          </form>
+
+          <section class="invoice-preview-card">
+            <div class="invoice-preview-head">
+              <h2>Preview Cetak</h2>
+              <p>Gunakan kertas 9,5&quot; x 11&quot; pada driver printer.</p>
+            </div>
+            <div class="invoice-print-area" id="invoicePrintArea">
+              <pre id="invoicePreviewText"></pre>
+            </div>
+          </section>
+        </section>
+      </section>
+
       <section class="tab-panel" data-tab-panel="premium" hidden>
         <div class="section-head">
           <div>
@@ -564,6 +651,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260622-table-maximize"></script>
+    <script src="./app.js?v=20260622-invoice-print"></script>
   </body>
 </html>

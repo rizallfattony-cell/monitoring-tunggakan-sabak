@@ -158,6 +158,23 @@ const els = {
   comparisonTableDate: document.querySelector("#comparisonTableDate"),
   exportComparisonExcelButton: document.querySelector("#exportComparisonExcelButton"),
   exportComparisonJpgButton: document.querySelector("#exportComparisonJpgButton"),
+  invoiceForm: document.querySelector("#invoiceForm"),
+  invoiceIdpel: document.querySelector("#invoiceIdpel"),
+  invoiceNama: document.querySelector("#invoiceNama"),
+  invoiceKodeKedudukan: document.querySelector("#invoiceKodeKedudukan"),
+  invoiceAlamat: document.querySelector("#invoiceAlamat"),
+  invoiceTarif: document.querySelector("#invoiceTarif"),
+  invoiceDaya: document.querySelector("#invoiceDaya"),
+  invoiceRekening: document.querySelector("#invoiceRekening"),
+  invoiceKota: document.querySelector("#invoiceKota"),
+  invoiceTagihan: document.querySelector("#invoiceTagihan"),
+  invoiceTerlambat: document.querySelector("#invoiceTerlambat"),
+  invoiceManager: document.querySelector("#invoiceManager"),
+  invoiceStatus: document.querySelector("#invoiceStatus"),
+  invoicePreviewText: document.querySelector("#invoicePreviewText"),
+  refreshInvoicePreviewButton: document.querySelector("#refreshInvoicePreviewButton"),
+  printInvoiceButton: document.querySelector("#printInvoiceButton"),
+  loadInvoiceCustomerButton: document.querySelector("#loadInvoiceCustomerButton"),
   workspaceTabTitle: document.querySelector("#workspaceTabTitle"),
   treeToggleButtons: [...document.querySelectorAll("[data-tree-toggle]")],
   adminOnlyMenus: [...document.querySelectorAll(".admin-only-menu")],
@@ -172,6 +189,7 @@ async function boot() {
   setReportDate();
   renderSaldoAverageInputs();
   initializeDailyPelunasanControls();
+  initializeInvoiceForm();
   attachEvents();
   initSupabase();
   await hydrate();
@@ -187,6 +205,14 @@ async function boot() {
       recompute();
     }
   }
+}
+
+function initializeInvoiceForm() {
+  if (!els.invoiceForm) return;
+  if (els.invoiceRekening && !els.invoiceRekening.value) {
+    els.invoiceRekening.value = formatInvoiceMonth(new Date());
+  }
+  renderInvoicePreview();
 }
 
 function attachEvents() {
@@ -246,6 +272,16 @@ function attachEvents() {
   els.exportComparisonExcelButton?.addEventListener("click", exportComparisonMonitoringExcel);
   els.exportComparisonJpgButton?.addEventListener("click", exportComparisonMonitoringJpg);
   els.dailyTableBody?.addEventListener("click", handleDailyDetailClick);
+  els.invoiceForm?.addEventListener("input", renderInvoicePreview);
+  els.refreshInvoicePreviewButton?.addEventListener("click", renderInvoicePreview);
+  els.printInvoiceButton?.addEventListener("click", printInvoice);
+  els.loadInvoiceCustomerButton?.addEventListener("click", loadInvoiceCustomer);
+  els.invoiceIdpel?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      loadInvoiceCustomer();
+    }
+  });
   els.treeToggleButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const group = button.closest(".tree-group");
@@ -364,9 +400,185 @@ function tabTitle(tabName) {
     comparison: "Perbandingan Saldo Dengan Bulan Lalu",
     "saldo-rata": "Saldo Akhir Rata Rata",
     online: "Online & Sinkron",
+    invoice: "Cetak Invoice",
     premium: "Premium",
   };
   return titles[tabName] || "Overview";
+}
+
+function loadInvoiceCustomer() {
+  const idpel = normalizeId(els.invoiceIdpel?.value);
+  if (!idpel) {
+    setInvoiceStatus("Isi ID Pelanggan terlebih dahulu.");
+    return;
+  }
+  const customer = findInvoiceCustomer(idpel);
+  if (!customer) {
+    setInvoiceStatus(`IDPEL ${idpel} belum ditemukan di data upload. Silakan isi manual.`);
+    renderInvoicePreview();
+    return;
+  }
+  if (els.invoiceNama) els.invoiceNama.value = customer.nama || "";
+  if (els.invoiceAlamat) els.invoiceAlamat.value = customer.alamat || "";
+  if (els.invoiceTarif) els.invoiceTarif.value = customer.tarif || "";
+  if (els.invoiceDaya) els.invoiceDaya.value = customer.daya || "";
+  if (els.invoiceKodeKedudukan) els.invoiceKodeKedudukan.value = customer.koked || "";
+  if (els.invoiceTagihan) els.invoiceTagihan.value = customer.rupiah ? formatIntegerInput(customer.rupiah) : "";
+  if (els.invoiceTerlambat && !els.invoiceTerlambat.value) els.invoiceTerlambat.value = "0";
+  setInvoiceStatus(`Data IDPEL ${idpel} berhasil dimuat ke invoice.`);
+  renderInvoicePreview();
+}
+
+function findInvoiceCustomer(idpel) {
+  const key = normalizeId(idpel);
+  const saldo = [...state.akhir, ...state.awal].find((row) => normalizeId(row.idpel) === key);
+  const dil = state.dil.find((row) => normalizeId(row.idpel) === key);
+  if (!saldo && !dil) return null;
+  return {
+    idpel: key,
+    nama: saldo?.nama || dil?.nama || "",
+    alamat: saldo?.alamat || "",
+    tarif: saldo?.tarif || "",
+    daya: saldo?.daya || "",
+    koked: saldo?.koked || dil?.koked || "",
+    kolok: saldo?.kolok || dil?.kolok || "",
+    rupiah: Number(saldo?.rupiah || saldo?.rptag || 0),
+  };
+}
+
+function renderInvoicePreview() {
+  if (!els.invoicePreviewText) return;
+  els.invoicePreviewText.textContent = buildInvoiceText(readInvoiceForm());
+}
+
+function readInvoiceForm() {
+  const tagihan = parseFlexibleRupiah(els.invoiceTagihan?.value || 0);
+  const terlambat = parseFlexibleRupiah(els.invoiceTerlambat?.value || 0);
+  return {
+    idpel: cleanText(els.invoiceIdpel?.value || ""),
+    nama: cleanText(els.invoiceNama?.value || ""),
+    kodeKedudukan: cleanText(els.invoiceKodeKedudukan?.value || ""),
+    alamat: cleanText(els.invoiceAlamat?.value || ""),
+    tarif: cleanText(els.invoiceTarif?.value || ""),
+    daya: cleanText(els.invoiceDaya?.value || ""),
+    rekening: cleanText(els.invoiceRekening?.value || formatInvoiceMonth(new Date())).toUpperCase(),
+    kota: cleanText(els.invoiceKota?.value || "Sabak"),
+    tagihan,
+    terlambat,
+    total: tagihan + terlambat,
+    manager: cleanText(els.invoiceManager?.value || "MARWAN MASALAN").toUpperCase(),
+  };
+}
+
+function buildInvoiceText(data) {
+  const width = 95;
+  const rpX = 68;
+  const rightValueWidth = 15;
+  const lines = [
+    "PT. PLN (PERSERO) UID S2JB",
+    "UP3 JAMBI",
+    "ULP SABAK",
+    "",
+    centerInvoiceText("AYO BAYAR LISTRIK DI AWAL BULAN", width),
+    "          " + "-".repeat(70),
+    "Kepada Yth.",
+    invoiceTwoColumn("Nama", data.nama, "", "", width),
+    invoiceTwoColumn("ID Pelanggan", data.idpel, "Kode kedudukan", data.kodeKedudukan, width),
+    invoiceTwoColumn("Alamat", data.alamat, "", "", width),
+    invoiceTwoColumn("Tarip / daya", [data.tarif, data.daya].filter(Boolean).join("/"), "", "", width),
+    invoiceMoneyLine("Rekening", data.rekening, data.tagihan, rpX, rightValueWidth),
+    invoiceMoneyLine("Jumlah Biaya Keterlambatan s.d bulan", "", data.terlambat, rpX, rightValueWidth),
+    invoiceMoneyLine("Jumlah Tagihan ( belum termasuk biaya Administrasi )", "", data.total, rpX, rightValueWidth, true),
+    "",
+    "",
+    ...wrapInvoiceParagraph("Dengan ini kami informasikan tagihan listrik saudara/i sesuai dengan data di atas. Kami menghimbau agar dapat melunasi tagihan rekening listrik sebelum tanggal 20 setiap bulannya dan bila telat dari tempo yang sudah di tentukan maka akan kami lakukan pemutusan sementara dan migrasi ke KWH Prabayar. Terimakasih bagi pelanggan yang sudah tepat waktu,selamat menikmati aliran listrik.\"SALAM LISTRIK UNTUK KEHIDUPAN YANG LEBIH BAIK\".", width),
+    "",
+    "          BUKTI PENGANTAR",
+    "------------------------------------------------",
+    invoiceDottedLine("Nama Penerima", 30),
+    "",
+    invoiceDottedLine("No. HP Pelanggan", 30),
+    "",
+    invoiceDottedLine("Komitmen Bayar", 30),
+    "",
+    invoiceDottedLine("Tanda Tangan", 30),
+    "------------------------------------------------",
+    padInvoice("", 58) + `${data.kota},`.padEnd(18) + data.rekening,
+    padInvoice("", 78) + "Manager",
+    "",
+    "",
+    "",
+    padInvoice("", 74) + data.manager,
+    centerInvoiceText('"ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN"', width),
+  ];
+  return lines.join("\n");
+}
+
+function invoiceTwoColumn(label, value, rightLabel, rightValue, width) {
+  const left = `${label.padEnd(13)}: ${value || ""}`;
+  if (!rightLabel) return left;
+  const right = `${rightLabel} : ${rightValue || ""}`;
+  return left.padEnd(Math.max(54, width - right.length)) + right;
+}
+
+function invoiceMoneyLine(label, value, amount, rpX, rightValueWidth, bold = false) {
+  const left = value ? `${label.padEnd(13)}: ${value}` : `${label} :`;
+  const amountText = formatInvoiceMoney(amount);
+  const line = left.padEnd(rpX) + "Rp:" + amountText.padStart(rightValueWidth);
+  return bold ? line : line;
+}
+
+function invoiceDottedLine(label, length) {
+  return `${label.padEnd(17)}: ${".".repeat(length)}`;
+}
+
+function wrapInvoiceParagraph(text, width) {
+  const words = text.split(/\s+/);
+  const lines = [];
+  let line = "";
+  words.forEach((word) => {
+    const next = line ? `${line} ${word}` : word;
+    if (next.length > width) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+
+function centerInvoiceText(text, width) {
+  const value = String(text || "");
+  const left = Math.max(0, Math.floor((width - value.length) / 2));
+  return `${" ".repeat(left)}${value}`;
+}
+
+function padInvoice(text, width) {
+  return String(text || "").padEnd(width);
+}
+
+function formatInvoiceMoney(value) {
+  return formatNumber(Math.round(Number(value || 0)));
+}
+
+function formatInvoiceMonth(value) {
+  return new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    year: "numeric",
+  }).format(value).toUpperCase();
+}
+
+function printInvoice() {
+  renderInvoicePreview();
+  document.body.classList.add("invoice-printing");
+  window.setTimeout(() => window.print(), 100);
+  window.setTimeout(() => document.body.classList.remove("invoice-printing"), 1200);
+}
+
+function setInvoiceStatus(message) {
+  if (els.invoiceStatus) els.invoiceStatus.textContent = message;
 }
 
 async function hydrate() {
