@@ -259,6 +259,53 @@ function attachEvents() {
       switchTab(button.dataset.tab);
     });
   });
+  initializeTableMaximizeButtons();
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeMaximizedTable();
+  });
+}
+
+function initializeTableMaximizeButtons() {
+  document.querySelectorAll(".table-section").forEach((section) => {
+    const heading = section.querySelector(".report-heading");
+    if (!heading || heading.querySelector("[data-table-maximize]")) return;
+    let actions = heading.querySelector(".daily-report-actions, .table-heading-actions");
+    if (!actions) {
+      actions = document.createElement("div");
+      actions.className = "table-heading-actions";
+      heading.appendChild(actions);
+    }
+    const button = document.createElement("button");
+    button.className = "button secondary table-maximize-button";
+    button.type = "button";
+    button.dataset.tableMaximize = "true";
+    button.textContent = "Maximize";
+    button.addEventListener("click", () => toggleTableMaximize(section));
+    actions.prepend(button);
+  });
+}
+
+function toggleTableMaximize(section) {
+  const isActive = section.classList.contains("is-maximized");
+  closeMaximizedTable();
+  if (isActive) return;
+  section.classList.add("is-maximized");
+  document.body.classList.add("table-maximize-open");
+  updateMaximizeButton(section, true);
+}
+
+function closeMaximizedTable() {
+  document.querySelectorAll(".table-section.is-maximized").forEach((section) => {
+    section.classList.remove("is-maximized");
+    updateMaximizeButton(section, false);
+  });
+  document.body.classList.remove("table-maximize-open");
+}
+
+function updateMaximizeButton(section, active) {
+  const button = section.querySelector("[data-table-maximize]");
+  if (!button) return;
+  button.textContent = active ? "Tutup Maximize" : "Maximize";
 }
 
 function switchTab(tabName) {
