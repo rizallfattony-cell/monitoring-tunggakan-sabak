@@ -68,7 +68,8 @@
               </button>
               <div class="tree-children">
                 <button class="tree-child" type="button" data-tab="laporan">Monitoring Saldo Tunggakan</button>
-                <button class="tree-child admin-only-menu" type="button" data-tab="comparison">Perbandingan Saldo Dengan Bulan Lalu</button>
+                <button class="tree-child admin-only-menu" type="button" data-tab="comparison" data-comparison-mode="rptag">Perbandingan Saldo Dengan Bulan Lalu RPTAG</button>
+                <button class="tree-child admin-only-menu" type="button" data-tab="comparison" data-comparison-mode="rpptl">Perbandingan Saldo Dengan Bulan Lalu RPPTL</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="saldo-rata">Laporan Saldo Akhir Rata-rata</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="pelunasan-harian">Pelunasan Harian</button>
               </div>
@@ -289,7 +290,7 @@
       <section class="tab-panel" data-tab-panel="comparison" hidden>
         <div class="section-head">
           <div>
-            <h2>Perbandingan Saldo Dengan Bulan Lalu</h2>
+            <h2 id="comparisonPanelTitle">Perbandingan Saldo Dengan Bulan Lalu RPTAG</h2>
             <p>Upload saldo harian dan saldo bulan lalu berdasarkan tanggal untuk membandingkan pelunasan kumulatif, harian, dan progres bulan lalu.</p>
           </div>
           <div class="section-actions">
@@ -344,7 +345,7 @@
         <section class="table-section comparison-table-section">
           <div class="report-heading">
             <div>
-              <h2>Perbandingan Saldo Dengan Bulan Lalu</h2>
+              <h2 id="comparisonReportTitle">Perbandingan Saldo Dengan Bulan Lalu RPTAG</h2>
               <p id="comparisonTableDate">-</p>
             </div>
           </div>
