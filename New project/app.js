@@ -1391,9 +1391,9 @@ function updateOnlineUi() {
   const online = Boolean(state.user);
   if (els.authGate) els.authGate.hidden = online;
   if (els.appShell) els.appShell.hidden = !online;
-  els.onlineButton.textContent = online ? "Online Aktif" : "Login Online";
-  els.loginForm.hidden = online;
-  els.syncActions.hidden = !online || state.profile?.role === "petugas";
+  if (els.onlineButton) els.onlineButton.textContent = online ? "Online Aktif" : "Login Online";
+  if (els.loginForm) els.loginForm.hidden = online;
+  if (els.syncActions) els.syncActions.hidden = !online || state.profile?.role === "petugas";
   if (els.premiumPanel) els.premiumPanel.hidden = !online || state.profile?.role !== "admin";
   applyRoleView();
   updateHeaderActions();
@@ -1429,10 +1429,10 @@ function applyRoleView() {
   if (dailyPanel && petugasMode) dailyPanel.hidden = true;
   if (comparisonPanel && petugasMode) comparisonPanel.hidden = true;
   if (petugasMode && ["saldo-rata", "pelunasan-harian", "comparison", "premium"].includes(state.activeTab)) switchTab("laporan");
-  els.uploadGrid.hidden = petugasMode;
-  els.summaryGrid.hidden = petugasMode;
-  els.toolbar.hidden = false;
-  els.anomalySection.hidden = petugasMode;
+  if (els.uploadGrid) els.uploadGrid.hidden = petugasMode;
+  if (els.summaryGrid) els.summaryGrid.hidden = petugasMode;
+  if (els.toolbar) els.toolbar.hidden = false;
+  if (els.anomalySection) els.anomalySection.hidden = petugasMode;
   updateHeaderActions();
 }
 
