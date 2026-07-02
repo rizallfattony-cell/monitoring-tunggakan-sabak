@@ -651,14 +651,34 @@ async function loginOnline(source = "panel") {
 
   setOnlineStatus("Login...");
   setGateStatus("Login...");
-  const { data, error } = await state.supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) {
-    setOnlineStatus(`Login gagal: ${error.message}`);
-    setGateStatus(`Login gagal: ${error.message}`);
-    return;
+  let loginData = null;
+  let loginError = null;
+  try {
+    const { data, error } = await state.supabaseClient.auth.signInWithPassword({ email, password });
+    loginData = data;
+    loginError = error;
+  } catch (error) {
+    loginError = error;
   }
 
-  state.user = data.user;
+  if (loginError) {
+    const fallback = await loginOnlineViaRest(email, password);
+    if (fallback.error) {
+      const message = describeLoginError(fallback.error || loginError);
+      setOnlineStatus(`Login gagal: ${message}`);
+      setGateStatus(`Login gagal: ${message}`);
+      return;
+    }
+    loginData = fallback.data;
+  }
+
+  state.user = loginData?.user || loginData?.session?.user || null;
+  if (!state.user) {
+    const message = "Login gagal: respons Supabase tidak berisi data user.";
+    setOnlineStatus(message);
+    setGateStatus(message);
+    return;
+  }
   await loadProfile();
   if (els.passwordInput) els.passwordInput.value = "";
   if (els.gatePasswordInput) els.gatePasswordInput.value = "";
@@ -668,6 +688,67 @@ async function loginOnline(source = "panel") {
   } else {
     await loadPremiumRequests();
     await loadCloudData({ silentIfEmpty: true, automatic: true });
+  }
+}
+
+async function loginOnlineViaRest(email, password) {
+  const config = window.MONITORING_SUPABASE || {};
+  try {
+    const response = await fetch(`${config.url}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: config.anonKey,
+        Authorization: `Bearer ${config.anonKey}`,
+      },
+      body: JSON.stringify({ email, password }),
+    });
+    const text = await response.text();
+    const payload = text ? safeJsonParse(text) : {};
+    if (!response.ok) {
+      return { error: payload || { message: text || `HTTP ${response.status}` } };
+    }
+    if (payload?.access_token && payload?.refresh_token) {
+      await state.supabaseClient.auth.setSession({
+        access_token: payload.access_token,
+        refresh_token: payload.refresh_token,
+      });
+    }
+    return {
+      data: {
+        user: payload?.user || null,
+        session: payload?.access_token ? {
+          access_token: payload.access_token,
+          refresh_token: payload.refresh_token,
+          user: payload?.user || null,
+        } : null,
+      },
+      error: null,
+    };
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
+function safeJsonParse(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+}
+
+function describeLoginError(error) {
+  if (!error) return "Tidak ada detail error dari Supabase.";
+  if (typeof error === "string") return error;
+  const message = error.message || error.error_description || error.msg || error.error;
+  if (message) return message;
+  if (error.status || error.statusCode) return `HTTP ${error.status || error.statusCode}`;
+  try {
+    const json = JSON.stringify(error);
+    return json && json !== "{}" ? json : "Tidak bisa menghubungi Supabase. Cek koneksi internet, URL Supabase, dan anon key.";
+  } catch {
+    return "Tidak bisa membaca detail error login.";
   }
 }
 
