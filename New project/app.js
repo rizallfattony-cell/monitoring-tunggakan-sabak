@@ -10,10 +10,6 @@ const SALDO_AVERAGE_FIELDS = [
   { key: "kogol4", label: "KOGOL 4" },
 ];
 const COMPARISON_KOLOK_KEYS = ["A", "B", "C", "D", "E", "F", "G", "J"];
-const COMPARISON_AMOUNT_MODES = {
-  rptag: { label: "RPTAG", field: "rptag", slug: "rptag" },
-  rpptl: { label: "RPPTL", field: "rpptl", slug: "rpptl" },
-};
 const WORK_MOTIVATION_QUOTES = [
   "Kerja yang rapi hari ini membuat masalah besok jauh lebih ringan.",
   "Disiplin kecil yang dilakukan konsisten akan mengalahkan semangat besar yang hanya sesekali.",
@@ -298,7 +294,6 @@ function attachEvents() {
     if (button.hasAttribute("data-tree-toggle")) return;
     button.addEventListener("click", () => {
       if (button.dataset.uploadView) setUploadView(button.dataset.uploadView);
-      if (button.dataset.comparisonMode) setComparisonMode(button.dataset.comparisonMode);
       switchTab(button.dataset.tab);
     });
   });
@@ -405,7 +400,7 @@ function tabTitle(tabName) {
     upload: "Upload Data",
     laporan: "Laporan",
     "pelunasan-harian": "Pelunasan Harian",
-    comparison: comparisonTitle(),
+    comparison: "Perbandingan Saldo Dengan Bulan Lalu",
     "saldo-rata": "Saldo Akhir Rata Rata",
     online: "Online & Sinkron",
     invoice: "Cetak Invoice",
@@ -1593,7 +1588,6 @@ function normalizeSaldo(rows) {
   return rows
     .map((row) => {
       const rptag = parseCurrency(getValue(row, ["RPTAG", "RP TAG", "RP TAGIHAN", "TAGIHAN"], ["RPTAG"]));
-      const rpptl = parseCurrency(getValue(row, ["RPPTL", "RP PTL", "RP_PTL", "PTL"], ["RPPTL"]));
       const rpbk = parseCurrency(getValue(row, ["RPBK", "RP BK", "BIAYA KETERLAMBATAN"], ["RPBK"]));
       return {
         idpel: normalizeId(getValue(row, ["IDPEL", "ID PEL", "ID_PEL", "ID PELANGGAN", "NO IDPEL"])),
@@ -1605,7 +1599,6 @@ function normalizeSaldo(rows) {
         kolok: cleanText(getValue(row, ["KOLOK", "KOL OK", "KODE LOKASI"])),
         koked: cleanText(getValue(row, ["KOKED", "KO KED", "KODE KEDUDUKAN"])),
         rptag,
-        rpptl,
         rpbk,
         rupiah: rptag + rpbk,
       };
@@ -1690,7 +1683,7 @@ function buildDilMap(rows) {
   return { byId, petugasNames, anomalies };
 }
 
-function groupSaldoByPetugas(rows, dilMap, label, amountField = "rupiah") {
+function groupSaldoByPetugas(rows, dilMap, label) {
   const grouped = new Map();
   const seen = new Set();
   const duplicates = new Set();
@@ -1711,13 +1704,12 @@ function groupSaldoByPetugas(rows, dilMap, label, amountField = "rupiah") {
 
     const petugas = dil.petugas;
     const current = grouped.get(petugas) || emptySide();
-    const amount = Number(row[amountField] ?? row.rupiah ?? 0);
     current.ids.add(row.idpel);
-    current.rupiah += amount;
+    current.rupiah += row.rupiah;
     current.count = current.ids.size;
     const existingDetail = current.rowMap.get(row.idpel);
     if (existingDetail) {
-      existingDetail.rptag += amount;
+      existingDetail.rptag += row.rupiah;
       existingDetail.lembar += row.lembar;
     } else {
       current.rowMap.set(row.idpel, {
@@ -1729,7 +1721,7 @@ function groupSaldoByPetugas(rows, dilMap, label, amountField = "rupiah") {
         lembar: row.lembar,
         kolok: dil.kolok,
         koked: dil.koked,
-        rptag: amount,
+        rptag: row.rupiah,
         petugas,
       });
     }
@@ -2477,7 +2469,6 @@ async function resetData() {
 function emptyComparisonMonitoringState() {
   const selectedMonth = new Date().toISOString().slice(0, 7);
   return {
-    mode: "rptag",
     saldoPagi: [],
     saldoSore: [],
     sisaBulanLalu: [],
@@ -2498,7 +2489,6 @@ function normalizeComparisonMonitoringState(value) {
   const source = value || {};
   const selectedMonth = normalizeMonthKey(source.selectedMonth || base.selectedMonth);
   return {
-    mode: normalizeComparisonMode(source.mode),
     saldoPagi: Array.isArray(source.saldoPagi) ? source.saldoPagi : [],
     saldoSore: Array.isArray(source.saldoSore) ? source.saldoSore : [],
     sisaBulanLalu: Array.isArray(source.sisaBulanLalu) ? source.sisaBulanLalu : [],
@@ -2512,40 +2502,6 @@ function normalizeComparisonMonitoringState(value) {
     labels: source.labels || {},
     uploadMeta: normalizeUploadMeta(source.uploadMeta),
   };
-}
-
-function normalizeComparisonMode(value) {
-  return value === "rpptl" ? "rpptl" : "rptag";
-}
-
-function comparisonMode() {
-  state.comparisonMonitoring.mode = normalizeComparisonMode(state.comparisonMonitoring.mode);
-  return state.comparisonMonitoring.mode;
-}
-
-function comparisonAmountConfig() {
-  return COMPARISON_AMOUNT_MODES[comparisonMode()] || COMPARISON_AMOUNT_MODES.rptag;
-}
-
-function comparisonAmountLabel() {
-  return comparisonAmountConfig().label;
-}
-
-function comparisonTitle() {
-  return `Perbandingan Saldo Dengan Bulan Lalu ${comparisonAmountLabel()}`;
-}
-
-function setComparisonMode(mode) {
-  state.comparisonMonitoring.mode = normalizeComparisonMode(mode);
-  renderComparisonMonitoring();
-  scheduleComparisonMonitoringSave();
-}
-
-function updateComparisonTitles() {
-  const title = comparisonTitle();
-  if (els.comparisonPanelTitle) els.comparisonPanelTitle.textContent = title;
-  if (els.comparisonReportTitle) els.comparisonReportTitle.textContent = title;
-  if (els.workspaceTabTitle && state.activeTab === "comparison") els.workspaceTabTitle.textContent = title;
 }
 
 function normalizeComparisonSnapshotMap(value) {
@@ -2672,18 +2628,16 @@ async function handleComparisonUpload(event, kind) {
 }
 
 function renderComparisonMonitoring() {
-  updateComparisonTitles();
   syncComparisonControls();
   renderComparisonMonitoringTable();
 }
 
 function calculateComparisonMonitoringRows() {
   const dilMap = buildDilMap(state.dil);
-  const amountField = comparisonAmountConfig().field;
-  const awalGrouped = groupSaldoByPetugas(state.awal, dilMap, "saldo awal perbandingan", amountField);
-  const dailyAwalGrouped = groupSaldoByPetugas(comparisonSnapshotRows("dailyAwal"), dilMap, "saldo awal tanggal", amountField);
-  const dailyAkhirGrouped = groupSaldoByPetugas(comparisonSnapshotRows("dailyAkhir"), dilMap, "saldo akhir tanggal", amountField);
-  const lastGrouped = groupSaldoByPetugas(comparisonSnapshotRows("lastMonth"), dilMap, "saldo bulan lalu", amountField);
+  const awalGrouped = groupSaldoByPetugas(state.awal, dilMap, "saldo awal perbandingan");
+  const dailyAwalGrouped = groupSaldoByPetugas(comparisonSnapshotRows("dailyAwal"), dilMap, "saldo awal tanggal");
+  const dailyAkhirGrouped = groupSaldoByPetugas(comparisonSnapshotRows("dailyAkhir"), dilMap, "saldo akhir tanggal");
+  const lastGrouped = groupSaldoByPetugas(comparisonSnapshotRows("lastMonth"), dilMap, "saldo bulan lalu");
   const names = new Set([...awalGrouped.keys(), ...dailyAwalGrouped.keys(), ...dailyAkhirGrouped.keys(), ...lastGrouped.keys()]);
 
   return [...names].sort((a, b) => a.localeCompare(b, "id-ID")).map((petugas) => {
@@ -2823,7 +2777,6 @@ function comparisonTableLabels() {
   const dailyAkhirDay = Number(state.comparisonMonitoring.selectedDailyAkhirDate?.slice(-2) || 1);
   const lastMonthDay = Number(state.comparisonMonitoring.selectedLastMonthDate?.slice(-2) || 1);
   return {
-    amountLabel: comparisonAmountLabel(),
     saldoAwal: "SALDO AWAL",
     dailyAwal: `SALDO AWAL TGL ${dailyAwalDay}`,
     dailyAkhir: `SALDO AKHIR TGL ${dailyAkhirDay}`,
@@ -2855,17 +2808,17 @@ function comparisonTableHeaderTemplate(labels) {
       <th colspan="2">%</th>
     </tr>
     <tr>
-      <th>ID PEL</th><th>${escapeHtml(labels.amountLabel)}</th>
+      <th>ID PEL</th><th>RPTAG</th>
       ${COMPARISON_KOLOK_KEYS.map((key) => `<th>${key}</th>`).join("")}
-      <th>ID PEL</th><th>${escapeHtml(labels.amountLabel)}</th>
-      <th>ID PEL</th><th>${escapeHtml(labels.amountLabel)}</th>
-      <th>ID PEL</th><th>${escapeHtml(labels.amountLabel)}</th>
-      <th>ID</th><th>${escapeHtml(labels.amountLabel)}</th>
-      <th>ID</th><th>${escapeHtml(labels.amountLabel)}</th>
-      <th>ID</th><th>${escapeHtml(labels.amountLabel)}</th>
-      <th>ID PEL</th><th>${escapeHtml(labels.amountLabel)}</th>
-      <th>ID PEL</th><th>${escapeHtml(labels.amountLabel)}</th>
-      <th>ID PEL</th><th>${escapeHtml(labels.amountLabel)}</th>
+      <th>ID PEL</th><th>RP TAG</th>
+      <th>ID PEL</th><th>RP TAG</th>
+      <th>ID PEL</th><th>RP TAG</th>
+      <th>ID</th><th>RPTAG</th>
+      <th>ID</th><th>RPTAG</th>
+      <th>ID</th><th>RPTAG</th>
+      <th>ID PEL</th><th>RPTAG</th>
+      <th>ID PEL</th><th>RPTAG</th>
+      <th>ID PEL</th><th>RPTAG</th>
     </tr>
   `;
 }
@@ -2967,16 +2920,14 @@ function getComparisonExportRows() {
 
 function exportComparisonMonitoringExcel() {
   const { rows, totals, labels } = getComparisonExportRows();
-  const title = comparisonTitle();
-  const slug = comparisonAmountConfig().slug;
   if (!rows.length) {
-    alert(`Belum ada data ${title} untuk diexport.`);
+    alert("Belum ada data Perbandingan Saldo Dengan Bulan Lalu untuk diexport.");
     return;
   }
-  startProgress("Download Excel", `Menyiapkan workbook ${title}...`);
+  startProgress("Download Excel", "Menyiapkan workbook Perbandingan Saldo Dengan Bulan Lalu...");
   const headerTop = ["NO", "PETUGAS", labels.saldoAwal, "", "PELUNASAN KUMULATIF", ...Array(13).fill(""), "PELUNASAN HARIAN", ...Array(5).fill(""), "PERBANDINGAN DENGAN BULAN LALU", ...Array(5).fill("")];
   const headerGroup = ["", "", "", "", "SISA PER KOLOK", ...Array(7).fill(""), "TOTAL SISA", "", "TOTAL PELUNASAN", "", "%", "", labels.dailyAwal, "", labels.dailyAkhir, "", labels.lunas, "", labels.lastMonth, "", "PROGRES DG BULAN LALU", "", "%", ""];
-  const headerSub = ["", "", "ID PEL", labels.amountLabel, ...COMPARISON_KOLOK_KEYS, "ID PEL", labels.amountLabel, "ID PEL", labels.amountLabel, "ID PEL", labels.amountLabel, "ID", labels.amountLabel, "ID", labels.amountLabel, "ID", labels.amountLabel, "ID PEL", labels.amountLabel, "ID PEL", labels.amountLabel, "ID PEL", labels.amountLabel];
+  const headerSub = ["", "", "ID PEL", "RPTAG", ...COMPARISON_KOLOK_KEYS, "ID PEL", "RP TAG", "ID PEL", "RP TAG", "ID PEL", "RP TAG", "ID", "RPTAG", "ID", "RPTAG", "ID", "RPTAG", "ID PEL", "RPTAG", "ID PEL", "RPTAG", "ID PEL", "RPTAG"];
   const dataRows = rows.map((row, index) => comparisonRowToArray(row, index + 1));
   const tableRows = [
     headerTop,
@@ -3014,7 +2965,7 @@ function exportComparisonMonitoringExcel() {
   styleComparisonWorksheet(worksheet, rows.length);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Perbandingan");
-  XLSX.writeFile(workbook, `perbandingan-saldo-dengan-bulan-lalu-${slug}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  XLSX.writeFile(workbook, `perbandingan-saldo-dengan-bulan-lalu-${new Date().toISOString().slice(0, 10)}.xlsx`);
   finishProgress("Download Excel Perbandingan Saldo selesai.");
 }
 
@@ -3087,13 +3038,11 @@ function styleComparisonWorksheet(worksheet, dataRowCount) {
 
 function exportComparisonMonitoringJpg() {
   const { rows, totals, labels } = getComparisonExportRows();
-  const title = comparisonTitle();
-  const slug = comparisonAmountConfig().slug;
   if (!rows.length) {
-    alert(`Belum ada data ${title} untuk didownload.`);
+    alert("Belum ada data Perbandingan Saldo Dengan Bulan Lalu untuk didownload.");
     return;
   }
-  startProgress("Download JPG", `Menggambar tabel ${title}...`);
+  startProgress("Download JPG", "Menggambar tabel Perbandingan Saldo Dengan Bulan Lalu...");
   const exportRows = [...rows, { ...totals, petugas: "TOTAL", total: true }];
   const columns = comparisonCanvasColumns();
   const scale = 2;
@@ -3114,7 +3063,7 @@ function exportComparisonMonitoringJpg() {
   ctx.fillRect(0, 0, width, height);
   ctx.fillStyle = "#000";
   ctx.font = "700 18px Consolas, monospace";
-  ctx.fillText(title.toUpperCase(), margin, 28);
+  ctx.fillText("PERBANDINGAN SALDO DENGAN BULAN LALU", margin, 28);
   ctx.font = "700 12px Consolas, monospace";
   ctx.fillText(new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).format(new Date()).toUpperCase(), margin, 48);
   drawComparisonCanvasHeader(ctx, columns, labels, margin, titleHeight, groupHeight, headerHeight, subHeaderHeight);
@@ -3136,7 +3085,7 @@ function exportComparisonMonitoringJpg() {
     y += rowHeight;
   });
   const link = document.createElement("a");
-  link.download = `perbandingan-saldo-dengan-bulan-lalu-${slug}-${new Date().toISOString().slice(0, 10)}.jpg`;
+  link.download = `perbandingan-saldo-dengan-bulan-lalu-${new Date().toISOString().slice(0, 10)}.jpg`;
   link.href = canvas.toDataURL("image/jpeg", 0.94);
   link.click();
   finishProgress("Download JPG Perbandingan Saldo selesai.");
@@ -3202,17 +3151,17 @@ function drawComparisonCanvasHeader(ctx, columns, labels, startX, y, groupHeight
   });
 
   const subLabels = [
-    "ID PEL", labels.amountLabel,
+    "ID PEL", "RPTAG",
     ...COMPARISON_KOLOK_KEYS,
-    "ID PEL", labels.amountLabel,
-    "ID PEL", labels.amountLabel,
-    "ID PEL", labels.amountLabel,
-    "ID", labels.amountLabel,
-    "ID", labels.amountLabel,
-    "ID", labels.amountLabel,
-    "ID PEL", labels.amountLabel,
-    "ID PEL", labels.amountLabel,
-    "ID PEL", labels.amountLabel,
+    "ID PEL", "RP TAG",
+    "ID PEL", "RP TAG",
+    "ID PEL", "RP TAG",
+    "ID", "RPTAG",
+    "ID", "RPTAG",
+    "ID", "RPTAG",
+    "ID PEL", "RPTAG",
+    "ID PEL", "RPTAG",
+    "ID PEL", "RPTAG",
   ];
   subLabels.forEach((label, index) => {
     const columnIndex = index + 2;
