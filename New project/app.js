@@ -815,13 +815,18 @@ async function loadCloudData(options = {}) {
     .order("updated_at", { ascending: false })
     .limit(1);
 
-  const row = normalizeCloudStateRow(data) || recoverCloudStateRow(error);
+  let row = normalizeCloudStateRow(data) || recoverCloudStateRow(error);
   if (error) {
     if (!row) {
-      const message = describeSupabaseError(error);
-      failProgress(`Gagal ambil data online: ${message}`);
-      setOnlineStatus(`Gagal ambil data online: ${message}`);
-      return;
+      updateProgress(35, "Mencoba jalur cadangan data online...");
+      const fallback = await fetchCloudStateViaRest();
+      row = fallback.row;
+      if (!row) {
+        const message = describeSupabaseError(fallback.error || error);
+        failProgress(`Gagal ambil data online: ${message}`);
+        setOnlineStatus(`Gagal ambil data online: ${message}`);
+        return;
+      }
     }
     setOnlineStatus("Data online terbaca dari respons Supabase cadangan.");
   }
@@ -866,6 +871,29 @@ async function loadCloudData(options = {}) {
 function normalizeCloudStateRow(data) {
   if (Array.isArray(data)) return data.find((row) => row?.payload) || data[0] || null;
   return data || null;
+}
+
+async function fetchCloudStateViaRest() {
+  const config = window.MONITORING_SUPABASE || {};
+  try {
+    const { data: sessionData } = await state.supabaseClient.auth.getSession();
+    const token = sessionData?.session?.access_token || config.anonKey;
+    const url = `${config.url}/rest/v1/monitoring_app_state?select=payload,updated_at&id=eq.${encodeURIComponent(CLOUD_STATE_ID)}&order=updated_at.desc&limit=1`;
+    const response = await fetch(url, {
+      headers: {
+        apikey: config.anonKey,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const text = await response.text();
+    const payload = text ? safeJsonParse(text) : [];
+    if (!response.ok) {
+      return { row: null, error: payload || { message: text || `HTTP ${response.status}` } };
+    }
+    return { row: normalizeCloudStateRow(payload), error: null };
+  } catch (error) {
+    return { row: null, error };
+  }
 }
 
 function recoverCloudStateRow(error) {
