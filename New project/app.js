@@ -742,13 +742,32 @@ function describeLoginError(error) {
   if (!error) return "Tidak ada detail error dari Supabase.";
   if (typeof error === "string") return error;
   const message = error.message || error.error_description || error.msg || error.error;
+  if (message && /upstream connect error|delayed connect error|remote connection failure|server unavailable|503/i.test(message)) {
+    return "Server Supabase sedang tidak tersedia. Cek dashboard Supabase apakah project sedang paused/starting, atau tunggu beberapa menit lalu coba lagi.";
+  }
   if (message) return message;
+  if (error.status === 503 || error.statusCode === 503) {
+    return "Server Supabase sedang tidak tersedia. Cek dashboard Supabase apakah project sedang paused/starting, atau tunggu beberapa menit lalu coba lagi.";
+  }
   if (error.status || error.statusCode) return `HTTP ${error.status || error.statusCode}`;
   try {
     const json = JSON.stringify(error);
     return json && json !== "{}" ? json : "Tidak bisa menghubungi Supabase. Cek koneksi internet, URL Supabase, dan anon key.";
   } catch {
     return "Tidak bisa membaca detail error login.";
+  }
+}
+
+function describeSupabaseError(error) {
+  if (!error) return "Tidak ada detail error.";
+  if (typeof error === "string") return error;
+  const message = error.message || error.error_description || error.msg || error.error || error.details || error.hint;
+  if (message) return message;
+  try {
+    const json = JSON.stringify(error);
+    return json && json !== "{}" ? json : "Tidak ada detail error dari Supabase.";
+  } catch {
+    return "Tidak bisa membaca detail error Supabase.";
   }
 }
 
@@ -793,15 +812,22 @@ async function loadCloudData(options = {}) {
     .from("monitoring_app_state")
     .select("payload, updated_at")
     .eq("id", CLOUD_STATE_ID)
+    .order("updated_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
+  const row = data || recoverCloudStateRow(error);
   if (error) {
-    failProgress(`Gagal ambil data online: ${error.message}`);
-    setOnlineStatus(`Gagal ambil data online: ${error.message}`);
-    return;
+    if (!row) {
+      const message = describeSupabaseError(error);
+      failProgress(`Gagal ambil data online: ${message}`);
+      setOnlineStatus(`Gagal ambil data online: ${message}`);
+      return;
+    }
+    setOnlineStatus("Data online terbaca dari respons Supabase cadangan.");
   }
 
-  if (!data?.payload) {
+  if (!row?.payload) {
     finishProgress(options.silentIfEmpty ? "Login berhasil. Belum ada data online." : "Belum ada data online.");
     setOnlineStatus(options.silentIfEmpty ? "Login berhasil. Belum ada data online." : "Belum ada data online.");
     recompute();
@@ -811,7 +837,7 @@ async function loadCloudData(options = {}) {
   updateProgress(45, "Memuat DIL, saldo, dan stand meter...");
   let payload;
   try {
-    payload = await decodeCloudPayload(data.payload);
+    payload = await decodeCloudPayload(row.payload);
   } catch (error) {
     failProgress(`Gagal membaca data online: ${error.message}`);
     setOnlineStatus(`Gagal membaca data online: ${error.message}`);
@@ -834,8 +860,36 @@ async function loadCloudData(options = {}) {
   syncDailyUndoButton();
   renderDailyPelunasanTable();
   renderComparisonMonitoring();
-  finishProgress(`Data online dimuat. Update terakhir: ${formatDateTime(data.updated_at)}.`);
-  setOnlineStatus(`Data online dimuat. Update terakhir: ${formatDateTime(data.updated_at)}.`);
+  finishProgress(`Data online dimuat. Update terakhir: ${formatDateTime(row.updated_at)}.`);
+  setOnlineStatus(`Data online dimuat. Update terakhir: ${formatDateTime(row.updated_at)}.`);
+}
+
+function recoverCloudStateRow(error) {
+  const parsed = parseJsonFromError(error);
+  if (Array.isArray(parsed)) return parsed.find((row) => row?.payload) || null;
+  if (parsed?.payload) return parsed;
+  if (parsed?.data && Array.isArray(parsed.data)) return parsed.data.find((row) => row?.payload) || null;
+  return null;
+}
+
+function parseJsonFromError(error) {
+  const candidates = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    typeof error === "string" ? error : "",
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const text = String(candidate).trim();
+    const jsonStart = Math.min(
+      ...[text.indexOf("["), text.indexOf("{")].filter((index) => index >= 0)
+    );
+    if (!Number.isFinite(jsonStart)) continue;
+    const parsed = safeJsonParse(text.slice(jsonStart));
+    if (parsed && !parsed.message) return parsed;
+  }
+  return null;
 }
 
 async function loadPetugasData() {
@@ -1314,6 +1368,16 @@ async function encodeCloudPayload(payload) {
 }
 
 async function decodeCloudPayload(payload) {
+  if (typeof payload === "string") {
+    payload = safeJsonParse(payload);
+  }
+  if (Array.isArray(payload)) {
+    const row = payload.find((item) => item?.payload) || payload[0];
+    payload = row?.payload || row || {};
+  }
+  if (payload?.payload) {
+    payload = payload.payload;
+  }
   if (!payload?.encoding || payload.encoding !== "gzip-base64" || !payload.data) {
     return payload || {};
   }
