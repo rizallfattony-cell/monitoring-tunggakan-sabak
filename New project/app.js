@@ -813,10 +813,9 @@ async function loadCloudData(options = {}) {
     .select("payload, updated_at")
     .eq("id", CLOUD_STATE_ID)
     .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
 
-  const row = data || recoverCloudStateRow(error);
+  const row = normalizeCloudStateRow(data) || recoverCloudStateRow(error);
   if (error) {
     if (!row) {
       const message = describeSupabaseError(error);
@@ -862,6 +861,11 @@ async function loadCloudData(options = {}) {
   renderComparisonMonitoring();
   finishProgress(`Data online dimuat. Update terakhir: ${formatDateTime(row.updated_at)}.`);
   setOnlineStatus(`Data online dimuat. Update terakhir: ${formatDateTime(row.updated_at)}.`);
+}
+
+function normalizeCloudStateRow(data) {
+  if (Array.isArray(data)) return data.find((row) => row?.payload) || data[0] || null;
+  return data || null;
 }
 
 function recoverCloudStateRow(error) {
