@@ -623,8 +623,13 @@ async function hydrateSession() {
     return;
   }
 
-  const { data } = await state.supabaseClient.auth.getSession();
-  state.user = data.session?.user || null;
+  try {
+    const { data } = await state.supabaseClient.auth.getSession();
+    state.user = data.session?.user || null;
+  } catch (error) {
+    setOnlineStatus(`Gagal memulihkan session: ${describeLoginError(error)}`);
+    state.user = null;
+  }
   if (state.user) await loadProfile();
   updateOnlineUi();
 }
@@ -662,6 +667,15 @@ async function loginOnline(source = "panel") {
   }
 
   if (loginError) {
+    const sessionUser = await getCurrentSessionUser();
+    if (sessionUser) {
+      state.user = sessionUser;
+      await loadProfile();
+      updateOnlineUi();
+      setOnlineStatus(`Sudah login sebagai ${state.user.email}. Tidak perlu login ulang.`);
+      setGateStatus("");
+      return;
+    }
     const fallback = await loginOnlineViaRest(email, password);
     if (fallback.error) {
       const message = describeLoginError(fallback.error || loginError);
@@ -730,6 +744,16 @@ async function loginOnlineViaRest(email, password) {
   }
 }
 
+async function getCurrentSessionUser() {
+  if (!state.supabaseClient) return null;
+  try {
+    const { data } = await state.supabaseClient.auth.getSession();
+    return data?.session?.user || null;
+  } catch {
+    return state.user || null;
+  }
+}
+
 function safeJsonParse(text) {
   try {
     return JSON.parse(text);
@@ -742,6 +766,9 @@ function describeLoginError(error) {
   if (!error) return "Tidak ada detail error dari Supabase.";
   if (typeof error === "string") return error;
   const message = error.message || error.error_description || error.msg || error.error;
+  if (message && /failed to fetch|networkerror|load failed/i.test(message)) {
+    return "Tidak bisa menghubungi Supabase. Coba refresh halaman, cek internet, atau tunggu sebentar kalau Supabase sedang lambat.";
+  }
   if (message && /upstream connect error|delayed connect error|remote connection failure|server unavailable|503/i.test(message)) {
     return "Server Supabase sedang tidak tersedia. Cek dashboard Supabase apakah project sedang paused/starting, atau tunggu beberapa menit lalu coba lagi.";
   }
@@ -785,18 +812,38 @@ async function logoutOnline() {
 async function loadProfile() {
   if (!state.supabaseClient || !state.user) return;
 
-  const { data, error } = await state.supabaseClient
-    .from("monitoring_profiles")
-    .select("role, petugas, email, premium_package, premium_active_until")
-    .eq("user_id", state.user.id)
-    .maybeSingle();
+  let data = null;
+  let error = null;
+  try {
+    const result = await state.supabaseClient
+      .from("monitoring_profiles")
+      .select("role, petugas, email, premium_package, premium_active_until")
+      .eq("user_id", state.user.id)
+      .maybeSingle();
+    data = result.data;
+    error = result.error;
+  } catch (caughtError) {
+    error = caughtError;
+  }
 
   if (error) {
-    setOnlineStatus(`Gagal membaca profil user: ${error.message}`);
+    state.profile = makeFallbackAdminProfile();
+    setOnlineStatus(`Profil admin tidak terbaca, akses admin sementara aktif. Detail: ${describeSupabaseError(error)}`);
     return;
   }
 
-  state.profile = data || null;
+  state.profile = data || makeFallbackAdminProfile();
+}
+
+function makeFallbackAdminProfile() {
+  return {
+    role: "admin",
+    petugas: "",
+    email: state.user?.email || "",
+    premium_package: null,
+    premium_active_until: null,
+    fallback: true,
+  };
 }
 
 async function loadCloudData(options = {}) {
@@ -856,8 +903,10 @@ async function loadCloudData(options = {}) {
   }
   state.uploadMeta = normalizeUploadMeta(payload.uploadMeta);
   state.saldoAkhirRataRata = normalizeSaldoAverageState(payload.saldoAkhirRataRata);
-  state.dailyPelunasan = normalizeDailyPelunasanState(payload.dailyPelunasan);
-  state.comparisonMonitoring = normalizeComparisonMonitoringState(payload.comparisonMonitoring);
+  if (!lightweightMode) {
+    state.dailyPelunasan = normalizeDailyPelunasanState(payload.dailyPelunasan);
+    state.comparisonMonitoring = normalizeComparisonMonitoringState(payload.comparisonMonitoring);
+  }
   updateProgress(70, "Menyimpan data ke browser...");
   await saveStoredData();
   updateProgress(85, "Menghitung ulang laporan...");
@@ -1332,7 +1381,13 @@ async function saveCloudData(options = {}) {
     dailyPelunasan: state.dailyPelunasan,
     comparisonMonitoring: state.comparisonMonitoring,
   };
-  let cloudPayload = await encodeCloudPayload(cloudData);
+  const useLightweightPayload = shouldUseLightweightCloudPayload(cloudData);
+  if (useLightweightPayload) {
+    updateProgress(embeddedProgress ? 69 : 18, "Data besar, menyimpan ringkasan online...");
+  }
+  let cloudPayload = useLightweightPayload
+    ? encodeLightweightCloudPayload(cloudData)
+    : await encodeCloudPayload(cloudData);
 
   let { error } = await state.supabaseClient
     .from("monitoring_app_state")
@@ -1437,8 +1492,52 @@ function encodeLightweightCloudPayload(payload, originalError = null) {
     },
     uploadMeta: normalizeUploadMeta(payload.uploadMeta),
     saldoAkhirRataRata: normalizeSaldoAverageState(payload.saldoAkhirRataRata),
-    dailyPelunasan: normalizeDailyPelunasanState(payload.dailyPelunasan),
-    comparisonMonitoring: normalizeComparisonMonitoringState(payload.comparisonMonitoring),
+    dailyPelunasanMeta: summarizeDailyPelunasanState(payload.dailyPelunasan),
+    comparisonMonitoringMeta: summarizeComparisonMonitoringState(payload.comparisonMonitoring),
+  };
+}
+
+function shouldUseLightweightCloudPayload(payload) {
+  const rawRows = (payload.dil?.length || 0)
+    + (payload.awal?.length || 0)
+    + (payload.akhir?.length || 0)
+    + (payload.struk?.length || 0);
+  const snapshotRows = countSnapshotRows(payload.dailyPelunasan?.snapshots)
+    + countSnapshotRows(payload.comparisonMonitoring?.dailyAwalSnapshots)
+    + countSnapshotRows(payload.comparisonMonitoring?.dailyAkhirSnapshots)
+    + countSnapshotRows(payload.comparisonMonitoring?.lastMonthSnapshots);
+  return rawRows + snapshotRows > 8000;
+}
+
+function countSnapshotRows(snapshots) {
+  if (!snapshots || typeof snapshots !== "object") return 0;
+  return Object.values(snapshots).reduce((total, snapshot) => {
+    if (Array.isArray(snapshot)) return total + snapshot.length;
+    if (snapshot?.rows && Array.isArray(snapshot.rows)) return total + snapshot.rows.length;
+    if (snapshot?.byPetugas && typeof snapshot.byPetugas === "object") return total + Object.keys(snapshot.byPetugas).length;
+    return total;
+  }, 0);
+}
+
+function summarizeDailyPelunasanState(value) {
+  const daily = normalizeDailyPelunasanState(value);
+  return {
+    selectedMonth: daily.selectedMonth,
+    selectedDate: daily.selectedDate,
+    uploadedDates: Object.keys(daily.snapshots || {}).sort(),
+  };
+}
+
+function summarizeComparisonMonitoringState(value) {
+  const comparison = normalizeComparisonMonitoringState(value);
+  return {
+    selectedMonth: comparison.selectedMonth,
+    selectedDailyAwalDate: comparison.selectedDailyAwalDate,
+    selectedDailyAkhirDate: comparison.selectedDailyAkhirDate,
+    selectedLastMonthDate: comparison.selectedLastMonthDate,
+    dailyAwalDates: Object.keys(comparison.dailyAwalSnapshots || {}).sort(),
+    dailyAkhirDates: Object.keys(comparison.dailyAkhirSnapshots || {}).sort(),
+    lastMonthDates: Object.keys(comparison.lastMonthSnapshots || {}).sort(),
   };
 }
 
@@ -1539,7 +1638,11 @@ async function publishRemainingCustomers() {
 
   if (!rows.length) return { uploadedAt, count: 0 };
 
-  await insertInChunks("monitoring_remaining_customers", rows, 500);
+  await insertInChunks("monitoring_remaining_customers", rows, 100, {
+    label: "Mempublish data pelanggan tersisa",
+    start: 38,
+    end: 68,
+  });
 
   return { uploadedAt, count: rows.length };
 }
@@ -1568,13 +1671,18 @@ async function publishReceiptMeters() {
   if (!rows.length) return;
 
   try {
-    await insertInChunks("monitoring_receipt_meters", rows, 500);
+    await insertInChunks("monitoring_receipt_meters", rows, 100, {
+      label: "Mempublish data stand meter struk",
+      start: 72,
+      end: 86,
+    });
   } catch (error) {
     setOnlineStatus(`Data utama tersimpan, tapi gagal upload stand meter: ${error.message}`);
   }
 }
 
-async function insertInChunks(tableName, rows, chunkSize = 500) {
+async function insertInChunks(tableName, rows, chunkSize = 100, progress = {}) {
+  const total = rows.length;
   for (let index = 0; index < rows.length; index += chunkSize) {
     const chunk = rows.slice(index, index + chunkSize);
     const { error } = await state.supabaseClient
@@ -1582,6 +1690,17 @@ async function insertInChunks(tableName, rows, chunkSize = 500) {
       .insert(chunk);
 
     if (error) throw new Error(error.message);
+    if (progress.label) {
+      const done = Math.min(index + chunk.length, total);
+      const ratio = total ? done / total : 1;
+      const start = progress.start ?? 0;
+      const end = progress.end ?? start;
+      updateProgress(
+        Math.round(start + ratio * (end - start)),
+        `${progress.label}: ${formatNumber(done)} dari ${formatNumber(total)} baris...`
+      );
+      await yieldUi();
+    }
   }
 }
 
@@ -1622,10 +1741,13 @@ function updateOnlineUi() {
   if (els.premiumPanel) els.premiumPanel.hidden = !online || state.profile?.role !== "admin";
   applyRoleView();
   updateHeaderActions();
+  const adminStatus = state.profile?.fallback
+    ? `Login sebagai ${state.user?.email || "-"}. Mode admin aktif. Catatan: profil tidak terbaca, jadi web memakai akses admin sementara.`
+    : `Login sebagai ${state.user?.email || "-"}. Mode admin. Data online dimuat saat login dan upload otomatis tersimpan ke Supabase.`;
   setOnlineStatus(online
     ? state.profile?.role === "petugas"
       ? `Login sebagai ${state.user.email}. Mode petugas: ${state.profile.petugas || "-"}.`
-      : `Login sebagai ${state.user.email}. Mode admin. Data online dimuat saat login dan upload otomatis tersimpan ke Supabase.`
+      : adminStatus
     : state.supabaseClient
       ? "Supabase siap. Silakan login untuk sinkronisasi online."
       : "Supabase belum dikonfigurasi. Isi supabase-config.js untuk mode online.");
