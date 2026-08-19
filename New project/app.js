@@ -847,10 +847,13 @@ async function loadCloudData(options = {}) {
     setOnlineStatus(`Gagal membaca data online: ${error.message}`);
     return;
   }
-  state.dil = payload.dil || [];
-  state.awal = payload.awal || [];
-  state.akhir = payload.akhir || [];
-  state.struk = payload.struk || [];
+  const lightweightMode = payload.storageMode === "lightweight";
+  if (!lightweightMode) {
+    state.dil = payload.dil || [];
+    state.awal = payload.awal || [];
+    state.akhir = payload.akhir || [];
+    state.struk = payload.struk || [];
+  }
   state.uploadMeta = normalizeUploadMeta(payload.uploadMeta);
   state.saldoAkhirRataRata = normalizeSaldoAverageState(payload.saldoAkhirRataRata);
   state.dailyPelunasan = normalizeDailyPelunasanState(payload.dailyPelunasan);
@@ -864,8 +867,11 @@ async function loadCloudData(options = {}) {
   syncDailyUndoButton();
   renderDailyPelunasanTable();
   renderComparisonMonitoring();
-  finishProgress(`Data online dimuat. Update terakhir: ${formatDateTime(row.updated_at)}.`);
-  setOnlineStatus(`Data online dimuat. Update terakhir: ${formatDateTime(row.updated_at)}.`);
+  const loadMessage = lightweightMode
+    ? `Data online ringan dimuat. DIL/saldo besar tetap memakai data lokal browser. Update terakhir: ${formatDateTime(row.updated_at)}.`
+    : `Data online dimuat. Update terakhir: ${formatDateTime(row.updated_at)}.`;
+  finishProgress(loadMessage);
+  setOnlineStatus(loadMessage);
 }
 
 function normalizeCloudStateRow(data) {
@@ -1316,7 +1322,7 @@ async function saveCloudData(options = {}) {
     startProgress("Simpan ke Online", "Menyimpan data utama ke Supabase...");
   }
   setOnlineStatus("Menyimpan data ke online...");
-  const cloudPayload = await encodeCloudPayload({
+  const cloudData = {
     dil: state.dil,
     awal: state.awal,
     akhir: state.akhir,
@@ -1325,9 +1331,10 @@ async function saveCloudData(options = {}) {
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
     comparisonMonitoring: state.comparisonMonitoring,
-  });
+  };
+  let cloudPayload = await encodeCloudPayload(cloudData);
 
-  const { error } = await state.supabaseClient
+  let { error } = await state.supabaseClient
     .from("monitoring_app_state")
     .upsert({
       id: CLOUD_STATE_ID,
@@ -1337,9 +1344,25 @@ async function saveCloudData(options = {}) {
     });
 
   if (error) {
-    failProgress(`Gagal simpan online: ${error.message}`);
-    setOnlineStatus(`Gagal simpan online: ${error.message}`);
-    return false;
+    if (isStatementTimeout(error)) {
+      updateProgress(embeddedProgress ? 70 : 25, "Payload utama terlalu besar, menyimpan versi ringan...");
+      cloudPayload = encodeLightweightCloudPayload(cloudData, error);
+      const retry = await state.supabaseClient
+        .from("monitoring_app_state")
+        .upsert({
+          id: CLOUD_STATE_ID,
+          payload: cloudPayload,
+          updated_by: state.user.id,
+          updated_at: new Date().toISOString(),
+        });
+      error = retry.error;
+    }
+
+    if (error) {
+      failProgress(`Gagal simpan online: ${error.message}`);
+      setOnlineStatus(`Gagal simpan online: ${error.message}`);
+      return false;
+    }
   }
 
   if (!options.skipPublish) {
@@ -1397,6 +1420,36 @@ async function encodeCloudPayload(payload) {
     console.warn("Gagal kompres payload online, memakai format biasa.", error);
     return basePayload;
   }
+}
+
+function encodeLightweightCloudPayload(payload, originalError = null) {
+  return {
+    schemaVersion: 3,
+    storageMode: "lightweight",
+    savedAt: new Date().toISOString(),
+    warning: "Payload lengkap terlalu besar untuk disimpan ke monitoring_app_state. Data APK tetap dipublish ke tabel pelanggan tersisa.",
+    lastError: originalError?.message || "",
+    counts: {
+      dil: payload.dil?.length || 0,
+      awal: payload.awal?.length || 0,
+      akhir: payload.akhir?.length || 0,
+      struk: payload.struk?.length || 0,
+    },
+    uploadMeta: normalizeUploadMeta(payload.uploadMeta),
+    saldoAkhirRataRata: normalizeSaldoAverageState(payload.saldoAkhirRataRata),
+    dailyPelunasan: normalizeDailyPelunasanState(payload.dailyPelunasan),
+    comparisonMonitoring: normalizeComparisonMonitoringState(payload.comparisonMonitoring),
+  };
+}
+
+function isStatementTimeout(error) {
+  const text = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ].filter(Boolean).join(" ").toLowerCase();
+  return text.includes("statement timeout") || text.includes("57014") || text.includes("canceling statement");
 }
 
 async function decodeCloudPayload(payload) {
