@@ -4430,7 +4430,7 @@ async function saveSaldoAverageDraft() {
   await saveStoredData();
   if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") return;
 
-  const cloudPayload = await encodeCloudPayload({
+  const cloudData = {
     dil: state.dil,
     awal: state.awal,
     akhir: state.akhir,
@@ -4439,18 +4439,25 @@ async function saveSaldoAverageDraft() {
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
     comparisonMonitoring: state.comparisonMonitoring,
-  });
-  const { error } = await state.supabaseClient
-    .from("monitoring_app_state")
-    .upsert({
-      id: CLOUD_STATE_ID,
-      payload: cloudPayload,
-      updated_by: state.user.id,
-      updated_at: new Date().toISOString(),
-    });
+  };
+  const cloudPayload = encodeLightweightCloudPayload(cloudData);
+  let error = null;
+  try {
+    const result = await state.supabaseClient
+      .from("monitoring_app_state")
+      .upsert({
+        id: CLOUD_STATE_ID,
+        payload: cloudPayload,
+        updated_by: state.user.id,
+        updated_at: new Date().toISOString(),
+      });
+    error = result.error;
+  } catch (caughtError) {
+    error = caughtError;
+  }
 
   if (error) {
-    setOnlineStatus(`Gagal simpan Saldo Akhir Rata Rata: ${error.message}`);
+    setOnlineStatus(`Gagal simpan Saldo Akhir Rata Rata: ${describeSupabaseError(error)}`);
     return;
   }
 
