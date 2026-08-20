@@ -2,6 +2,7 @@ const STORE_NAME = "monitoringSaldoTunggakan";
 const DB_NAME = "monitoring-saldo-db";
 const DB_VERSION = 1;
 const CLOUD_STATE_ID = "main";
+const DEBT_UPDATE_SIGNAL_ID = "debt-update-signal";
 const SALDO_AVERAGE_FIELDS = [
   { key: "kogol0Berjalan", label: "KOGOL 0 Berjalan" },
   { key: "kogol0Tunggakan", label: "KOGOL 0 Tunggakan" },
@@ -1421,9 +1422,11 @@ async function saveCloudData(options = {}) {
   }
 
   if (!options.skipPublish) {
+    let publishResult = null;
     try {
       updateProgress(embeddedProgress ? 74 : 35, "Mempublish data pelanggan tersisa...");
-      await publishRemainingCustomers();
+      publishResult = await publishRemainingCustomers();
+      await writeDebtUpdateSignal(publishResult);
     } catch (publishError) {
       failProgress(`Gagal publish data petugas: ${publishError.message}`);
       setOnlineStatus(`Data utama tersimpan, tapi gagal publish data petugas: ${publishError.message}`);
@@ -1647,6 +1650,33 @@ async function publishRemainingCustomers() {
   });
 
   return { uploadedAt, count: rows.length };
+}
+
+async function writeDebtUpdateSignal(publishResult) {
+  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") return;
+
+  const uploadedAt = publishResult?.uploadedAt || new Date().toISOString();
+  const payload = {
+    schemaVersion: 1,
+    type: "debt-update-signal",
+    uploadedAt,
+    count: publishResult?.count || 0,
+    uploadMeta: normalizeUploadMeta(state.uploadMeta),
+    savedAt: new Date().toISOString(),
+  };
+
+  const { error } = await state.supabaseClient
+    .from("monitoring_app_state")
+    .upsert({
+      id: DEBT_UPDATE_SIGNAL_ID,
+      payload,
+      updated_by: state.user.id,
+      updated_at: uploadedAt,
+    });
+
+  if (error) {
+    setOnlineStatus(`Data petugas dipublish, tapi sinyal update otomatis gagal: ${describeSupabaseError(error)}`);
+  }
 }
 
 async function publishReceiptMeters() {
