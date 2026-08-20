@@ -1435,6 +1435,9 @@ async function saveCloudData(options = {}) {
       return false;
     }
 
+  }
+
+  if (options.publishReceiptMeters === true || (!options.skipPublish && options.publishReceiptMeters !== false)) {
     updateProgress(embeddedProgress ? 82 : 70, "Mempublish data stand meter struk...");
     await publishReceiptMeters();
   }
@@ -1918,6 +1921,7 @@ async function handleUpload(event, kind) {
       embeddedProgress: true,
       skipPublish: kind !== "akhir",
       notifyDebtUpdate: kind === "akhir",
+      publishReceiptMeters: false,
     });
     if (kind === "akhir") switchTab("laporan");
     finishProgress(`${label} selesai diproses: ${formatNumber(state[kind].length)} baris.${onlineSaved ? " Data online sudah otomatis tersimpan." : ""}`);
@@ -1947,7 +1951,12 @@ async function handleStrukUpload(event) {
     updateProgress(68, "Memperbarui status file...");
     updateFileStatuses();
     updateProgress(74, "Sinkronisasi online otomatis...");
-    const onlineSaved = await autoSaveCloudData({ embeddedProgress: true, notifyDebtUpdate: false });
+    const onlineSaved = await autoSaveCloudData({
+      embeddedProgress: true,
+      skipPublish: true,
+      notifyDebtUpdate: false,
+      publishReceiptMeters: true,
+    });
     finishProgress(`File struk selesai diproses: ${formatNumber(state.struk.length)} IDPEL stand meter.${onlineSaved ? " Data online sudah otomatis tersimpan." : ""}`);
     setOnlineStatus(`File struk dimuat: ${formatNumber(state.struk.length)} IDPEL stand meter.`);
   } catch (error) {
