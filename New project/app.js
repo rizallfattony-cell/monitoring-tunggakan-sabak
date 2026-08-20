@@ -1677,6 +1677,42 @@ async function writeDebtUpdateSignal(publishResult) {
   if (error) {
     setOnlineStatus(`Data petugas dipublish, tapi sinyal update otomatis gagal: ${describeSupabaseError(error)}`);
   }
+
+  await broadcastDebtUpdateSignal(payload);
+}
+
+async function broadcastDebtUpdateSignal(payload) {
+  if (!state.supabaseClient) return;
+
+  const channel = state.supabaseClient.channel("debt-update-signal", {
+    config: { broadcast: { self: false } },
+  });
+
+  try {
+    await new Promise((resolve) => {
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        resolve();
+      };
+      const timer = window.setTimeout(finish, 2500);
+      channel.subscribe(async (status) => {
+        if (status !== "SUBSCRIBED") return;
+        window.clearTimeout(timer);
+        await channel.send({
+          type: "broadcast",
+          event: "debt-update",
+          payload,
+        });
+        finish();
+      });
+    });
+  } catch (error) {
+    setOnlineStatus(`Data petugas dipublish, tapi broadcast update gagal: ${error.message || error}`);
+  } finally {
+    await state.supabaseClient.removeChannel(channel);
+  }
 }
 
 async function publishReceiptMeters() {
