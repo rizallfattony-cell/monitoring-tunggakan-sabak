@@ -1914,7 +1914,11 @@ async function handleUpload(event, kind) {
     updateProgress(66, "Menghitung ulang laporan...");
     recompute();
     updateProgress(72, "Sinkronisasi online otomatis...");
-    const onlineSaved = await autoSaveCloudData({ embeddedProgress: true, notifyDebtUpdate: kind === "akhir" });
+    const onlineSaved = await autoSaveCloudData({
+      embeddedProgress: true,
+      skipPublish: kind !== "akhir",
+      notifyDebtUpdate: kind === "akhir",
+    });
     if (kind === "akhir") switchTab("laporan");
     finishProgress(`${label} selesai diproses: ${formatNumber(state[kind].length)} baris.${onlineSaved ? " Data online sudah otomatis tersimpan." : ""}`);
   } catch (error) {
