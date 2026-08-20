@@ -1426,7 +1426,9 @@ async function saveCloudData(options = {}) {
     try {
       updateProgress(embeddedProgress ? 74 : 35, "Mempublish data pelanggan tersisa...");
       publishResult = await publishRemainingCustomers();
-      await writeDebtUpdateSignal(publishResult);
+      if (options.notifyDebtUpdate !== false) {
+        await writeDebtUpdateSignal(publishResult);
+      }
     } catch (publishError) {
       failProgress(`Gagal publish data petugas: ${publishError.message}`);
       setOnlineStatus(`Data utama tersimpan, tapi gagal publish data petugas: ${publishError.message}`);
@@ -1912,7 +1914,7 @@ async function handleUpload(event, kind) {
     updateProgress(66, "Menghitung ulang laporan...");
     recompute();
     updateProgress(72, "Sinkronisasi online otomatis...");
-    const onlineSaved = await autoSaveCloudData({ embeddedProgress: true });
+    const onlineSaved = await autoSaveCloudData({ embeddedProgress: true, notifyDebtUpdate: kind === "akhir" });
     if (kind === "akhir") switchTab("laporan");
     finishProgress(`${label} selesai diproses: ${formatNumber(state[kind].length)} baris.${onlineSaved ? " Data online sudah otomatis tersimpan." : ""}`);
   } catch (error) {
@@ -1941,7 +1943,7 @@ async function handleStrukUpload(event) {
     updateProgress(68, "Memperbarui status file...");
     updateFileStatuses();
     updateProgress(74, "Sinkronisasi online otomatis...");
-    const onlineSaved = await autoSaveCloudData({ embeddedProgress: true });
+    const onlineSaved = await autoSaveCloudData({ embeddedProgress: true, notifyDebtUpdate: false });
     finishProgress(`File struk selesai diproses: ${formatNumber(state.struk.length)} IDPEL stand meter.${onlineSaved ? " Data online sudah otomatis tersimpan." : ""}`);
     setOnlineStatus(`File struk dimuat: ${formatNumber(state.struk.length)} IDPEL stand meter.`);
   } catch (error) {
