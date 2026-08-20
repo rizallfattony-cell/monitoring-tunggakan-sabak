@@ -1398,6 +1398,7 @@ async function saveCloudData(options = {}) {
       updated_at: new Date().toISOString(),
     });
 
+  let stateSaveError = null;
   if (error) {
     if (isStatementTimeout(error)) {
       updateProgress(embeddedProgress ? 70 : 25, "Payload utama terlalu besar, menyimpan versi ringan...");
@@ -1414,9 +1415,8 @@ async function saveCloudData(options = {}) {
     }
 
     if (error) {
-      failProgress(`Gagal simpan online: ${error.message}`);
-      setOnlineStatus(`Gagal simpan online: ${error.message}`);
-      return false;
+      stateSaveError = error;
+      setOnlineStatus(`Ringkasan online gagal disimpan, tetap mencoba publish data aplikasi: ${describeSupabaseError(error)}`);
     }
   }
 
@@ -1434,7 +1434,9 @@ async function saveCloudData(options = {}) {
     await publishReceiptMeters();
   }
 
-  const savedMessage = `Data online tersimpan: ${formatDateTime(new Date().toISOString())}.`;
+  const savedMessage = stateSaveError
+    ? `Data aplikasi berhasil dipublish, tapi ringkasan online gagal: ${describeSupabaseError(stateSaveError)}`
+    : `Data online tersimpan: ${formatDateTime(new Date().toISOString())}.`;
   if (!embeddedProgress) finishProgress(savedMessage);
   setOnlineStatus(savedMessage);
   return true;
