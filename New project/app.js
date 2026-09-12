@@ -1382,13 +1382,8 @@ async function saveCloudData(options = {}) {
     dailyPelunasan: state.dailyPelunasan,
     comparisonMonitoring: state.comparisonMonitoring,
   };
-  const useLightweightPayload = shouldUseLightweightCloudPayload(cloudData);
-  if (useLightweightPayload) {
-    updateProgress(embeddedProgress ? 69 : 18, "Data besar, menyimpan ringkasan online...");
-  }
-  let cloudPayload = useLightweightPayload
-    ? encodeLightweightCloudPayload(cloudData)
-    : await encodeCloudPayload(cloudData);
+  updateProgress(embeddedProgress ? 69 : 18, "Mengompres data lengkap untuk online...");
+  let cloudPayload = await encodeCloudPayload(cloudData);
 
   let { error } = await state.supabaseClient
     .from("monitoring_app_state")
@@ -1402,7 +1397,7 @@ async function saveCloudData(options = {}) {
   let stateSaveError = null;
   if (error) {
     if (isStatementTimeout(error)) {
-      updateProgress(embeddedProgress ? 70 : 25, "Payload utama terlalu besar, menyimpan versi ringan...");
+      updateProgress(embeddedProgress ? 70 : 25, "Payload utama ditolak Supabase, menyimpan versi ringan...");
       cloudPayload = encodeLightweightCloudPayload(cloudData, error);
       const retry = await state.supabaseClient
         .from("monitoring_app_state")
