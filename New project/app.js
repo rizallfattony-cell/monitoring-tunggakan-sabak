@@ -1677,6 +1677,25 @@ async function writeDebtUpdateSignal(publishResult) {
   }
 
   await broadcastDebtUpdateSignal(payload);
+  await sendDebtUpdatePush(payload);
+}
+
+async function sendDebtUpdatePush(payload) {
+  if (!state.supabaseClient || state.profile?.role !== "admin") return;
+  try {
+    const { data, error } = await state.supabaseClient.functions.invoke("notify-debt-update", {
+      body: {
+        uploadedAt: payload.uploadedAt,
+        count: payload.count || 0,
+      },
+    });
+    if (error) throw error;
+    if (data?.failed) {
+      setOnlineStatus(`Data berhasil dipublish. Notifikasi terkirim ke ${formatNumber(data.sent || 0)} perangkat, ${formatNumber(data.failed)} gagal.`);
+    }
+  } catch (error) {
+    setOnlineStatus(`Data berhasil dipublish, tetapi push notification gagal: ${describeSupabaseError(error)}`);
+  }
 }
 
 async function broadcastDebtUpdateSignal(payload) {
