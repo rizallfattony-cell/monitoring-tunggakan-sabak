@@ -202,7 +202,6 @@ async function boot() {
     await loadPetugasData();
   } else {
     if (state.profile?.role === "admin") {
-      await loadPremiumRequests();
       await loadCloudData({ silentIfEmpty: true, automatic: true });
     } else {
       recompute();
@@ -701,7 +700,6 @@ async function loginOnline(source = "panel") {
   if (state.profile?.role === "petugas") {
     await loadPetugasData();
   } else {
-    await loadPremiumRequests();
     await loadCloudData({ silentIfEmpty: true, automatic: true });
   }
 }
