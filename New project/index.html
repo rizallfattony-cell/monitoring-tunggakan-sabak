@@ -82,6 +82,7 @@
               </button>
               <div class="tree-children">
                 <button class="tree-child" type="button" data-tab="upload" data-upload-view="stand-meter">Upload Stand Meter</button>
+                <button class="tree-child admin-only-menu" type="button" data-tab="sync-status">Status Sinkron Petugas</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="invoice">Cetak Invoice</button>
               </div>
             </section>
@@ -483,6 +484,50 @@
         </section>
       </section>
 
+      <section class="tab-panel" data-tab-panel="sync-status" hidden>
+        <div class="section-head">
+          <div>
+            <h2>Status Sinkron Petugas</h2>
+            <p>Pantau pengiriman notifikasi, versi aplikasi, dan waktu pembaruan data setiap petugas.</p>
+          </div>
+          <div class="section-actions">
+            <button class="button secondary" id="refreshSyncStatusButton" type="button">Refresh Status</button>
+          </div>
+        </div>
+
+        <section class="online-panel">
+          <div>
+            <h2>Ringkasan Perangkat</h2>
+            <p id="syncStatusSummary">Belum memuat status perangkat.</p>
+          </div>
+        </section>
+
+        <section class="table-section">
+          <div class="report-heading">
+            <h2>Status Pembaruan Data Tunggakan</h2>
+            <p id="syncStatusUpdatedAt">-</p>
+          </div>
+          <div class="table-wrap">
+            <table id="syncStatusTable">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Petugas / User</th>
+                  <th>Status</th>
+                  <th>Notifikasi Terakhir</th>
+                  <th>Sinkron Terakhir</th>
+                  <th>Versi APK</th>
+                  <th>Terakhir Aktif</th>
+                </tr>
+              </thead>
+              <tbody id="syncStatusTableBody">
+                <tr><td class="empty-state" colspan="7">Klik Refresh Status untuk memuat data.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
       <section class="tab-panel" data-tab-panel="online" hidden>
         <div class="section-head">
           <div>
@@ -627,6 +672,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260922-fcm-debt-update"></script>
+    <script src="./app.js?v=20260922-sync-status"></script>
   </body>
 </html>

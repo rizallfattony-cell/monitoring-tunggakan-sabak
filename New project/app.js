@@ -52,6 +52,7 @@ const state = {
   saldoAverageSaveTimer: null,
   dailyPelunasanSaveTimer: null,
   comparisonMonitoringSaveTimer: null,
+  syncStatusRows: [],
 };
 
 const els = {
@@ -178,6 +179,10 @@ const els = {
   refreshInvoicePreviewButton: document.querySelector("#refreshInvoicePreviewButton"),
   printInvoiceButton: document.querySelector("#printInvoiceButton"),
   loadInvoiceCustomerButton: document.querySelector("#loadInvoiceCustomerButton"),
+  refreshSyncStatusButton: document.querySelector("#refreshSyncStatusButton"),
+  syncStatusSummary: document.querySelector("#syncStatusSummary"),
+  syncStatusUpdatedAt: document.querySelector("#syncStatusUpdatedAt"),
+  syncStatusTableBody: document.querySelector("#syncStatusTableBody"),
   workspaceTabTitle: document.querySelector("#workspaceTabTitle"),
   treeToggleButtons: [...document.querySelectorAll("[data-tree-toggle]")],
   adminOnlyMenus: [...document.querySelectorAll(".admin-only-menu")],
@@ -278,6 +283,7 @@ function attachEvents() {
   els.refreshInvoicePreviewButton?.addEventListener("click", renderInvoicePreview);
   els.printInvoiceButton?.addEventListener("click", printInvoice);
   els.loadInvoiceCustomerButton?.addEventListener("click", loadInvoiceCustomer);
+  els.refreshSyncStatusButton?.addEventListener("click", loadSyncStatus);
   els.invoiceIdpel?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -370,6 +376,7 @@ function switchTab(tabName) {
   if (els.workspaceTabTitle) els.workspaceTabTitle.textContent = tabTitle(tabName);
   if (tabName === "upload") renderUploadView();
   if (tabName === "comparison") renderComparisonMonitoring();
+  if (tabName === "sync-status") loadSyncStatus();
   updateHeaderActions();
 }
 
@@ -404,6 +411,7 @@ function tabTitle(tabName) {
     "saldo-rata": "Saldo Akhir Rata Rata",
     online: "Online & Sinkron",
     invoice: "Cetak Invoice",
+    "sync-status": "Status Sinkron Petugas",
     premium: "Premium",
   };
   return titles[tabName] || "Overview";
@@ -1860,7 +1868,7 @@ function applyRoleView() {
   if (dailyTab) dailyTab.hidden = petugasMode;
   if (dailyPanel && petugasMode) dailyPanel.hidden = true;
   if (comparisonPanel && petugasMode) comparisonPanel.hidden = true;
-  if (petugasMode && ["saldo-rata", "pelunasan-harian", "comparison", "premium"].includes(state.activeTab)) switchTab("laporan");
+  if (petugasMode && ["saldo-rata", "pelunasan-harian", "comparison", "premium", "sync-status"].includes(state.activeTab)) switchTab("laporan");
   if (els.uploadGrid) els.uploadGrid.hidden = petugasMode;
   if (els.summaryGrid) els.summaryGrid.hidden = petugasMode;
   if (els.toolbar) els.toolbar.hidden = false;
@@ -1878,6 +1886,75 @@ function updateHeaderActions() {
 
 function setOnlineStatus(message) {
   if (els.onlineStatus) els.onlineStatus.textContent = message;
+}
+
+async function loadSyncStatus() {
+  if (!els.syncStatusTableBody) return;
+  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") {
+    els.syncStatusTableBody.innerHTML = '<tr><td class="empty-state" colspan="7">Login admin diperlukan.</td></tr>';
+    return;
+  }
+
+  els.syncStatusTableBody.innerHTML = '<tr><td class="empty-state" colspan="7">Memuat status sinkron...</td></tr>';
+  if (els.syncStatusSummary) els.syncStatusSummary.textContent = "Mengambil status perangkat petugas...";
+
+  const { data, error } = await state.supabaseClient.rpc("get_monitoring_sync_status");
+
+  if (error) {
+    const message = describeSupabaseError(error);
+    els.syncStatusTableBody.innerHTML = `<tr><td class="empty-state" colspan="7">Gagal memuat status: ${escapeHtml(message)}</td></tr>`;
+    if (els.syncStatusSummary) els.syncStatusSummary.textContent = `Gagal memuat status: ${message}`;
+    return;
+  }
+
+  state.syncStatusRows = data || [];
+  renderSyncStatus();
+}
+
+function renderSyncStatus() {
+  if (!els.syncStatusTableBody) return;
+  const rows = state.syncStatusRows || [];
+  if (!rows.length) {
+    els.syncStatusTableBody.innerHTML = '<tr><td class="empty-state" colspan="7">Belum ada perangkat petugas yang melaporkan status.</td></tr>';
+    if (els.syncStatusSummary) els.syncStatusSummary.textContent = "Belum ada perangkat pada APK versi yang mendukung status sinkron.";
+    if (els.syncStatusUpdatedAt) els.syncStatusUpdatedAt.textContent = formatDateTime(new Date().toISOString());
+    return;
+  }
+
+  const views = rows.map((row) => ({ row, status: syncStatusLabel(row) }));
+  const updatedCount = views.filter((item) => item.status.key === "updated").length;
+  const waitingCount = views.filter((item) => item.status.key === "waiting").length;
+  const failedCount = views.filter((item) => item.status.key === "failed").length;
+  const disconnectedCount = views.filter((item) => item.status.key === "idle").length;
+
+  els.syncStatusTableBody.innerHTML = views.map(({ row, status }, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td class="name-cell">${escapeHtml(row.petugas || row.username || "-")}<br /><small>${escapeHtml(row.username || "-")}</small></td>
+      <td><strong>${escapeHtml(status.label)}</strong>${row.last_error ? `<br /><small>${escapeHtml(row.last_error)}</small>` : ""}</td>
+      <td>${formatDateTime(row.notification_sent_at)}</td>
+      <td>${formatDateTime(row.synced_at)}</td>
+      <td>${escapeHtml(row.app_version || "-")}</td>
+      <td>${formatDateTime(row.last_seen_at)}</td>
+    </tr>
+  `).join("");
+
+  if (els.syncStatusSummary) {
+    els.syncStatusSummary.textContent = `${formatNumber(rows.length)} petugas. ${formatNumber(updatedCount)} sudah update, ${formatNumber(waitingCount)} menunggu, ${formatNumber(failedCount)} gagal, ${formatNumber(disconnectedCount)} belum terhubung.`;
+  }
+  if (els.syncStatusUpdatedAt) els.syncStatusUpdatedAt.textContent = `Diperiksa ${formatDateTime(new Date().toISOString())}`;
+}
+
+function syncStatusLabel(row) {
+  if (row.notification_status === "belum_terhubung" || !row.last_seen_at) return { key: "idle", label: "Belum terhubung" };
+  if (row.notification_status === "gagal") return { key: "failed", label: "Gagal kirim" };
+  if (!row.notification_sent_at) return { key: "idle", label: "Belum ada notifikasi" };
+  const sentAt = new Date(row.notification_sent_at).getTime();
+  const syncedAt = row.synced_at ? new Date(row.synced_at).getTime() : 0;
+  if (syncedAt >= sentAt || row.notification_status === "sudah_update") {
+    return { key: "updated", label: "Sudah update" };
+  }
+  return { key: "waiting", label: "Menunggu update" };
 }
 
 function startProgress(title, text = "Menyiapkan proses.") {
