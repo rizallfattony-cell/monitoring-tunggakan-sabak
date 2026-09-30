@@ -182,7 +182,6 @@ const els = {
   invoiceSingleControls: document.querySelector("#invoiceSingleControls"),
   invoiceBatchControls: document.querySelector("#invoiceBatchControls"),
   invoiceModeButtons: [...document.querySelectorAll("[data-invoice-mode]")],
-  invoiceKolokFilter: document.querySelector("#invoiceKolokFilter"),
   invoiceCustomerList: document.querySelector("#invoiceCustomerList"),
   invoiceBatchSummary: document.querySelector("#invoiceBatchSummary"),
   selectAllInvoiceCustomersButton: document.querySelector("#selectAllInvoiceCustomersButton"),
@@ -306,7 +305,6 @@ function attachEvents() {
   els.invoiceModeButtons.forEach((button) => {
     button.addEventListener("click", () => setInvoiceMode(button.dataset.invoiceMode));
   });
-  els.invoiceKolokFilter?.addEventListener("change", renderInvoiceCustomerList);
   els.invoiceCustomerList?.addEventListener("change", handleInvoiceCustomerSelection);
   els.selectAllInvoiceCustomersButton?.addEventListener("click", selectAllVisibleInvoiceCustomers);
   els.clearInvoiceCustomersButton?.addEventListener("click", clearInvoiceCustomerSelection);
@@ -651,59 +649,127 @@ function getInvoiceCustomers() {
         daya: saldo.daya || "",
         koked: saldo.koked || dil.koked || "",
         kolok: saldo.kolok || dil.kolok || "TANPA KOLOK",
+        petugas: cleanText(saldo.petugas || dil.petugas || "TANPA PETUGAS").toUpperCase(),
         rptag: Number(saldo.rptag || 0),
         rpbk: Number(saldo.rpbk || 0),
       };
     })
     .filter((customer) => customer.idpel && !seen.has(customer.idpel) && seen.add(customer.idpel))
-    .sort((a, b) => compareCode(a.kolok, b.kolok) || compareCode(a.koked, b.koked) || compareCode(a.idpel, b.idpel));
+    .sort((a, b) => compareInvoiceText(a.petugas, b.petugas) || compareInvoiceCustomerAsApk(a, b));
 }
 
 function renderInvoiceBatchControls() {
-  if (!els.invoiceKolokFilter) return;
   const customers = getInvoiceCustomers();
-  const previous = new Set([...els.invoiceKolokFilter.selectedOptions].map((option) => option.value));
-  const koloks = [...new Set(customers.map((customer) => customer.kolok))].sort(compareCode);
-  els.invoiceKolokFilter.innerHTML = koloks
-    .map((kolok) => `<option value="${escapeHtml(kolok)}"${previous.has(kolok) ? " selected" : ""}>${escapeHtml(kolok)}</option>`)
-    .join("");
   const validIds = new Set(customers.map((customer) => customer.idpel));
   state.selectedInvoiceIds = new Set([...state.selectedInvoiceIds].filter((idpel) => validIds.has(idpel)));
   renderInvoiceCustomerList();
 }
 
-function getVisibleInvoiceCustomers() {
-  const selectedKoloks = new Set([...els.invoiceKolokFilter.selectedOptions].map((option) => option.value));
-  const customers = getInvoiceCustomers();
-  return selectedKoloks.size ? customers.filter((customer) => selectedKoloks.has(customer.kolok)) : customers;
+function compareInvoiceCustomerAsApk(first, second) {
+  const kolokCompare = compareInvoiceText(first.kolok, second.kolok);
+  if (kolokCompare !== 0) return kolokCompare;
+  const firstKoked = String(first.koked || "").trim();
+  const secondKoked = String(second.koked || "").trim();
+  const firstIsNumber = /^[+-]?\d+$/.test(firstKoked);
+  const secondIsNumber = /^[+-]?\d+$/.test(secondKoked);
+  if (firstIsNumber && secondIsNumber) {
+    const numberCompare = Number(firstKoked) - Number(secondKoked);
+    if (numberCompare !== 0) return numberCompare;
+  } else {
+    const textCompare = compareInvoiceText(firstKoked, secondKoked);
+    if (textCompare !== 0) return textCompare;
+  }
+  return compareInvoiceText(first.idpel, second.idpel);
+}
+
+function compareInvoiceText(first, second) {
+  const a = String(first || "").toUpperCase();
+  const b = String(second || "").toUpperCase();
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
 }
 
 function renderInvoiceCustomerList() {
   if (!els.invoiceCustomerList) return;
-  const customers = getVisibleInvoiceCustomers();
+  const customers = getInvoiceCustomers();
+  const byPetugas = new Map();
+  customers.forEach((customer) => {
+    if (!byPetugas.has(customer.petugas)) byPetugas.set(customer.petugas, []);
+    byPetugas.get(customer.petugas).push(customer);
+  });
   els.invoiceCustomerList.innerHTML = customers.length
-    ? customers.map((customer) => `
-        <label class="invoice-customer-option">
-          <input type="checkbox" value="${escapeHtml(customer.idpel)}"${state.selectedInvoiceIds.has(customer.idpel) ? " checked" : ""} />
-          <span><strong>${escapeHtml(customer.idpel)}</strong><small>${escapeHtml(customer.nama || "Tanpa nama")} · ${escapeHtml(customer.kolok)}</small></span>
-          <b>${escapeHtml(formatRupiah(customer.rptag + customer.rpbk))}</b>
-        </label>
-      `).join("")
+    ? [...byPetugas.entries()].map(([petugas, petugasRows], petugasIndex) => {
+        const byKolok = new Map();
+        petugasRows.forEach((customer) => {
+          if (!byKolok.has(customer.kolok)) byKolok.set(customer.kolok, []);
+          byKolok.get(customer.kolok).push(customer);
+        });
+        const petugasChecked = petugasRows.every((customer) => state.selectedInvoiceIds.has(customer.idpel));
+        return `
+          <details class="invoice-petugas-group"${petugasIndex === 0 ? " open" : ""}>
+            <summary><span>${escapeHtml(petugas)}</span><b>${formatNumber(petugasRows.length)} pelanggan</b></summary>
+            <label class="invoice-group-select">
+              <input type="checkbox" data-select-petugas="${escapeHtml(petugas)}"${petugasChecked ? " checked" : ""} />
+              <span>Pilih semua pelanggan ${escapeHtml(petugas)}</span>
+            </label>
+            <div class="invoice-kolok-list">
+              ${[...byKolok.entries()].map(([kolok, kolokRows]) => {
+                const kolokChecked = kolokRows.every((customer) => state.selectedInvoiceIds.has(customer.idpel));
+                return `
+                  <details class="invoice-kolok-group">
+                    <summary><span>KOLOK ${escapeHtml(kolok)}</span><b>${formatNumber(kolokRows.length)}</b></summary>
+                    <label class="invoice-group-select invoice-kolok-select">
+                      <input type="checkbox" data-select-kolok="${escapeHtml(kolok)}" data-petugas="${escapeHtml(petugas)}"${kolokChecked ? " checked" : ""} />
+                      <span>Pilih seluruh KOLOK ${escapeHtml(kolok)}</span>
+                    </label>
+                    ${kolokRows.map((customer) => renderInvoiceCustomerOption(customer)).join("")}
+                  </details>
+                `;
+              }).join("")}
+            </div>
+          </details>
+        `;
+      }).join("")
     : `<p class="invoice-list-empty">Tidak ada pelanggan pada KOLOK ini.</p>`;
   updateInvoiceBatchSummary();
+}
+
+function renderInvoiceCustomerOption(customer) {
+  return `
+    <label class="invoice-customer-option">
+      <input type="checkbox" data-customer-id value="${escapeHtml(customer.idpel)}"${state.selectedInvoiceIds.has(customer.idpel) ? " checked" : ""} />
+      <span><strong>${escapeHtml(customer.idpel)}</strong><small>${escapeHtml(customer.nama || "Tanpa nama")} · KOKED ${escapeHtml(customer.koked || "-")}</small></span>
+      <b>${escapeHtml(formatRupiah(customer.rptag + customer.rpbk))}</b>
+    </label>
+  `;
 }
 
 function handleInvoiceCustomerSelection(event) {
   const checkbox = event.target.closest('input[type="checkbox"]');
   if (!checkbox) return;
-  if (checkbox.checked) state.selectedInvoiceIds.add(checkbox.value);
-  else state.selectedInvoiceIds.delete(checkbox.value);
+  const customers = getInvoiceCustomers();
+  let affected = [];
+  if (checkbox.dataset.selectPetugas) {
+    affected = customers.filter((customer) => customer.petugas === checkbox.dataset.selectPetugas);
+  } else if (checkbox.dataset.selectKolok) {
+    affected = customers.filter((customer) => (
+      customer.petugas === checkbox.dataset.petugas && customer.kolok === checkbox.dataset.selectKolok
+    ));
+  } else if (checkbox.dataset.customerId !== undefined) {
+    affected = customers.filter((customer) => customer.idpel === checkbox.value);
+  }
+  affected.forEach((customer) => {
+    if (checkbox.checked) state.selectedInvoiceIds.add(customer.idpel);
+    else state.selectedInvoiceIds.delete(customer.idpel);
+  });
+  if (checkbox.dataset.selectPetugas || checkbox.dataset.selectKolok) renderInvoiceCustomerList();
   updateInvoiceBatchSummary();
   renderInvoicePreview();
 }
 
 function selectAllVisibleInvoiceCustomers() {
-  getVisibleInvoiceCustomers().forEach((customer) => state.selectedInvoiceIds.add(customer.idpel));
+  getInvoiceCustomers().forEach((customer) => state.selectedInvoiceIds.add(customer.idpel));
   renderInvoiceCustomerList();
   renderInvoicePreview();
 }

@@ -9,7 +9,7 @@
     <link rel="apple-touch-icon" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="./styles.css?v=20260622-table-maximize" />
-    <link rel="stylesheet" href="./invoice.css?v=20260930-invoice-redesign" />
+    <link rel="stylesheet" href="./invoice.css?v=20260930-invoice-v2" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -653,16 +653,12 @@
             </div>
 
             <div class="invoice-batch-controls" id="invoiceBatchControls" hidden>
-              <label class="field" for="invoiceKolokFilter">
-                <span>Filter KOLOK</span>
-                <select id="invoiceKolokFilter" multiple size="6" aria-describedby="invoiceKolokHelp"></select>
-              </label>
-              <p class="invoice-help" id="invoiceKolokHelp">Tahan Ctrl untuk memilih beberapa KOLOK.</p>
               <div class="invoice-batch-actions">
-                <button class="button secondary" id="selectAllInvoiceCustomersButton" type="button">Pilih Semua Hasil</button>
+                <button class="button secondary" id="selectAllInvoiceCustomersButton" type="button">Pilih Semua Pelanggan</button>
                 <button class="button secondary" id="clearInvoiceCustomersButton" type="button">Kosongkan Pilihan</button>
               </div>
-              <div class="invoice-customer-list" id="invoiceCustomerList"></div>
+              <p class="invoice-help">Buka nama petugas, lalu pilih KOLOK atau pelanggan yang ingin dicetak.</p>
+              <div class="invoice-customer-list invoice-grouped-customer-list" id="invoiceCustomerList"></div>
               <p class="invoice-batch-summary" id="invoiceBatchSummary">Belum ada pelanggan dipilih.</p>
             </div>
 
@@ -721,6 +717,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260930-invoice-redesign"></script>
+    <script src="./app.js?v=20260930-invoice-v2"></script>
   </body>
 </html>
