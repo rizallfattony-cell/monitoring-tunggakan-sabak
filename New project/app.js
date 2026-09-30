@@ -573,7 +573,7 @@ function buildInvoiceHtml(data) {
       ${buildInvoiceMoneyHtml("Rekening", data.rekening, data.tagihan)}
       ${buildInvoiceMoneyHtml("Jumlah Biaya Keterlambatan s.d bulan", "", data.terlambat)}
       ${buildInvoiceMoneyHtml("Jumlah Tagihan ( belum termasuk biaya Administrasi )", "", data.total, true)}
-      <p class="invoice-notice">Dengan ini kami informasikan tagihan listrik saudara/i sesuai dengan data di atas. Kami menghimbau agar dapat melunasi tagihan rekening listrik sebelum tanggal 20 setiap bulannya dan bila telat dari tempo yang sudah di tentukan maka akan kami lakukan pemutusan sementara dan migrasi ke KWH Prabayar. Terimakasih bagi pelanggan yang sudah tepat waktu,selamat menikmati aliran listrik. "SALAM LISTRIK UNTUK KEHIDUPAN YANG LEBIH BAIK".</p>
+      <p class="invoice-notice">Dengan ini kami informasikan tagihan listrik saudara/i sesuai dengan data di atas. Kami menghimbau agar dapat melunasi tagihan rekening listrik sebelum tanggal 20 setiap bulannya dan bila telat dari tempo yang sudah di tentukan maka akan <strong>kami lakukan pemutusan sementara dan migrasi ke KWH Prabayar.</strong> Terimakasih bagi pelanggan yang sudah tepat waktu,selamat menikmati aliran listrik. "<strong>SALAM LISTRIK UNTUK KEHIDUPAN YANG LEBIH BAIK</strong>".</p>
       <div class="invoice-lower">
         <section class="invoice-receipt">
           <div class="invoice-receipt-title">BUKTI PENGANTARAN</div>
@@ -595,7 +595,7 @@ function buildInvoiceHtml(data) {
 
 function buildInvoiceMoneyHtml(label, value, amount, total = false) {
   return `
-    <div class="invoice-money-row${total ? " invoice-money-total" : ""}">
+    <div class="invoice-money-row${value ? " invoice-money-account" : ""}${total ? " invoice-money-total" : ""}">
       <div class="invoice-money-label"><span>${escapeHtml(label)}</span><b>:</b>${value ? `<strong>${escapeHtml(value)}</strong>` : ""}</div>
       <div class="invoice-money-value"><span>Rp :</span><strong>${formatInvoiceMoney(amount)}</strong></div>
     </div>
