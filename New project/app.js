@@ -53,6 +53,8 @@ const state = {
   dailyPelunasanSaveTimer: null,
   comparisonMonitoringSaveTimer: null,
   syncStatusRows: [],
+  invoiceMode: "single",
+  selectedInvoiceIds: new Set(),
 };
 
 const els = {
@@ -173,9 +175,18 @@ const els = {
   invoiceKota: document.querySelector("#invoiceKota"),
   invoiceTagihan: document.querySelector("#invoiceTagihan"),
   invoiceTerlambat: document.querySelector("#invoiceTerlambat"),
+  invoiceAdminFee: document.querySelector("#invoiceAdminFee"),
   invoiceManager: document.querySelector("#invoiceManager"),
   invoiceStatus: document.querySelector("#invoiceStatus"),
-  invoicePreviewText: document.querySelector("#invoicePreviewText"),
+  invoicePrintArea: document.querySelector("#invoicePrintArea"),
+  invoiceSingleControls: document.querySelector("#invoiceSingleControls"),
+  invoiceBatchControls: document.querySelector("#invoiceBatchControls"),
+  invoiceModeButtons: [...document.querySelectorAll("[data-invoice-mode]")],
+  invoiceKolokFilter: document.querySelector("#invoiceKolokFilter"),
+  invoiceCustomerList: document.querySelector("#invoiceCustomerList"),
+  invoiceBatchSummary: document.querySelector("#invoiceBatchSummary"),
+  selectAllInvoiceCustomersButton: document.querySelector("#selectAllInvoiceCustomersButton"),
+  clearInvoiceCustomersButton: document.querySelector("#clearInvoiceCustomersButton"),
   refreshInvoicePreviewButton: document.querySelector("#refreshInvoicePreviewButton"),
   printInvoiceButton: document.querySelector("#printInvoiceButton"),
   loadInvoiceCustomerButton: document.querySelector("#loadInvoiceCustomerButton"),
@@ -183,6 +194,12 @@ const els = {
   syncStatusSummary: document.querySelector("#syncStatusSummary"),
   syncStatusUpdatedAt: document.querySelector("#syncStatusUpdatedAt"),
   syncStatusTableBody: document.querySelector("#syncStatusTableBody"),
+  latestAppVersionInput: document.querySelector("#latestAppVersionInput"),
+  minimumAppVersionInput: document.querySelector("#minimumAppVersionInput"),
+  appDownloadUrlInput: document.querySelector("#appDownloadUrlInput"),
+  forceAppUpdateInput: document.querySelector("#forceAppUpdateInput"),
+  saveAppReleaseButton: document.querySelector("#saveAppReleaseButton"),
+  appReleaseStatus: document.querySelector("#appReleaseStatus"),
   workspaceTabTitle: document.querySelector("#workspaceTabTitle"),
   treeToggleButtons: [...document.querySelectorAll("[data-tree-toggle]")],
   adminOnlyMenus: [...document.querySelectorAll(".admin-only-menu")],
@@ -279,11 +296,22 @@ function attachEvents() {
   els.exportComparisonExcelButton?.addEventListener("click", exportComparisonMonitoringExcel);
   els.exportComparisonJpgButton?.addEventListener("click", exportComparisonMonitoringJpg);
   els.dailyTableBody?.addEventListener("click", handleDailyDetailClick);
-  els.invoiceForm?.addEventListener("input", renderInvoicePreview);
+  els.invoiceForm?.addEventListener("input", () => {
+    updateInvoiceBatchSummary();
+    renderInvoicePreview();
+  });
   els.refreshInvoicePreviewButton?.addEventListener("click", renderInvoicePreview);
   els.printInvoiceButton?.addEventListener("click", printInvoice);
   els.loadInvoiceCustomerButton?.addEventListener("click", loadInvoiceCustomer);
+  els.invoiceModeButtons.forEach((button) => {
+    button.addEventListener("click", () => setInvoiceMode(button.dataset.invoiceMode));
+  });
+  els.invoiceKolokFilter?.addEventListener("change", renderInvoiceCustomerList);
+  els.invoiceCustomerList?.addEventListener("change", handleInvoiceCustomerSelection);
+  els.selectAllInvoiceCustomersButton?.addEventListener("click", selectAllVisibleInvoiceCustomers);
+  els.clearInvoiceCustomersButton?.addEventListener("click", clearInvoiceCustomerSelection);
   els.refreshSyncStatusButton?.addEventListener("click", loadSyncStatus);
+  els.saveAppReleaseButton?.addEventListener("click", saveAppRelease);
   els.invoiceIdpel?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -376,7 +404,10 @@ function switchTab(tabName) {
   if (els.workspaceTabTitle) els.workspaceTabTitle.textContent = tabTitle(tabName);
   if (tabName === "upload") renderUploadView();
   if (tabName === "comparison") renderComparisonMonitoring();
-  if (tabName === "sync-status") loadSyncStatus();
+  if (tabName === "sync-status") {
+    loadSyncStatus();
+    loadAppRelease();
+  }
   updateHeaderActions();
 }
 
@@ -434,8 +465,8 @@ function loadInvoiceCustomer() {
   if (els.invoiceTarif) els.invoiceTarif.value = customer.tarif || "";
   if (els.invoiceDaya) els.invoiceDaya.value = customer.daya || "";
   if (els.invoiceKodeKedudukan) els.invoiceKodeKedudukan.value = customer.koked || "";
-  if (els.invoiceTagihan) els.invoiceTagihan.value = customer.rupiah ? formatIntegerInput(customer.rupiah) : "";
-  if (els.invoiceTerlambat && !els.invoiceTerlambat.value) els.invoiceTerlambat.value = "0";
+  if (els.invoiceTagihan) els.invoiceTagihan.value = customer.rptag ? formatIntegerInput(customer.rptag) : "0";
+  if (els.invoiceTerlambat) els.invoiceTerlambat.value = customer.rpbk ? formatIntegerInput(customer.rpbk) : "0";
   setInvoiceStatus(`Data IDPEL ${idpel} berhasil dimuat ke invoice.`);
   renderInvoicePreview();
 }
@@ -453,18 +484,36 @@ function findInvoiceCustomer(idpel) {
     daya: saldo?.daya || "",
     koked: saldo?.koked || dil?.koked || "",
     kolok: saldo?.kolok || dil?.kolok || "",
-    rupiah: Number(saldo?.rupiah || saldo?.rptag || 0),
+    rptag: Number(saldo?.rptag || 0),
+    rpbk: Number(saldo?.rpbk || 0),
   };
 }
 
 function renderInvoicePreview() {
-  if (!els.invoicePreviewText) return;
-  els.invoicePreviewText.textContent = buildInvoiceText(readInvoiceForm());
+  if (!els.invoicePrintArea) return;
+  const invoices = getInvoicesForPreview();
+  if (!invoices.length) {
+    els.invoicePrintArea.innerHTML = `<div class="invoice-empty-preview">Pilih pelanggan yang akan dicetak.</div>`;
+    return;
+  }
+  const sheets = [];
+  for (let index = 0; index < invoices.length; index += 2) {
+    const first = invoices[index];
+    const second = invoices[index + 1];
+    sheets.push(`
+      <section class="invoice-sheet">
+        ${buildInvoiceHtml(first)}
+        ${second ? buildInvoiceHtml(second) : '<div class="invoice-document invoice-document-empty" aria-hidden="true"></div>'}
+      </section>
+    `);
+  }
+  els.invoicePrintArea.innerHTML = sheets.join("");
 }
 
 function readInvoiceForm() {
   const tagihan = parseFlexibleRupiah(els.invoiceTagihan?.value || 0);
   const terlambat = parseFlexibleRupiah(els.invoiceTerlambat?.value || 0);
+  const admin = parseFlexibleRupiah(els.invoiceAdminFee?.value || 0);
   return {
     idpel: cleanText(els.invoiceIdpel?.value || ""),
     nama: cleanText(els.invoiceNama?.value || ""),
@@ -476,98 +525,93 @@ function readInvoiceForm() {
     kota: cleanText(els.invoiceKota?.value || "Sabak"),
     tagihan,
     terlambat,
-    total: tagihan + terlambat,
+    admin,
+    total: tagihan + terlambat + admin,
     manager: cleanText(els.invoiceManager?.value || "MARWAN MASALAN").toUpperCase(),
   };
 }
 
-function buildInvoiceText(data) {
-  const width = 95;
-  const rpX = 68;
-  const rightValueWidth = 15;
-  const lines = [
-    "PT. PLN (PERSERO) UID S2JB",
-    "UP3 JAMBI",
-    "ULP SABAK",
-    "",
-    centerInvoiceText("AYO BAYAR LISTRIK DI AWAL BULAN", width),
-    "          " + "-".repeat(70),
-    "Kepada Yth.",
-    invoiceTwoColumn("Nama", data.nama, "", "", width),
-    invoiceTwoColumn("ID Pelanggan", data.idpel, "Kode kedudukan", data.kodeKedudukan, width),
-    invoiceTwoColumn("Alamat", data.alamat, "", "", width),
-    invoiceTwoColumn("Tarip / daya", [data.tarif, data.daya].filter(Boolean).join("/"), "", "", width),
-    invoiceMoneyLine("Rekening", data.rekening, data.tagihan, rpX, rightValueWidth),
-    invoiceMoneyLine("Jumlah Biaya Keterlambatan s.d bulan", "", data.terlambat, rpX, rightValueWidth),
-    invoiceMoneyLine("Jumlah Tagihan ( belum termasuk biaya Administrasi )", "", data.total, rpX, rightValueWidth, true),
-    "",
-    "",
-    ...wrapInvoiceParagraph("Dengan ini kami informasikan tagihan listrik saudara/i sesuai dengan data di atas. Kami menghimbau agar dapat melunasi tagihan rekening listrik sebelum tanggal 20 setiap bulannya dan bila telat dari tempo yang sudah di tentukan maka akan kami lakukan pemutusan sementara dan migrasi ke KWH Prabayar. Terimakasih bagi pelanggan yang sudah tepat waktu,selamat menikmati aliran listrik.\"SALAM LISTRIK UNTUK KEHIDUPAN YANG LEBIH BAIK\".", width),
-    "",
-    "          BUKTI PENGANTAR",
-    "------------------------------------------------",
-    invoiceDottedLine("Nama Penerima", 30),
-    "",
-    invoiceDottedLine("No. HP Pelanggan", 30),
-    "",
-    invoiceDottedLine("Komitmen Bayar", 30),
-    "",
-    invoiceDottedLine("Tanda Tangan", 30),
-    "------------------------------------------------",
-    padInvoice("", 58) + `${data.kota},`.padEnd(18) + data.rekening,
-    padInvoice("", 78) + "Manager",
-    "",
-    "",
-    "",
-    padInvoice("", 74) + data.manager,
-    centerInvoiceText('"ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN"', width),
-  ];
-  return lines.join("\n");
+function getInvoicesForPreview() {
+  if (state.invoiceMode === "single") return [readInvoiceForm()];
+  const admin = parseFlexibleRupiah(els.invoiceAdminFee?.value || 0);
+  const shared = {
+    rekening: cleanText(els.invoiceRekening?.value || formatInvoiceMonth(new Date())).toUpperCase(),
+    kota: cleanText(els.invoiceKota?.value || "Sabak"),
+    manager: cleanText(els.invoiceManager?.value || "MARWAN MASALAN").toUpperCase(),
+    admin,
+  };
+  const customers = getInvoiceCustomers();
+  return customers
+    .filter((customer) => state.selectedInvoiceIds.has(customer.idpel))
+    .map((customer) => ({
+      ...customer,
+      kodeKedudukan: customer.koked,
+      tagihan: customer.rptag,
+      terlambat: customer.rpbk,
+      total: customer.rptag + customer.rpbk + admin,
+      ...shared,
+    }));
 }
 
-function invoiceTwoColumn(label, value, rightLabel, rightValue, width) {
-  const left = `${label.padEnd(13)}: ${value || ""}`;
-  if (!rightLabel) return left;
-  const right = `${rightLabel} : ${rightValue || ""}`;
-  return left.padEnd(Math.max(54, width - right.length)) + right;
+function buildInvoiceHtml(data) {
+  const tarifDaya = [data.tarif, data.daya].filter(Boolean).join("/");
+  const safe = (value) => escapeHtml(value || "");
+  return `
+    <article class="invoice-document">
+      <header class="invoice-letterhead">
+        <div>PT. PLN (PERSERO) UID S2JB</div>
+        <div>UP3 JAMBI</div>
+        <div>ULP SABAK</div>
+      </header>
+      <div class="invoice-title">AYO BAYAR LISTRIK DI AWAL BULAN</div>
+      <div class="invoice-address">Kepada Yth.</div>
+      <div class="invoice-data-row"><span>Nama</span><b>:</b><strong class="invoice-fit">${safe(data.nama)}</strong></div>
+      <div class="invoice-data-split">
+        <div class="invoice-data-row"><span>ID Pelanggan</span><b>:</b><strong>${safe(data.idpel)}</strong></div>
+        <div class="invoice-data-row invoice-code-row"><span>Kode kedudukan</span><b>:</b><strong class="invoice-fit">${safe(data.kodeKedudukan)}</strong></div>
+      </div>
+      <div class="invoice-data-row"><span>Alamat</span><b>:</b><strong class="invoice-fit">${safe(data.alamat)}</strong></div>
+      <div class="invoice-data-row"><span>Tarip / daya</span><b>:</b><strong>${safe(tarifDaya)}</strong></div>
+      ${buildInvoiceMoneyHtml("Rekening", data.rekening, data.tagihan)}
+      ${buildInvoiceMoneyHtml("Jumlah Biaya Keterlambatan s.d bulan", "", data.terlambat)}
+      ${buildInvoiceMoneyHtml("Jumlah Tagihan ( belum termasuk biaya Administrasi )", "", data.total, true)}
+      <p class="invoice-notice">Dengan ini kami informasikan tagihan listrik saudara/i sesuai dengan data di atas. Kami menghimbau agar dapat melunasi tagihan rekening listrik sebelum tanggal 20 setiap bulannya dan bila telat dari tempo yang sudah di tentukan maka akan kami lakukan pemutusan sementara dan migrasi ke KWH Prabayar. Terimakasih bagi pelanggan yang sudah tepat waktu,selamat menikmati aliran listrik. "SALAM LISTRIK UNTUK KEHIDUPAN YANG LEBIH BAIK".</p>
+      <div class="invoice-lower">
+        <section class="invoice-receipt">
+          <div class="invoice-receipt-title">BUKTI PENGANTARAN</div>
+          ${buildInvoiceReceiptLine("Nama Penerima")}
+          ${buildInvoiceReceiptLine("No. HP Pelanggan")}
+          ${buildInvoiceReceiptLine("Komitmen Bayar")}
+          ${buildInvoiceReceiptLine("Tanda Tangan")}
+        </section>
+        <section class="invoice-signature">
+          <div><span>${safe(data.kota)},</span><span>${safe(formatInvoicePeriodForSignature(data.rekening))}</span></div>
+          <div>Manager</div>
+          <strong>${safe(data.manager)}</strong>
+        </section>
+      </div>
+      <footer class="invoice-footer">"ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN"</footer>
+    </article>
+  `;
 }
 
-function invoiceMoneyLine(label, value, amount, rpX, rightValueWidth, bold = false) {
-  const left = value ? `${label.padEnd(13)}: ${value}` : `${label} :`;
-  const amountText = formatInvoiceMoney(amount);
-  const line = left.padEnd(rpX) + "Rp:" + amountText.padStart(rightValueWidth);
-  return bold ? line : line;
+function buildInvoiceMoneyHtml(label, value, amount, total = false) {
+  return `
+    <div class="invoice-money-row${total ? " invoice-money-total" : ""}">
+      <div class="invoice-money-label"><span>${escapeHtml(label)}</span><b>:</b>${value ? `<strong>${escapeHtml(value)}</strong>` : ""}</div>
+      <div class="invoice-money-value"><span>Rp :</span><strong>${formatInvoiceMoney(amount)}</strong></div>
+    </div>
+  `;
 }
 
-function invoiceDottedLine(label, length) {
-  return `${label.padEnd(17)}: ${".".repeat(length)}`;
+function buildInvoiceReceiptLine(label) {
+  return `<div class="invoice-receipt-line"><span>${escapeHtml(label)}</span><b>:</b><i></i></div>`;
 }
 
-function wrapInvoiceParagraph(text, width) {
-  const words = text.split(/\s+/);
-  const lines = [];
-  let line = "";
-  words.forEach((word) => {
-    const next = line ? `${line} ${word}` : word;
-    if (next.length > width) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = next;
-    }
-  });
-  if (line) lines.push(line);
-  return lines;
-}
-
-function centerInvoiceText(text, width) {
-  const value = String(text || "");
-  const left = Math.max(0, Math.floor((width - value.length) / 2));
-  return `${" ".repeat(left)}${value}`;
-}
-
-function padInvoice(text, width) {
-  return String(text || "").padEnd(width);
+function formatInvoicePeriodForSignature(value) {
+  return String(value || "")
+    .toLocaleLowerCase("id-ID")
+    .replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
 }
 
 function formatInvoiceMoney(value) {
@@ -581,8 +625,111 @@ function formatInvoiceMonth(value) {
   }).format(value).toUpperCase();
 }
 
+function setInvoiceMode(mode) {
+  state.invoiceMode = mode === "batch" ? "batch" : "single";
+  els.invoiceSingleControls.hidden = state.invoiceMode !== "single";
+  els.invoiceBatchControls.hidden = state.invoiceMode !== "batch";
+  els.invoiceModeButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.invoiceMode === state.invoiceMode);
+  });
+  if (state.invoiceMode === "batch") renderInvoiceBatchControls();
+  renderInvoicePreview();
+}
+
+function getInvoiceCustomers() {
+  const dilMap = new Map(state.dil.map((row) => [normalizeId(row.idpel), row]));
+  const seen = new Set();
+  return state.akhir
+    .map((saldo) => {
+      const idpel = normalizeId(saldo.idpel);
+      const dil = dilMap.get(idpel) || {};
+      return {
+        idpel,
+        nama: saldo.nama || dil.nama || "",
+        alamat: saldo.alamat || "",
+        tarif: saldo.tarif || "",
+        daya: saldo.daya || "",
+        koked: saldo.koked || dil.koked || "",
+        kolok: saldo.kolok || dil.kolok || "TANPA KOLOK",
+        rptag: Number(saldo.rptag || 0),
+        rpbk: Number(saldo.rpbk || 0),
+      };
+    })
+    .filter((customer) => customer.idpel && !seen.has(customer.idpel) && seen.add(customer.idpel))
+    .sort((a, b) => compareCode(a.kolok, b.kolok) || compareCode(a.koked, b.koked) || compareCode(a.idpel, b.idpel));
+}
+
+function renderInvoiceBatchControls() {
+  if (!els.invoiceKolokFilter) return;
+  const customers = getInvoiceCustomers();
+  const previous = new Set([...els.invoiceKolokFilter.selectedOptions].map((option) => option.value));
+  const koloks = [...new Set(customers.map((customer) => customer.kolok))].sort(compareCode);
+  els.invoiceKolokFilter.innerHTML = koloks
+    .map((kolok) => `<option value="${escapeHtml(kolok)}"${previous.has(kolok) ? " selected" : ""}>${escapeHtml(kolok)}</option>`)
+    .join("");
+  const validIds = new Set(customers.map((customer) => customer.idpel));
+  state.selectedInvoiceIds = new Set([...state.selectedInvoiceIds].filter((idpel) => validIds.has(idpel)));
+  renderInvoiceCustomerList();
+}
+
+function getVisibleInvoiceCustomers() {
+  const selectedKoloks = new Set([...els.invoiceKolokFilter.selectedOptions].map((option) => option.value));
+  const customers = getInvoiceCustomers();
+  return selectedKoloks.size ? customers.filter((customer) => selectedKoloks.has(customer.kolok)) : customers;
+}
+
+function renderInvoiceCustomerList() {
+  if (!els.invoiceCustomerList) return;
+  const customers = getVisibleInvoiceCustomers();
+  els.invoiceCustomerList.innerHTML = customers.length
+    ? customers.map((customer) => `
+        <label class="invoice-customer-option">
+          <input type="checkbox" value="${escapeHtml(customer.idpel)}"${state.selectedInvoiceIds.has(customer.idpel) ? " checked" : ""} />
+          <span><strong>${escapeHtml(customer.idpel)}</strong><small>${escapeHtml(customer.nama || "Tanpa nama")} · ${escapeHtml(customer.kolok)}</small></span>
+          <b>${escapeHtml(formatRupiah(customer.rptag + customer.rpbk))}</b>
+        </label>
+      `).join("")
+    : `<p class="invoice-list-empty">Tidak ada pelanggan pada KOLOK ini.</p>`;
+  updateInvoiceBatchSummary();
+}
+
+function handleInvoiceCustomerSelection(event) {
+  const checkbox = event.target.closest('input[type="checkbox"]');
+  if (!checkbox) return;
+  if (checkbox.checked) state.selectedInvoiceIds.add(checkbox.value);
+  else state.selectedInvoiceIds.delete(checkbox.value);
+  updateInvoiceBatchSummary();
+  renderInvoicePreview();
+}
+
+function selectAllVisibleInvoiceCustomers() {
+  getVisibleInvoiceCustomers().forEach((customer) => state.selectedInvoiceIds.add(customer.idpel));
+  renderInvoiceCustomerList();
+  renderInvoicePreview();
+}
+
+function clearInvoiceCustomerSelection() {
+  state.selectedInvoiceIds.clear();
+  renderInvoiceCustomerList();
+  renderInvoicePreview();
+}
+
+function updateInvoiceBatchSummary() {
+  if (!els.invoiceBatchSummary) return;
+  const admin = parseFlexibleRupiah(els.invoiceAdminFee?.value || 0);
+  const selected = getInvoiceCustomers().filter((customer) => state.selectedInvoiceIds.has(customer.idpel));
+  const total = selected.reduce((sum, customer) => sum + customer.rptag + customer.rpbk + admin, 0);
+  els.invoiceBatchSummary.textContent = selected.length
+    ? `${formatNumber(selected.length)} pelanggan dipilih · Total ${formatRupiah(total)}`
+    : "Belum ada pelanggan dipilih.";
+}
+
 function printInvoice() {
   renderInvoicePreview();
+  if (state.invoiceMode === "batch" && !state.selectedInvoiceIds.size) {
+    setInvoiceStatus("Pilih minimal satu pelanggan untuk dicetak.");
+    return;
+  }
   document.body.classList.add("invoice-printing");
   window.setTimeout(() => window.print(), 100);
   window.setTimeout(() => document.body.classList.remove("invoice-printing"), 1200);
@@ -607,6 +754,8 @@ async function hydrate() {
   syncDailyPelunasanControls();
   renderDailyPelunasanTable();
   renderComparisonMonitoring();
+  if (state.invoiceMode === "batch") renderInvoiceBatchControls();
+  renderInvoicePreview();
 }
 
 function initSupabase() {
@@ -1911,6 +2060,67 @@ async function loadSyncStatus() {
   renderSyncStatus();
 }
 
+async function loadAppRelease() {
+  if (!els.appReleaseStatus || !state.supabaseClient || state.profile?.role !== "admin") return;
+  els.appReleaseStatus.textContent = "Memuat pengaturan versi...";
+  const { data, error } = await state.supabaseClient
+    .from("monitoring_app_releases")
+    .select("latest_version,minimum_version,download_url,force_update,updated_at")
+    .eq("id", "android")
+    .maybeSingle();
+
+  if (error || !data) {
+    els.appReleaseStatus.textContent = `Gagal memuat versi: ${describeSupabaseError(error)}`;
+    return;
+  }
+  if (els.latestAppVersionInput) els.latestAppVersionInput.value = data.latest_version || "";
+  if (els.minimumAppVersionInput) els.minimumAppVersionInput.value = data.minimum_version || "";
+  if (els.appDownloadUrlInput) els.appDownloadUrlInput.value = data.download_url || "";
+  if (els.forceAppUpdateInput) els.forceAppUpdateInput.checked = Boolean(data.force_update);
+  els.appReleaseStatus.textContent = `${data.force_update ? "Update wajib aktif" : "Update wajib belum aktif"}. Terakhir diubah ${formatDateTime(data.updated_at)}.`;
+}
+
+async function saveAppRelease() {
+  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") return;
+  const latestVersion = els.latestAppVersionInput?.value.trim() || "";
+  const minimumVersion = els.minimumAppVersionInput?.value.trim() || "";
+  const downloadUrl = els.appDownloadUrlInput?.value.trim() || "";
+  const forceUpdate = Boolean(els.forceAppUpdateInput?.checked);
+  const versionPattern = /^\d+\.\d+\.\d+$/;
+
+  if (!versionPattern.test(latestVersion) || !versionPattern.test(minimumVersion)) {
+    els.appReleaseStatus.textContent = "Versi harus memakai format tiga angka, contoh 1.6.0.";
+    return;
+  }
+  if (forceUpdate && !downloadUrl) {
+    els.appReleaseStatus.textContent = "Isi URL APK sebelum mengaktifkan update wajib.";
+    return;
+  }
+
+  els.saveAppReleaseButton.disabled = true;
+  els.appReleaseStatus.textContent = "Menyimpan pengaturan versi...";
+  const { error } = await state.supabaseClient
+    .from("monitoring_app_releases")
+    .update({
+      latest_version: latestVersion,
+      minimum_version: minimumVersion,
+      download_url: downloadUrl,
+      force_update: forceUpdate,
+      updated_at: new Date().toISOString(),
+      updated_by: state.user.id,
+    })
+    .eq("id", "android");
+  els.saveAppReleaseButton.disabled = false;
+
+  if (error) {
+    els.appReleaseStatus.textContent = `Gagal menyimpan versi: ${describeSupabaseError(error)}`;
+    return;
+  }
+  els.appReleaseStatus.textContent = forceUpdate
+    ? `Update wajib aktif. APK di bawah versi ${minimumVersion} akan dikunci.`
+    : "Pengaturan tersimpan. Update wajib belum aktif.";
+}
+
 function renderSyncStatus() {
   if (!els.syncStatusTableBody) return;
   const rows = state.syncStatusRows || [];
@@ -2314,6 +2524,7 @@ function render() {
   els.metricPelunasan.textContent = formatRupiah(state.totals.pelunasanRupiah);
   els.metricPersen.textContent = formatPercent(state.totals.persenTagihan);
   renderAnomalies();
+  if (state.invoiceMode === "batch") renderInvoiceBatchControls();
 }
 
 function getLowPerformerNames(rows) {
@@ -4917,6 +5128,11 @@ function setReportDate() {
   renderOverviewDateTime();
   renderOverviewMotivation();
   window.setInterval(renderOverviewDateTime, 1000);
+  window.setInterval(() => {
+    if (state.activeTab === "sync-status" && state.profile?.role === "admin") {
+      loadSyncStatus();
+    }
+  }, 30000);
 }
 
 function renderOverviewDateTime() {

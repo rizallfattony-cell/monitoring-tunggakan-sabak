@@ -9,6 +9,7 @@
     <link rel="apple-touch-icon" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="./styles.css?v=20260622-table-maximize" />
+    <link rel="stylesheet" href="./invoice.css?v=20260930-invoice-redesign" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -502,6 +503,27 @@
           </div>
         </section>
 
+        <section class="online-panel">
+          <div>
+            <h2>Versi Wajib APK</h2>
+            <p>Aktifkan setelah APK terbaru selesai di-deploy agar pengguna lama tetap memiliki jalur unduhan.</p>
+          </div>
+          <div class="online-form">
+            <label for="latestAppVersionInput">Versi terbaru:</label>
+            <input id="latestAppVersionInput" type="text" placeholder="1.6.0" />
+            <label for="minimumAppVersionInput">Versi minimum:</label>
+            <input id="minimumAppVersionInput" type="text" placeholder="1.6.0" />
+            <label for="appDownloadUrlInput">URL APK:</label>
+            <input id="appDownloadUrlInput" type="url" placeholder="https://.../SIMONTOK-latest.apk" />
+            <label for="forceAppUpdateInput">Update wajib:</label>
+            <input id="forceAppUpdateInput" type="checkbox" />
+            <div class="login-button-row">
+              <button class="button primary" id="saveAppReleaseButton" type="button">Simpan Versi</button>
+            </div>
+            <p class="auto-note" id="appReleaseStatus">Memuat pengaturan versi...</p>
+          </div>
+        </section>
+
         <section class="table-section">
           <div class="report-heading">
             <h2>Status Pembaruan Data Tunggakan</h2>
@@ -572,45 +594,78 @@
           </div>
           <div class="section-actions">
             <button class="button secondary" id="refreshInvoicePreviewButton" type="button">Refresh Preview</button>
-            <button class="button primary" id="printInvoiceButton" type="button">Cetak Invoice</button>
+            <button class="button primary" id="printInvoiceButton" type="button">Cetak Invoice Terpilih</button>
           </div>
         </div>
 
         <section class="invoice-layout">
-          <form class="invoice-form" id="invoiceForm">
+          <form class="invoice-form invoice-controls" id="invoiceForm">
             <div class="invoice-form-head">
               <h2>Data Invoice</h2>
-              <p>Isi manual atau ketik ID Pelanggan lalu klik Ambil Data.</p>
+              <p>Cetak satu pelanggan atau pilih beberapa pelanggan berdasarkan KOLOK.</p>
             </div>
-            <div class="invoice-field-row">
-              <label class="field" for="invoiceIdpel">
-                <span>ID Pelanggan</span>
-                <input id="invoiceIdpel" type="text" autocomplete="off" placeholder="Contoh: 143900189110" />
-              </label>
-              <button class="button secondary invoice-load-button" id="loadInvoiceCustomerButton" type="button">Ambil Data</button>
+
+            <div class="invoice-mode-switch" role="group" aria-label="Mode cetak invoice">
+              <button class="invoice-mode-button is-active" type="button" data-invoice-mode="single">Satuan</button>
+              <button class="invoice-mode-button" type="button" data-invoice-mode="batch">Massal</button>
             </div>
-            <label class="field" for="invoiceNama">
-              <span>Nama</span>
-              <input id="invoiceNama" type="text" autocomplete="off" />
-            </label>
-            <label class="field" for="invoiceKodeKedudukan">
-              <span>Kode Kedudukan</span>
-              <input id="invoiceKodeKedudukan" type="text" autocomplete="off" />
-            </label>
-            <label class="field" for="invoiceAlamat">
-              <span>Alamat</span>
-              <input id="invoiceAlamat" type="text" autocomplete="off" />
-            </label>
-            <div class="invoice-field-row">
-              <label class="field" for="invoiceTarif">
-                <span>Tarif</span>
-                <input id="invoiceTarif" type="text" autocomplete="off" placeholder="R1" />
+
+            <div class="invoice-single-controls" id="invoiceSingleControls">
+              <div class="invoice-field-row">
+                <label class="field" for="invoiceIdpel">
+                  <span>ID Pelanggan</span>
+                  <input id="invoiceIdpel" type="text" autocomplete="off" placeholder="Contoh: 143900189110" />
+                </label>
+                <button class="button secondary invoice-load-button" id="loadInvoiceCustomerButton" type="button">Ambil Data</button>
+              </div>
+              <label class="field" for="invoiceNama">
+                <span>Nama</span>
+                <input id="invoiceNama" type="text" autocomplete="off" />
               </label>
-              <label class="field" for="invoiceDaya">
-                <span>Daya</span>
-                <input id="invoiceDaya" type="text" autocomplete="off" placeholder="1300" />
+              <label class="field" for="invoiceKodeKedudukan">
+                <span>Kode Kedudukan</span>
+                <input id="invoiceKodeKedudukan" type="text" autocomplete="off" />
               </label>
+              <label class="field" for="invoiceAlamat">
+                <span>Alamat</span>
+                <input id="invoiceAlamat" type="text" autocomplete="off" />
+              </label>
+              <div class="invoice-field-row">
+                <label class="field" for="invoiceTarif">
+                  <span>Tarif</span>
+                  <input id="invoiceTarif" type="text" autocomplete="off" placeholder="R1" />
+                </label>
+                <label class="field" for="invoiceDaya">
+                  <span>Daya</span>
+                  <input id="invoiceDaya" type="text" autocomplete="off" placeholder="1300" />
+                </label>
+              </div>
+              <div class="invoice-field-row">
+                <label class="field" for="invoiceTagihan">
+                  <span>Tagihan (RPTAG)</span>
+                  <input id="invoiceTagihan" type="text" inputmode="numeric" autocomplete="off" placeholder="485323" />
+                </label>
+                <label class="field" for="invoiceTerlambat">
+                  <span>Biaya Terlambat (RPBK)</span>
+                  <input id="invoiceTerlambat" type="text" inputmode="numeric" autocomplete="off" value="0" />
+                </label>
+              </div>
             </div>
+
+            <div class="invoice-batch-controls" id="invoiceBatchControls" hidden>
+              <label class="field" for="invoiceKolokFilter">
+                <span>Filter KOLOK</span>
+                <select id="invoiceKolokFilter" multiple size="6" aria-describedby="invoiceKolokHelp"></select>
+              </label>
+              <p class="invoice-help" id="invoiceKolokHelp">Tahan Ctrl untuk memilih beberapa KOLOK.</p>
+              <div class="invoice-batch-actions">
+                <button class="button secondary" id="selectAllInvoiceCustomersButton" type="button">Pilih Semua Hasil</button>
+                <button class="button secondary" id="clearInvoiceCustomersButton" type="button">Kosongkan Pilihan</button>
+              </div>
+              <div class="invoice-customer-list" id="invoiceCustomerList"></div>
+              <p class="invoice-batch-summary" id="invoiceBatchSummary">Belum ada pelanggan dipilih.</p>
+            </div>
+
             <div class="invoice-field-row">
               <label class="field" for="invoiceRekening">
                 <span>Rekening</span>
@@ -622,30 +677,24 @@
               </label>
             </div>
             <div class="invoice-field-row">
-              <label class="field" for="invoiceTagihan">
-                <span>Tagihan</span>
-                <input id="invoiceTagihan" type="text" inputmode="numeric" autocomplete="off" placeholder="485323" />
+              <label class="field" for="invoiceAdminFee">
+                <span>Biaya Admin</span>
+                <input id="invoiceAdminFee" type="text" inputmode="numeric" autocomplete="off" value="0" />
               </label>
-              <label class="field" for="invoiceTerlambat">
-                <span>Biaya Terlambat</span>
-                <input id="invoiceTerlambat" type="text" inputmode="numeric" autocomplete="off" value="0" />
+              <label class="field" for="invoiceManager">
+                <span>Manager</span>
+                <input id="invoiceManager" type="text" autocomplete="off" value="MARWAN MASALAN" />
               </label>
             </div>
-            <label class="field" for="invoiceManager">
-              <span>Manager</span>
-              <input id="invoiceManager" type="text" autocomplete="off" value="MARWAN MASALAN" />
-            </label>
             <p class="auto-note" id="invoiceStatus">Preview akan berubah otomatis saat data diketik.</p>
           </form>
 
           <section class="invoice-preview-card">
             <div class="invoice-preview-head">
               <h2>Preview Cetak</h2>
-              <p>Gunakan kertas 9,5&quot; x 11&quot; pada driver printer.</p>
+              <p>Epson LQ-310: kertas 9,5&quot; x 11&quot;, portrait, skala 100%, tanpa header/footer.</p>
             </div>
-            <div class="invoice-print-area" id="invoicePrintArea">
-              <pre id="invoicePreviewText"></pre>
-            </div>
+            <div class="invoice-print-area" id="invoicePrintArea"></div>
           </section>
         </section>
       </section>
@@ -672,6 +721,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260922-sync-status"></script>
+    <script src="./app.js?v=20260930-invoice-redesign"></script>
   </body>
 </html>
