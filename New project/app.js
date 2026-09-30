@@ -67,11 +67,13 @@ const els = {
   dilInput: document.querySelector("#dilInput"),
   awalInput: document.querySelector("#awalInput"),
   akhirInput: document.querySelector("#akhirInput"),
-  strukInput: document.querySelector("#strukInput"),
+  standAwalInput: document.querySelector("#standAwalInput"),
+  standAkhirInput: document.querySelector("#standAkhirInput"),
   dilStatus: document.querySelector("#dilStatus"),
   awalStatus: document.querySelector("#awalStatus"),
   akhirStatus: document.querySelector("#akhirStatus"),
-  strukStatus: document.querySelector("#strukStatus"),
+  standAwalStatus: document.querySelector("#standAwalStatus"),
+  standAkhirStatus: document.querySelector("#standAkhirStatus"),
   tableBody: document.querySelector("#tableBody"),
   tableFoot: document.querySelector("#tableFoot"),
   tableDate: document.querySelector("#tableDate"),
@@ -242,7 +244,8 @@ function attachEvents() {
   els.dilInput.addEventListener("change", (event) => handleUpload(event, "dil"));
   els.awalInput.addEventListener("change", (event) => handleUpload(event, "awal"));
   els.akhirInput.addEventListener("change", (event) => handleUpload(event, "akhir"));
-  els.strukInput.addEventListener("change", handleStrukUpload);
+  els.standAwalInput?.addEventListener("change", (event) => handleStandUpload(event, "standAwal"));
+  els.standAkhirInput?.addEventListener("change", (event) => handleStandUpload(event, "standAkhir"));
   els.searchInput.addEventListener("input", render);
   els.sortSelect.addEventListener("change", render);
   els.exportButton.addEventListener("click", exportReport);
@@ -410,22 +413,26 @@ function switchTab(tabName) {
 }
 
 function setUploadView(viewName) {
-  state.uploadView = viewName === "stand-meter" ? "stand-meter" : "database";
+  state.uploadView = ["stand-awal", "stand-akhir"].includes(viewName) ? viewName : "database";
 }
 
 function renderUploadView() {
-  const standMeterOnly = state.uploadView === "stand-meter";
+  const standView = ["stand-awal", "stand-akhir"].includes(state.uploadView);
   els.uploadPanels.forEach((panel) => {
-    panel.hidden = standMeterOnly
-      ? panel.dataset.uploadPanel !== "stand-meter"
+    panel.hidden = standView
+      ? panel.dataset.uploadPanel !== state.uploadView
       : panel.dataset.uploadPanel !== "database";
   });
   if (els.uploadPanelTitle) {
-    els.uploadPanelTitle.textContent = standMeterOnly ? "Upload Stand Meter" : "UPLOAD DATABASE";
+    els.uploadPanelTitle.textContent = state.uploadView === "stand-awal"
+      ? "UPLOAD STAND AWAL"
+      : state.uploadView === "stand-akhir"
+        ? "UPLOAD STAND AKHIR"
+        : "UPLOAD DATABASE";
   }
   if (els.uploadPanelDescription) {
-    els.uploadPanelDescription.textContent = standMeterOnly
-      ? "Upload stand meter untuk kebutuhan struk petugas di aplikasi SIMONTOK."
+    els.uploadPanelDescription.textContent = standView
+      ? "Upload file Excel dengan susunan kolom IDPEL dan STAND."
       : "Silahkan Upload Data Exel Anda Sesuai Format yang berlaku.";
   }
 }
@@ -2298,19 +2305,25 @@ async function handleUpload(event, kind) {
   }
 }
 
-async function handleStrukUpload(event) {
+async function handleStandUpload(event, kind) {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  startProgress("Upload File Struk", `Membaca file ${file.name}...`);
+  const isAwal = kind === "standAwal";
+  const label = isAwal ? "Stand Awal" : "Stand Akhir";
+  startProgress(`Upload ${label}`, `Membaca file ${file.name}...`);
   try {
     const rows = await readWorkbook(file, (percent) => {
       updateProgress(percent * 0.35, `Membaca file ${file.name}...`);
     });
-    updateProgress(42, `Memproses ${formatNumber(rows.length)} baris stand meter...`);
+    updateProgress(42, `Memproses ${formatNumber(rows.length)} baris ${label}...`);
     await yieldUi();
-    state.struk = normalizeStruk(rows);
-    state.uploadMeta.struk = { uploadedAt: new Date().toISOString(), fileName: file.name };
+    const snapshot = normalizeStandSnapshot(rows);
+    if (!snapshot.length) {
+      throw new Error("Tidak ada data IDPEL dan STAND yang dapat dibaca.");
+    }
+    state.struk = mergeStandSnapshot(state.struk, snapshot, kind);
+    state.uploadMeta[kind] = { uploadedAt: new Date().toISOString(), fileName: file.name };
     updateProgress(58, "Menyimpan data lokal...");
     await saveStoredData();
     updateProgress(68, "Memperbarui status file...");
@@ -2322,8 +2335,8 @@ async function handleStrukUpload(event) {
       notifyDebtUpdate: false,
       publishReceiptMeters: true,
     });
-    finishProgress(`File struk selesai diproses: ${formatNumber(state.struk.length)} IDPEL stand meter.${onlineSaved ? " Data online sudah otomatis tersimpan." : ""}`);
-    setOnlineStatus(`File struk dimuat: ${formatNumber(state.struk.length)} IDPEL stand meter.`);
+    finishProgress(`${label} selesai diproses: ${formatNumber(snapshot.length)} IDPEL.${onlineSaved ? " Data online sudah otomatis tersimpan." : ""}`);
+    setOnlineStatus(`${label} dimuat: ${formatNumber(snapshot.length)} IDPEL.`);
   } catch (error) {
     failProgress(`Gagal membaca file ${file.name}: ${error.message}`);
     alert(`Gagal membaca file ${file.name}: ${error.message}`);
@@ -2414,6 +2427,37 @@ function normalizeStruk(rows) {
       standAkhir: cleanText(getValue(row, ["STANDAKHIR", "STAND AKHIR", "STAND_AKHIR"])),
     }))
     .filter((row) => row.idpel);
+}
+
+function normalizeStandSnapshot(rows) {
+  const byIdpel = new Map();
+  rows.forEach((row) => {
+    const idpel = normalizeId(getValue(row, ["IDPEL", "ID PEL", "ID_PEL", "ID PELANGGAN"]));
+    const stand = cleanText(getValue(row, ["STAND", "STAND METER", "NILAI STAND"]));
+    if (idpel && stand !== "") byIdpel.set(idpel, { idpel, stand });
+  });
+  return [...byIdpel.values()];
+}
+
+function mergeStandSnapshot(currentRows, snapshot, kind) {
+  const isAwal = kind === "standAwal";
+  const currentMap = new Map((currentRows || []).map((row) => [normalizeId(row.idpel), row]));
+  const uploadedMap = new Map(snapshot.map((row) => [row.idpel, row.stand]));
+  const ids = new Set(uploadedMap.keys());
+
+  currentMap.forEach((row, idpel) => {
+    const otherStand = isAwal ? row.standAkhir : row.standAwal;
+    if (cleanText(otherStand) !== "") ids.add(idpel);
+  });
+
+  return [...ids].map((idpel) => {
+    const current = currentMap.get(idpel) || {};
+    return {
+      idpel,
+      standAwal: isAwal ? (uploadedMap.get(idpel) || "") : cleanText(current.standAwal),
+      standAkhir: isAwal ? cleanText(current.standAkhir) : (uploadedMap.get(idpel) || ""),
+    };
+  });
 }
 
 function recompute() {
@@ -5127,7 +5171,24 @@ function updateFileStatuses() {
   setStatus("dil", state.dil.length, "DIL");
   setStatus("awal", state.awal.length, "Saldo awal");
   setStatus("akhir", state.akhir.length, "Saldo akhir");
-  setStatus("struk", state.struk.length, "Stand meter struk");
+  setStandStatus("standAwal", "standAwal", "Stand awal");
+  setStandStatus("standAkhir", "standAkhir", "Stand akhir");
+}
+
+function setStandStatus(kind, field, label) {
+  const count = state.struk.filter((row) => cleanText(row[field]) !== "").length;
+  const status = els[`${kind}Status`];
+  const card = status?.closest(".upload-panel");
+  if (!status) return;
+  const meta = state.uploadMeta?.[kind] || state.uploadMeta?.struk || {};
+  const uploadedAt = formatUploadTimestamp(meta.uploadedAt);
+  status.innerHTML = count
+    ? `
+      <strong>${escapeHtml(label)}: ${formatNumber(count)} IDPEL tersimpan</strong>
+      ${uploadedAt ? `<span>Terakhir upload: ${escapeHtml(uploadedAt)}</span>` : ""}
+    `
+    : "Belum ada data";
+  card?.classList.toggle("loaded", count > 0);
 }
 
 function setStatus(kind, count, label) {
@@ -5147,7 +5208,7 @@ function setStatus(kind, count, label) {
 
 function normalizeUploadMeta(meta = {}) {
   const normalized = {};
-  ["dil", "awal", "akhir", "struk", "saldoPagi", "saldoSore", "sisaBulanLalu"].forEach((key) => {
+  ["dil", "awal", "akhir", "struk", "standAwal", "standAkhir", "saldoPagi", "saldoSore", "sisaBulanLalu"].forEach((key) => {
     const item = meta?.[key];
     if (!item?.uploadedAt) return;
     normalized[key] = {

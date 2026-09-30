@@ -82,7 +82,8 @@
                 Simontok Super App
               </button>
               <div class="tree-children">
-                <button class="tree-child" type="button" data-tab="upload" data-upload-view="stand-meter">Upload Stand Meter</button>
+                <button class="tree-child" type="button" data-tab="upload" data-upload-view="stand-awal">Upload Stand Awal</button>
+                <button class="tree-child" type="button" data-tab="upload" data-upload-view="stand-akhir">Upload Stand Akhir</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="sync-status">Status Sinkron Petugas</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="invoice">Cetak Invoice</button>
               </div>
@@ -170,18 +171,32 @@
             <span class="file-status" id="akhirStatus">Belum ada file.</span>
           </article>
 
-          <article class="upload-panel" data-upload-panel="stand-meter" hidden>
+          <article class="upload-panel" data-upload-panel="stand-awal" hidden>
             <span class="step-badge">4</span>
             <div>
               <span class="upload-label">Struk Petugas</span>
-              <h2>Stand Meter</h2>
-              <p>Opsional untuk kebutuhan cetak struk di APK.</p>
+              <h2>Stand Awal</h2>
+              <p>Format Excel: kolom <strong>IDPEL</strong> dan <strong>STAND</strong>.</p>
             </div>
             <label class="file-button">
-              Upload Stand Meter
-              <input id="strukInput" type="file" accept=".xlsx,.xls,.csv" />
+              Upload Stand Awal
+              <input id="standAwalInput" type="file" accept=".xlsx,.xls,.csv" />
             </label>
-            <span class="file-status" id="strukStatus">Belum ada file.</span>
+            <span class="file-status" id="standAwalStatus">Belum ada file.</span>
+          </article>
+
+          <article class="upload-panel" data-upload-panel="stand-akhir" hidden>
+            <span class="step-badge">5</span>
+            <div>
+              <span class="upload-label">Struk Petugas</span>
+              <h2>Stand Akhir</h2>
+              <p>Format Excel: kolom <strong>IDPEL</strong> dan <strong>STAND</strong>.</p>
+            </div>
+            <label class="file-button">
+              Upload Stand Akhir
+              <input id="standAkhirInput" type="file" accept=".xlsx,.xls,.csv" />
+            </label>
+            <span class="file-status" id="standAkhirStatus">Belum ada file.</span>
           </article>
         </section>
       </section>
@@ -717,6 +732,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260930-invoice-v3"></script>
+    <script src="./app.js?v=20260930-stand-split-v1"></script>
   </body>
 </html>
