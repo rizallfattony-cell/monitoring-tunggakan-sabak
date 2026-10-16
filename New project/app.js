@@ -11,6 +11,25 @@ const SALDO_AVERAGE_FIELDS = [
   { key: "kogol4", label: "KOGOL 4" },
 ];
 const COMPARISON_KOLOK_KEYS = ["A", "B", "C", "D", "E", "F", "G", "J"];
+const LPB_PETUGAS = [
+  { username: "14390.adri01", biller: "ADRI", coordinator: "WANDA EKA S" },
+  { username: "14390.anang01", biller: "ANANG RIDWAN", coordinator: "WANDA EKA S" },
+  { username: "14390.cecep01", biller: "CECEP HIDAYAT", coordinator: "WANDA EKA S" },
+  { username: "14390.agust01", biller: "DEDI YANTO", coordinator: "WANDA EKA S" },
+  { username: "14390.istifar01", biller: "M. ROBY MASHRUR", coordinator: "WANDA EKA S" },
+  { username: "14390.maulana01", biller: "MUHAMMAD TOHIR", coordinator: "WANDA EKA S" },
+  { username: "14390.suwardi02", biller: "SUWARDI", coordinator: "WANDA EKA S" },
+  { username: "14390.bowo02", biller: "TRI WIBOWO", coordinator: "WANDA EKA S" },
+  { username: "14390.ilvan", biller: "ILVAN HALMAHERA", coordinator: "WANDA EKA S" },
+  { username: "14390.amrizal02", biller: "AMRIZAL", coordinator: "RIZAL FATONI" },
+  { username: "14390.sopian02", biller: "ARBAIN", coordinator: "RIZAL FATONI" },
+  { username: "14390.bun02", biller: "BUNJAMIN", coordinator: "RIZAL FATONI" },
+  { username: "14390.sari02", biller: "DWI WIBOWO", coordinator: "RIZAL FATONI" },
+  { username: "14390.eko01", biller: "EKO DARWANTO", coordinator: "RIZAL FATONI" },
+  { username: "14390.hasim02", biller: "HASIM", coordinator: "RIZAL FATONI" },
+  { username: "14390.herman02", biller: "RAHUL FARISTA R", coordinator: "RIZAL FATONI" },
+  { username: "14390.vera01", biller: "NICO DIAN HADINATA", coordinator: "RIZAL FATONI" },
+];
 const WORK_MOTIVATION_QUOTES = [
   "Kerja yang rapi hari ini membuat masalah besok jauh lebih ringan.",
   "Disiplin kecil yang dilakukan konsisten akan mengalahkan semangat besar yang hanya sesekali.",
@@ -49,9 +68,11 @@ const state = {
   saldoAkhirRataRata: emptySaldoAverageState(),
   dailyPelunasan: emptyDailyPelunasanState(),
   comparisonMonitoring: emptyComparisonMonitoringState(),
+  lpbMonitoring: emptyLpbMonitoringState(),
   saldoAverageSaveTimer: null,
   dailyPelunasanSaveTimer: null,
   comparisonMonitoringSaveTimer: null,
+  lpbSaveTimer: null,
   syncStatusRows: [],
   invoiceMode: "single",
   selectedInvoiceIds: new Set(),
@@ -166,6 +187,21 @@ const els = {
   comparisonTableDate: document.querySelector("#comparisonTableDate"),
   exportComparisonExcelButton: document.querySelector("#exportComparisonExcelButton"),
   exportComparisonJpgButton: document.querySelector("#exportComparisonJpgButton"),
+  lpbPreviousInput: document.querySelector("#lpbPreviousInput"),
+  lpbLatestInput: document.querySelector("#lpbLatestInput"),
+  lpbPreviousStatus: document.querySelector("#lpbPreviousStatus"),
+  lpbLatestStatus: document.querySelector("#lpbLatestStatus"),
+  lpbStartDateInput: document.querySelector("#lpbStartDateInput"),
+  lpbEndDateInput: document.querySelector("#lpbEndDateInput"),
+  lpbTargetInput: document.querySelector("#lpbTargetInput"),
+  lpbLatestCount: document.querySelector("#lpbLatestCount"),
+  lpbDuplicateCount: document.querySelector("#lpbDuplicateCount"),
+  lpbEligibleCount: document.querySelector("#lpbEligibleCount"),
+  lpbTableDate: document.querySelector("#lpbTableDate"),
+  lpbTableHead: document.querySelector("#lpbTableHead"),
+  lpbTableBody: document.querySelector("#lpbTableBody"),
+  exportLpbExcelButton: document.querySelector("#exportLpbExcelButton"),
+  exportLpbJpgButton: document.querySelector("#exportLpbJpgButton"),
   invoiceForm: document.querySelector("#invoiceForm"),
   invoiceIdpel: document.querySelector("#invoiceIdpel"),
   invoiceNama: document.querySelector("#invoiceNama"),
@@ -215,6 +251,7 @@ async function boot() {
   setReportDate();
   renderSaldoAverageInputs();
   initializeDailyPelunasanControls();
+  initializeLpbMonitoring();
   initializeInvoiceForm();
   attachEvents();
   initSupabase();
@@ -297,6 +334,13 @@ function attachEvents() {
   els.comparisonLastMonthInput?.addEventListener("change", (event) => handleComparisonUpload(event, "lastMonth"));
   els.exportComparisonExcelButton?.addEventListener("click", exportComparisonMonitoringExcel);
   els.exportComparisonJpgButton?.addEventListener("click", exportComparisonMonitoringJpg);
+  els.lpbPreviousInput?.addEventListener("change", (event) => handleLpbUpload(event, "previous"));
+  els.lpbLatestInput?.addEventListener("change", (event) => handleLpbUpload(event, "latest"));
+  els.lpbStartDateInput?.addEventListener("change", () => handleLpbDateChange("start"));
+  els.lpbEndDateInput?.addEventListener("change", () => handleLpbDateChange("end"));
+  els.lpbTargetInput?.addEventListener("input", handleLpbTargetChange);
+  els.exportLpbExcelButton?.addEventListener("click", exportLpbExcel);
+  els.exportLpbJpgButton?.addEventListener("click", exportLpbJpg);
   els.dailyTableBody?.addEventListener("click", handleDailyDetailClick);
   els.invoiceForm?.addEventListener("input", () => {
     updateInvoiceBatchSummary();
@@ -405,6 +449,7 @@ function switchTab(tabName) {
   if (els.workspaceTabTitle) els.workspaceTabTitle.textContent = tabTitle(tabName);
   if (tabName === "upload") renderUploadView();
   if (tabName === "comparison") renderComparisonMonitoring();
+  if (tabName === "lpb") renderLpbMonitoring();
   if (tabName === "sync-status") {
     loadSyncStatus();
     loadAppRelease();
@@ -413,22 +458,18 @@ function switchTab(tabName) {
 }
 
 function setUploadView(viewName) {
-  state.uploadView = ["stand-awal", "stand-akhir"].includes(viewName) ? viewName : "database";
+  state.uploadView = viewName === "stand-meter" ? "stand-meter" : "database";
 }
 
 function renderUploadView() {
-  const standView = ["stand-awal", "stand-akhir"].includes(state.uploadView);
+  const standView = state.uploadView === "stand-meter";
   els.uploadPanels.forEach((panel) => {
     panel.hidden = standView
-      ? panel.dataset.uploadPanel !== state.uploadView
+      ? panel.dataset.uploadPanel !== "stand-meter"
       : panel.dataset.uploadPanel !== "database";
   });
   if (els.uploadPanelTitle) {
-    els.uploadPanelTitle.textContent = state.uploadView === "stand-awal"
-      ? "UPLOAD STAND AWAL"
-      : state.uploadView === "stand-akhir"
-        ? "UPLOAD STAND AKHIR"
-        : "UPLOAD DATABASE";
+    els.uploadPanelTitle.textContent = standView ? "UPLOAD STAND" : "UPLOAD DATABASE";
   }
   if (els.uploadPanelDescription) {
     els.uploadPanelDescription.textContent = standView
@@ -444,6 +485,7 @@ function tabTitle(tabName) {
     laporan: "Laporan",
     "pelunasan-harian": "Pelunasan Harian",
     comparison: "Perbandingan Saldo Dengan Bulan Lalu",
+    lpb: "Monitoring LPB",
     "saldo-rata": "Saldo Akhir Rata Rata",
     online: "Online & Sinkron",
     invoice: "Cetak Invoice",
@@ -822,11 +864,13 @@ async function hydrate() {
   state.saldoAkhirRataRata = normalizeSaldoAverageState(saved.saldoAkhirRataRata);
   state.dailyPelunasan = normalizeDailyPelunasanState(saved.dailyPelunasan);
   state.comparisonMonitoring = normalizeComparisonMonitoringState(saved.comparisonMonitoring);
+  state.lpbMonitoring = normalizeLpbMonitoringState(saved.lpbMonitoring);
   updateFileStatuses();
   renderSaldoAverage();
   syncDailyPelunasanControls();
   renderDailyPelunasanTable();
   renderComparisonMonitoring();
+  renderLpbMonitoring();
   if (state.invoiceMode === "batch") renderInvoiceBatchControls();
   renderInvoicePreview();
 }
@@ -1132,6 +1176,7 @@ async function loadCloudData(options = {}) {
   }
   state.uploadMeta = normalizeUploadMeta(payload.uploadMeta);
   state.saldoAkhirRataRata = normalizeSaldoAverageState(payload.saldoAkhirRataRata);
+  state.lpbMonitoring = normalizeLpbMonitoringState(payload.lpbMonitoring);
   if (!lightweightMode) {
     state.dailyPelunasan = normalizeDailyPelunasanState(payload.dailyPelunasan);
     state.comparisonMonitoring = normalizeComparisonMonitoringState(payload.comparisonMonitoring);
@@ -1145,6 +1190,7 @@ async function loadCloudData(options = {}) {
   syncDailyUndoButton();
   renderDailyPelunasanTable();
   renderComparisonMonitoring();
+  renderLpbMonitoring();
   const loadMessage = lightweightMode
     ? `Data online ringan dimuat. DIL/saldo besar tetap memakai data lokal browser. Update terakhir: ${formatDateTime(row.updated_at)}.`
     : `Data online dimuat. Update terakhir: ${formatDateTime(row.updated_at)}.`;
@@ -1609,6 +1655,7 @@ async function saveCloudData(options = {}) {
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
     comparisonMonitoring: state.comparisonMonitoring,
+    lpbMonitoring: state.lpbMonitoring,
   };
   updateProgress(embeddedProgress ? 69 : 18, "Mengompres data lengkap untuk online...");
   let cloudPayload = await encodeCloudPayload(cloudData);
@@ -1685,6 +1732,7 @@ async function encodeCloudPayload(payload) {
     saldoAkhirRataRata: normalizeSaldoAverageState(payload.saldoAkhirRataRata),
     dailyPelunasan: normalizeDailyPelunasanState(payload.dailyPelunasan),
     comparisonMonitoring: normalizeComparisonMonitoringState(payload.comparisonMonitoring),
+    lpbMonitoring: normalizeLpbMonitoringState(payload.lpbMonitoring),
   };
 
   if (!window.CompressionStream) return basePayload;
@@ -1701,6 +1749,7 @@ async function encodeCloudPayload(payload) {
         awal: basePayload.awal.length,
         akhir: basePayload.akhir.length,
         struk: basePayload.struk.length,
+        lpbLatest: basePayload.lpbMonitoring.latestRows.length,
       },
       data: compressed,
     };
@@ -1727,6 +1776,7 @@ function encodeLightweightCloudPayload(payload, originalError = null) {
     saldoAkhirRataRata: normalizeSaldoAverageState(payload.saldoAkhirRataRata),
     dailyPelunasanMeta: summarizeDailyPelunasanState(payload.dailyPelunasan),
     comparisonMonitoringMeta: summarizeComparisonMonitoringState(payload.comparisonMonitoring),
+    lpbMonitoring: normalizeLpbMonitoringState(payload.lpbMonitoring),
   };
 }
 
@@ -1735,11 +1785,13 @@ function shouldUseLightweightCloudPayload(payload) {
     + (payload.awal?.length || 0)
     + (payload.akhir?.length || 0)
     + (payload.struk?.length || 0);
+  const lpbRows = (payload.lpbMonitoring?.previousIds?.length || 0)
+    + (payload.lpbMonitoring?.latestRows?.length || 0);
   const snapshotRows = countSnapshotRows(payload.dailyPelunasan?.snapshots)
     + countSnapshotRows(payload.comparisonMonitoring?.dailyAwalSnapshots)
     + countSnapshotRows(payload.comparisonMonitoring?.dailyAkhirSnapshots)
     + countSnapshotRows(payload.comparisonMonitoring?.lastMonthSnapshots);
-  return rawRows + snapshotRows > 8000;
+  return rawRows + snapshotRows + lpbRows > 8000;
 }
 
 function countSnapshotRows(snapshots) {
@@ -2458,6 +2510,517 @@ function mergeStandSnapshot(currentRows, snapshot, kind) {
       standAkhir: isAwal ? cleanText(current.standAkhir) : (uploadedMap.get(idpel) || ""),
     };
   });
+}
+
+function emptyLpbMonitoringState() {
+  return {
+    previousIds: [],
+    latestRows: [],
+    startDate: "",
+    endDate: "",
+    targetPerBiller: 501,
+    uploadMeta: {},
+  };
+}
+
+function normalizeLpbMonitoringState(value) {
+  const source = value || {};
+  const previousIds = [...new Set((source.previousIds || []).map(normalizeId).filter(Boolean))];
+  const latestRows = (Array.isArray(source.latestRows) ? source.latestRows : [])
+    .map((row) => ({
+      idpel: normalizeId(row.idpel),
+      readDate: normalizeLpbDate(row.readDate),
+      username: cleanText(row.username).toLowerCase(),
+    }))
+    .filter((row) => row.idpel && row.readDate && row.username);
+  const dates = latestRows.map((row) => row.readDate).sort();
+  const minDate = dates[0] || "";
+  const maxDate = dates[dates.length - 1] || "";
+  return {
+    previousIds,
+    latestRows,
+    startDate: isIsoDate(source.startDate) ? source.startDate : minDate,
+    endDate: isIsoDate(source.endDate) ? source.endDate : maxDate,
+    targetPerBiller: Math.max(0, Math.round(Number(source.targetPerBiller ?? 501) || 0)),
+    uploadMeta: normalizeLpbUploadMeta(source.uploadMeta),
+  };
+}
+
+function normalizeLpbUploadMeta(value) {
+  const normalized = {};
+  ["previous", "latest"].forEach((key) => {
+    const item = value?.[key];
+    if (!item?.uploadedAt) return;
+    normalized[key] = { uploadedAt: item.uploadedAt, fileName: item.fileName || "" };
+  });
+  return normalized;
+}
+
+function initializeLpbMonitoring() {
+  state.lpbMonitoring = normalizeLpbMonitoringState(state.lpbMonitoring);
+  syncLpbControls();
+}
+
+function syncLpbControls() {
+  if (els.lpbStartDateInput) els.lpbStartDateInput.value = state.lpbMonitoring.startDate || "";
+  if (els.lpbEndDateInput) els.lpbEndDateInput.value = state.lpbMonitoring.endDate || "";
+  if (els.lpbTargetInput) els.lpbTargetInput.value = state.lpbMonitoring.targetPerBiller;
+  updateLpbUploadStatuses();
+}
+
+async function handleLpbUpload(event, kind) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const previous = kind === "previous";
+  const label = previous ? "LPB Bulan Sebelumnya" : "LPB Bulan Terbaru";
+  startProgress(`Upload ${label}`, `Membaca file ${file.name}...`);
+  try {
+    const rows = await readWorkbook(file, (percent) => updateProgress(percent * 0.35, `Membaca file ${file.name}...`));
+    updateProgress(44, `Memproses ${formatNumber(rows.length)} baris ${label}...`);
+    await yieldUi();
+    if (previous) {
+      const ids = normalizeLpbPreviousRows(rows);
+      if (!ids.length) throw new Error("Kolom IDPEL tidak berisi data yang dapat dibaca.");
+      state.lpbMonitoring.previousIds = ids;
+    } else {
+      const latestRows = normalizeLpbLatestRows(rows);
+      if (!latestRows.length) throw new Error("Kolom IDPEL, TGLBACA, atau PETUGAS tidak dapat dibaca.");
+      state.lpbMonitoring.latestRows = latestRows;
+      const dates = latestRows.map((row) => row.readDate).sort();
+      state.lpbMonitoring.startDate = dates[0];
+      state.lpbMonitoring.endDate = dates[dates.length - 1];
+    }
+    state.lpbMonitoring.uploadMeta[kind] = { uploadedAt: new Date().toISOString(), fileName: file.name };
+    updateProgress(60, "Menyimpan Monitoring LPB...");
+    await saveStoredData();
+    syncLpbControls();
+    renderLpbMonitoring();
+    updateProgress(74, "Sinkronisasi online otomatis...");
+    const onlineSaved = await autoSaveCloudData({
+      embeddedProgress: true,
+      skipPublish: true,
+      notifyDebtUpdate: false,
+      publishReceiptMeters: false,
+    });
+    const count = previous ? state.lpbMonitoring.previousIds.length : state.lpbMonitoring.latestRows.length;
+    finishProgress(`${label} selesai: ${formatNumber(count)} IDPEL.${onlineSaved ? " Data online sudah tersimpan." : ""}`);
+  } catch (error) {
+    failProgress(`Gagal membaca ${label}: ${error.message}`);
+    alert(`Gagal membaca ${label}: ${error.message}`);
+  } finally {
+    event.target.value = "";
+  }
+}
+
+function normalizeLpbPreviousRows(rows) {
+  return [...new Set(rows
+    .map((row) => normalizeId(getValue(row, ["IDPEL", "ID PEL", "ID_PEL", "ID PELANGGAN"])))
+    .filter(Boolean))];
+}
+
+function normalizeLpbLatestRows(rows) {
+  const byIdpel = new Map();
+  rows.forEach((source) => {
+    const row = {
+      idpel: normalizeId(getValue(source, ["IDPEL", "ID PEL", "ID_PEL", "ID PELANGGAN"])),
+      readDate: normalizeLpbDate(getValue(source, ["TGLBACA", "TGL BACA", "TANGGAL BACA", "TANGGAL"])),
+      username: cleanText(getValue(source, ["PETUGAS", "USER", "USERNAME", "USERID"])).toLowerCase(),
+    };
+    if (!row.idpel || !row.readDate || !row.username) return;
+    const current = byIdpel.get(row.idpel);
+    if (!current || row.readDate > current.readDate) byIdpel.set(row.idpel, row);
+  });
+  return [...byIdpel.values()];
+}
+
+function normalizeLpbDate(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
+  if (typeof value === "number" || /^\d{5}(?:\.\d+)?$/.test(String(value || "").trim())) {
+    const parsed = window.XLSX?.SSF?.parse_date_code?.(Number(value));
+    if (parsed?.y && parsed?.m && parsed?.d) {
+      return `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(parsed.d).padStart(2, "0")}`;
+    }
+  }
+  const text = cleanText(value);
+  const iso = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (iso) return `${iso[1]}-${String(iso[2]).padStart(2, "0")}-${String(iso[3]).padStart(2, "0")}`;
+  const dmy = text.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+  if (dmy) return `${dmy[3]}-${String(dmy[2]).padStart(2, "0")}-${String(dmy[1]).padStart(2, "0")}`;
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+}
+
+function isIsoDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
+}
+
+function handleLpbDateChange(changed) {
+  const start = els.lpbStartDateInput?.value || "";
+  const end = els.lpbEndDateInput?.value || "";
+  if (start && end && start > end) {
+    if (changed === "start") {
+      state.lpbMonitoring.startDate = start;
+      state.lpbMonitoring.endDate = start;
+    } else {
+      state.lpbMonitoring.startDate = end;
+      state.lpbMonitoring.endDate = end;
+    }
+  } else {
+    state.lpbMonitoring.startDate = start;
+    state.lpbMonitoring.endDate = end;
+  }
+  syncLpbControls();
+  renderLpbMonitoring();
+  scheduleLpbSave();
+}
+
+function handleLpbTargetChange() {
+  state.lpbMonitoring.targetPerBiller = Math.max(0, Math.round(Number(els.lpbTargetInput?.value || 0)));
+  renderLpbMonitoring();
+  scheduleLpbSave();
+}
+
+function getLpbReportData() {
+  const previousIds = new Set(state.lpbMonitoring.previousIds || []);
+  const latestById = new Map();
+  (state.lpbMonitoring.latestRows || []).forEach((row) => {
+    const current = latestById.get(row.idpel);
+    if (!current || row.readDate > current.readDate) latestById.set(row.idpel, row);
+  });
+  const uniqueLatest = [...latestById.values()];
+  const duplicateRows = uniqueLatest.filter((row) => previousIds.has(row.idpel));
+  const mappedUsers = new Set(LPB_PETUGAS.map((item) => item.username.toLowerCase()));
+  const eligibleRows = uniqueLatest.filter((row) => !previousIds.has(row.idpel) && mappedUsers.has(row.username));
+  const startDate = state.lpbMonitoring.startDate;
+  const endDate = state.lpbMonitoring.endDate;
+  const dates = buildLpbDateRange(startDate, endDate);
+  const visibleRows = eligibleRows.filter((row) => (!startDate || row.readDate >= startDate) && (!endDate || row.readDate <= endDate));
+  const countMap = new Map();
+  visibleRows.forEach((row) => {
+    const key = `${row.username}|${row.readDate}`;
+    countMap.set(key, (countMap.get(key) || 0) + 1);
+  });
+  const target = state.lpbMonitoring.targetPerBiller;
+  const coordinatorNames = [...new Set(LPB_PETUGAS.map((item) => item.coordinator))];
+  const groups = coordinatorNames.map((coordinator) => {
+    const rows = LPB_PETUGAS.filter((item) => item.coordinator === coordinator).map((item) => {
+      const daily = Object.fromEntries(dates.map((date) => [date, countMap.get(`${item.username}|${date}`) || 0]));
+      const realization = dates.reduce((sum, date) => sum + daily[date], 0);
+      return {
+        ...item,
+        daily,
+        target,
+        realization,
+        percent: target ? realization / target : 0,
+        remaining: target - realization,
+      };
+    });
+    return { coordinator, rows, totals: calculateLpbTotals(rows, dates) };
+  });
+  const allRows = groups.flatMap((group) => group.rows);
+  return {
+    dates,
+    groups,
+    totals: calculateLpbTotals(allRows, dates),
+    latestCount: uniqueLatest.length,
+    duplicateCount: duplicateRows.length,
+    eligibleCount: eligibleRows.length,
+    visibleCount: visibleRows.length,
+    startDate,
+    endDate,
+  };
+}
+
+function buildLpbDateRange(startDate, endDate) {
+  if (!isIsoDate(startDate) || !isIsoDate(endDate) || startDate > endDate) return [];
+  const dates = [];
+  const cursor = new Date(`${startDate}T00:00:00Z`);
+  const end = new Date(`${endDate}T00:00:00Z`);
+  while (cursor <= end && dates.length < 31) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return dates;
+}
+
+function calculateLpbTotals(rows, dates) {
+  const daily = Object.fromEntries(dates.map((date) => [date, rows.reduce((sum, row) => sum + Number(row.daily?.[date] || 0), 0)]));
+  const target = rows.reduce((sum, row) => sum + Number(row.target || 0), 0);
+  const realization = rows.reduce((sum, row) => sum + Number(row.realization || 0), 0);
+  return { daily, target, realization, percent: target ? realization / target : 0, remaining: target - realization };
+}
+
+function renderLpbMonitoring() {
+  if (!els.lpbTableHead || !els.lpbTableBody) return;
+  const data = getLpbReportData();
+  syncLpbControls();
+  if (els.lpbLatestCount) els.lpbLatestCount.textContent = formatNumber(data.latestCount);
+  if (els.lpbDuplicateCount) els.lpbDuplicateCount.textContent = formatNumber(data.duplicateCount);
+  if (els.lpbEligibleCount) els.lpbEligibleCount.textContent = formatNumber(data.eligibleCount);
+  if (els.lpbTableDate) els.lpbTableDate.textContent = formatLpbReportDate(data.endDate);
+  const fixedColumns = 7;
+  els.lpbTableHead.innerHTML = `
+    <tr>
+      <th>NO</th><th>BILLER</th><th>KOORD</th><th>TARGET<br />BULANAN</th>
+      ${data.dates.map((date) => `<th>${Number(date.slice(-2))}</th>`).join("")}
+      <th>REALISASI</th><th>%</th><th>KURANG</th>
+    </tr>
+  `;
+  if (!state.lpbMonitoring.latestRows.length) {
+    els.lpbTableBody.innerHTML = `<tr><td class="empty-state" colspan="${fixedColumns + data.dates.length}">Upload file LPB bulan terbaru untuk menampilkan monitoring.</td></tr>`;
+    updateLpbUploadStatuses();
+    return;
+  }
+  let body = "";
+  data.groups.forEach((group) => {
+    group.rows.forEach((row, index) => {
+      body += `<tr>
+        <td>${index + 1}</td>
+        <td class="lpb-biller">${escapeHtml(row.biller)}</td>
+        ${index === 0 ? `<td class="lpb-coordinator" rowspan="${group.rows.length}">${escapeHtml(group.coordinator)}</td>` : ""}
+        <td class="lpb-number">${formatNumber(row.target)}</td>
+        ${data.dates.map((date) => `<td class="lpb-number">${row.daily[date] ? formatNumber(row.daily[date]) : ""}</td>`).join("")}
+        <td class="lpb-number"><strong>${formatNumber(row.realization)}</strong></td>
+        <td class="lpb-percent" style="--lpb-progress:${Math.min(100, Math.round(row.percent * 100))}%">${Math.round(row.percent * 100)}%</td>
+        <td class="lpb-number"><strong>${formatNumber(row.remaining)}</strong></td>
+      </tr>`;
+    });
+    body += renderLpbTotalRow(group.totals, data.dates, "TOTAL", "lpb-subtotal-row");
+  });
+  body += renderLpbTotalRow(data.totals, data.dates, "TOTAL", "lpb-grand-total-row");
+  els.lpbTableBody.innerHTML = body;
+  updateLpbUploadStatuses();
+}
+
+function renderLpbTotalRow(totals, dates, label, className) {
+  return `<tr class="${className}">
+    <td colspan="3"><strong>${label}</strong></td>
+    <td>${formatNumber(totals.target)}</td>
+    ${dates.map((date) => `<td>${totals.daily[date] ? formatNumber(totals.daily[date]) : ""}</td>`).join("")}
+    <td>${formatNumber(totals.realization)}</td>
+    <td>${Math.round(totals.percent * 100)}%</td>
+    <td>${formatNumber(totals.remaining)}</td>
+  </tr>`;
+}
+
+function updateLpbUploadStatuses() {
+  setLpbUploadStatus("previous", els.lpbPreviousStatus, state.lpbMonitoring.previousIds.length, "IDPEL bulan sebelumnya");
+  setLpbUploadStatus("latest", els.lpbLatestStatus, state.lpbMonitoring.latestRows.length, "IDPEL bulan terbaru");
+}
+
+function setLpbUploadStatus(kind, element, count, label) {
+  if (!element) return;
+  const meta = state.lpbMonitoring.uploadMeta?.[kind] || {};
+  const uploadedAt = formatUploadTimestamp(meta.uploadedAt);
+  element.innerHTML = count ? `<strong>${formatNumber(count)} ${escapeHtml(label)}</strong>${uploadedAt ? `<span>Terakhir upload: ${escapeHtml(uploadedAt)}</span>` : ""}` : "Belum ada data.";
+  element.closest(".lpb-upload-card")?.classList.toggle("loaded", count > 0);
+}
+
+function formatLpbReportDate(date) {
+  if (!isIsoDate(date)) return "PILIH RENTANG TANGGAL";
+  return new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
+    .format(new Date(`${date}T00:00:00`)).toUpperCase();
+}
+
+function scheduleLpbSave() {
+  window.clearTimeout(state.lpbSaveTimer);
+  state.lpbSaveTimer = window.setTimeout(saveLpbDraft, 700);
+}
+
+async function saveLpbDraft() {
+  await saveStoredData();
+  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") return;
+  const cloudPayload = await encodeCloudPayload({
+    dil: state.dil,
+    awal: state.awal,
+    akhir: state.akhir,
+    struk: state.struk,
+    uploadMeta: state.uploadMeta,
+    saldoAkhirRataRata: state.saldoAkhirRataRata,
+    dailyPelunasan: state.dailyPelunasan,
+    comparisonMonitoring: state.comparisonMonitoring,
+    lpbMonitoring: state.lpbMonitoring,
+  });
+  const { error } = await state.supabaseClient.from("monitoring_app_state").upsert({
+    id: CLOUD_STATE_ID,
+    payload: cloudPayload,
+    updated_by: state.user.id,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) setOnlineStatus(`Gagal menyimpan pengaturan Monitoring LPB: ${describeSupabaseError(error)}`);
+}
+
+function buildLpbExportRows(data) {
+  const rows = [];
+  data.groups.forEach((group) => {
+    group.rows.forEach((row, index) => rows.push({
+      type: "detail",
+      no: index + 1,
+      biller: row.biller,
+      coordinator: index === 0 ? group.coordinator : "",
+      coordinatorSpan: index === 0 ? group.rows.length : 0,
+      target: row.target,
+      daily: row.daily,
+      realization: row.realization,
+      percent: row.percent,
+      remaining: row.remaining,
+    }));
+    rows.push({ type: "subtotal", no: "", biller: "TOTAL", coordinator: "", ...group.totals });
+  });
+  rows.push({ type: "grand", no: "", biller: "TOTAL", coordinator: "", ...data.totals });
+  return rows;
+}
+
+function exportLpbExcel() {
+  const data = getLpbReportData();
+  if (!state.lpbMonitoring.latestRows.length) {
+    alert("Upload LPB bulan terbaru terlebih dahulu.");
+    return;
+  }
+  startProgress("Download Excel LPB", "Menyusun tabel Monitoring LPB...");
+  const headers = ["NO", "BILLER", "KOORD", "TARGET BULANAN", ...data.dates.map((date) => Number(date.slice(-2))), "REALISASI", "%", "KURANG"];
+  const exportRows = buildLpbExportRows(data);
+  const matrix = [
+    ["MONITORING LPB ULP SABAK"],
+    [formatLpbReportDate(data.endDate)],
+    [],
+    headers,
+    ...exportRows.map((row) => [
+      row.no,
+      row.biller,
+      row.coordinator,
+      row.target,
+      ...data.dates.map((date) => row.daily?.[date] || ""),
+      row.realization,
+      row.percent,
+      row.remaining,
+    ]),
+  ];
+  const worksheet = XLSX.utils.aoa_to_sheet(matrix);
+  const lastColumn = headers.length - 1;
+  worksheet["!merges"] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: lastColumn } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: lastColumn } },
+  ];
+  let coordinatorStartRow = 4;
+  data.groups.forEach((group) => {
+    worksheet["!merges"].push({
+      s: { r: coordinatorStartRow, c: 2 },
+      e: { r: coordinatorStartRow + group.rows.length - 1, c: 2 },
+    });
+    coordinatorStartRow += group.rows.length + 1;
+  });
+  worksheet["!cols"] = [
+    { wch: 6 }, { wch: 24 }, { wch: 18 }, { wch: 14 },
+    ...data.dates.map(() => ({ wch: 6 })),
+    { wch: 12 }, { wch: 9 }, { wch: 12 },
+  ];
+  applyWorksheetTableBorders(worksheet);
+  const range = XLSX.utils.decode_range(worksheet["!ref"]);
+  for (let row = range.s.r; row <= range.e.r; row += 1) {
+    for (let col = range.s.c; col <= range.e.c; col += 1) {
+      const ref = XLSX.utils.encode_cell({ r: row, c: col });
+      if (!worksheet[ref]) worksheet[ref] = { t: "s", v: "" };
+      const exportRow = exportRows[row - 4];
+      const fill = row <= 1 ? "FFFFFFFF"
+        : row === 3 ? "FF92D050"
+          : exportRow?.type === "grand" ? "FF808080"
+            : exportRow?.type === "subtotal" ? "FFA6A6A6" : "FFFFFFFF";
+      worksheet[ref].s = {
+        ...(worksheet[ref].s || {}),
+        font: { name: "Arial", sz: row <= 1 ? 14 : 10, bold: row <= 3 || exportRow?.type !== "detail" },
+        alignment: { horizontal: col === 1 ? "left" : "center", vertical: "center", wrapText: true },
+        fill: { fgColor: { rgb: fill } },
+      };
+    }
+  }
+  const percentColumn = headers.length - 2;
+  for (let row = 4; row < matrix.length; row += 1) {
+    const ref = XLSX.utils.encode_cell({ r: row, c: percentColumn });
+    if (worksheet[ref]) worksheet[ref].z = "0%";
+  }
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Monitoring LPB");
+  const suffix = data.endDate || new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(workbook, `monitoring-lpb-${suffix}.xlsx`);
+  finishProgress("Download Excel Monitoring LPB selesai.");
+}
+
+function exportLpbJpg() {
+  const data = getLpbReportData();
+  if (!state.lpbMonitoring.latestRows.length) {
+    alert("Upload LPB bulan terbaru terlebih dahulu.");
+    return;
+  }
+  startProgress("Download JPG LPB", "Menggambar tabel Monitoring LPB...");
+  const rows = buildLpbExportRows(data);
+  const columns = [
+    { key: "no", label: "NO", width: 48, align: "center" },
+    { key: "biller", label: "BILLER", width: 190, align: "left" },
+    { key: "coordinator", label: "KOORD", width: 150, align: "center" },
+    { key: "target", label: "TARGET BULANAN", width: 124, align: "center" },
+    ...data.dates.map((date) => ({ key: date, label: String(Number(date.slice(-2))), width: 50, align: "center", date })),
+    { key: "realization", label: "REALISASI", width: 92, align: "center" },
+    { key: "percent", label: "%", width: 72, align: "center" },
+    { key: "remaining", label: "KURANG", width: 88, align: "center" },
+  ];
+  const scale = 2;
+  const margin = 12;
+  const titleHeight = 72;
+  const headerHeight = 44;
+  const rowHeight = 30;
+  const width = columns.reduce((sum, column) => sum + column.width, 0) + margin * 2;
+  const height = titleHeight + headerHeight + rows.length * rowHeight + margin;
+  const canvas = document.createElement("canvas");
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#111111";
+  ctx.textAlign = "center";
+  ctx.font = "700 20px Arial";
+  ctx.fillText("MONITORING LPB ULP SABAK", width / 2, 27);
+  ctx.font = "700 15px Arial";
+  ctx.fillText(formatLpbReportDate(data.endDate), width / 2, 52);
+  let x = margin;
+  columns.forEach((column) => {
+    drawCell(ctx, x, titleHeight, column.width, headerHeight, column.label, { fill: "#92d050", bold: true, align: "center" });
+    x += column.width;
+  });
+  let y = titleHeight + headerHeight;
+  rows.forEach((row) => {
+    x = margin;
+    const fill = row.type === "grand" ? "#808080" : row.type === "subtotal" ? "#a6a6a6" : "#ffffff";
+    columns.forEach((column) => {
+      let value = row[column.key];
+      if (column.date) value = row.daily?.[column.date] || "";
+      if (column.key === "percent") value = `${Math.round(Number(row.percent || 0) * 100)}%`;
+      if (["target", "realization", "remaining"].includes(column.key)) value = formatNumber(value);
+      if (column.key === "coordinator" && row.type === "detail" && !row.coordinatorSpan) {
+        x += column.width;
+        return;
+      }
+      const cellHeight = column.key === "coordinator" && row.coordinatorSpan
+        ? rowHeight * row.coordinatorSpan
+        : rowHeight;
+      const cellFill = column.key === "percent" && row.type === "detail" ? "#63be7b" : fill;
+      drawCell(ctx, x, y, column.width, cellHeight, value ?? "", {
+        fill: cellFill,
+        bold: row.type !== "detail" || column.key === "biller",
+        align: column.align,
+      });
+      x += column.width;
+    });
+    y += rowHeight;
+  });
+  const link = document.createElement("a");
+  const suffix = data.endDate || new Date().toISOString().slice(0, 10);
+  link.download = `monitoring-lpb-${suffix}.jpg`;
+  link.href = canvas.toDataURL("image/jpeg", 0.95);
+  link.click();
+  finishProgress("Download JPG Monitoring LPB selesai.");
 }
 
 function recompute() {
@@ -3304,11 +3867,14 @@ async function resetData() {
   state.uploadMeta = {};
   state.dailyPelunasan = emptyDailyPelunasanState();
   state.comparisonMonitoring = emptyComparisonMonitoringState();
+  state.lpbMonitoring = emptyLpbMonitoringState();
   await saveStoredData();
   await autoSaveCloudData();
   syncDailyPelunasanControls();
   syncDailyUndoButton();
+  syncLpbControls();
   recompute();
+  renderLpbMonitoring();
 }
 
 function emptyComparisonMonitoringState() {
@@ -4070,6 +4636,7 @@ async function saveComparisonMonitoringDraft() {
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
     comparisonMonitoring: state.comparisonMonitoring,
+    lpbMonitoring: state.lpbMonitoring,
   });
   const { error } = await state.supabaseClient
     .from("monitoring_app_state")
@@ -4744,6 +5311,7 @@ async function saveDailyPelunasanDraft() {
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
     comparisonMonitoring: state.comparisonMonitoring,
+    lpbMonitoring: state.lpbMonitoring,
   });
   const { error } = await state.supabaseClient
     .from("monitoring_app_state")
@@ -4932,6 +5500,7 @@ async function saveSaldoAverageDraft() {
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
     comparisonMonitoring: state.comparisonMonitoring,
+    lpbMonitoring: state.lpbMonitoring,
   };
   const cloudPayload = encodeLightweightCloudPayload(cloudData);
   let error = null;
@@ -5320,6 +5889,7 @@ async function saveStoredData() {
     saldoAkhirRataRata: state.saldoAkhirRataRata,
     dailyPelunasan: state.dailyPelunasan,
     comparisonMonitoring: state.comparisonMonitoring,
+    lpbMonitoring: state.lpbMonitoring,
     savedAt: new Date().toISOString(),
   };
 

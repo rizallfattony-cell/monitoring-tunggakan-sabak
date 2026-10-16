@@ -1,0 +1,186 @@
+.lpb-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.lpb-upload-card,
+.lpb-filter-card {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid #b9cde2;
+  background: #f8fbfe;
+  border-radius: 6px;
+}
+
+.lpb-upload-card.loaded {
+  border-color: #62a66e;
+  background: #f4fbf5;
+}
+
+.lpb-upload-card .step-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.lpb-upload-card h2 {
+  margin: 2px 34px 2px 0;
+  font-size: 18px;
+}
+
+.lpb-upload-card p {
+  margin: 0;
+  color: #52677a;
+}
+
+.lpb-upload-card .file-status {
+  display: grid;
+  gap: 3px;
+}
+
+.lpb-upload-card .file-status span {
+  color: #52677a;
+  font-size: 12px;
+}
+
+.lpb-filter-card {
+  grid-column: 1 / -1;
+}
+
+.lpb-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.lpb-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.lpb-stat-grid > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid #ccd9e5;
+  background: #fff;
+}
+
+.lpb-stat-grid span {
+  color: #52677a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lpb-stat-grid strong {
+  font-size: 18px;
+}
+
+.lpb-table-section {
+  font-family: Arial, sans-serif;
+}
+
+.lpb-report-heading {
+  justify-content: center;
+  text-align: center;
+}
+
+.lpb-report-heading h2,
+.lpb-report-heading p {
+  margin: 2px 0;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.lpb-table-wrap {
+  max-height: calc(100vh - 310px);
+  overflow: auto;
+  border: 1px solid #606060;
+}
+
+.lpb-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #111;
+  background: #fff;
+  font-size: 12px;
+}
+
+.lpb-table th,
+.lpb-table td {
+  height: 28px;
+  padding: 3px 6px;
+  border: 1px solid #111;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.lpb-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  min-width: 42px;
+  background: #92d050;
+  font-weight: 800;
+}
+
+.lpb-table thead th:nth-child(1) { min-width: 42px; }
+.lpb-table thead th:nth-child(2) { min-width: 190px; }
+.lpb-table thead th:nth-child(3) { min-width: 130px; }
+.lpb-table thead th:nth-child(4) { min-width: 86px; }
+
+.lpb-biller {
+  min-width: 190px;
+  text-align: left !important;
+  font-weight: 700;
+}
+
+.lpb-coordinator {
+  min-width: 130px;
+  font-weight: 800;
+  white-space: normal !important;
+}
+
+.lpb-number {
+  text-align: right !important;
+}
+
+.lpb-percent {
+  min-width: 58px;
+  font-weight: 800;
+  background: linear-gradient(90deg, #63be7b var(--lpb-progress), #ffffff var(--lpb-progress));
+}
+
+.lpb-subtotal-row td {
+  background: #a6a6a6;
+  font-weight: 800;
+}
+
+.lpb-grand-total-row td {
+  background: #808080;
+  color: #fff;
+  font-weight: 800;
+}
+
+@media (max-width: 820px) {
+  .lpb-controls,
+  .lpb-filter-grid,
+  .lpb-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lpb-filter-card {
+    grid-column: auto;
+  }
+}

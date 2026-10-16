@@ -10,6 +10,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="./styles.css?v=20260622-table-maximize" />
     <link rel="stylesheet" href="./invoice.css?v=20260930-invoice-v3" />
+    <link rel="stylesheet" href="./lpb.css?v=20261013-lpb-v1" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -76,14 +77,24 @@
             </section>
 
             <section class="tree-group">
+              <button class="tree-parent" type="button" data-tree-toggle="lpb">
+                <span class="tree-arrow" aria-hidden="true"></span>
+                <span class="tree-folder" aria-hidden="true"></span>
+                LPB
+              </button>
+              <div class="tree-children">
+                <button class="tree-child admin-only-menu" type="button" data-tab="lpb">Monitoring LPB</button>
+              </div>
+            </section>
+
+            <section class="tree-group">
               <button class="tree-parent" type="button" data-tree-toggle="simontok-app">
                 <span class="tree-arrow" aria-hidden="true"></span>
                 <span class="tree-folder" aria-hidden="true"></span>
                 Simontok Super App
               </button>
               <div class="tree-children">
-                <button class="tree-child" type="button" data-tab="upload" data-upload-view="stand-awal">Upload Stand Awal</button>
-                <button class="tree-child" type="button" data-tab="upload" data-upload-view="stand-akhir">Upload Stand Akhir</button>
+                <button class="tree-child" type="button" data-tab="upload" data-upload-view="stand-meter">Upload Stand</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="sync-status">Status Sinkron Petugas</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="invoice">Cetak Invoice</button>
               </div>
@@ -171,7 +182,7 @@
             <span class="file-status" id="akhirStatus">Belum ada file.</span>
           </article>
 
-          <article class="upload-panel" data-upload-panel="stand-awal" hidden>
+          <article class="upload-panel" data-upload-panel="stand-meter" hidden>
             <span class="step-badge">4</span>
             <div>
               <span class="upload-label">Struk Petugas</span>
@@ -185,7 +196,7 @@
             <span class="file-status" id="standAwalStatus">Belum ada file.</span>
           </article>
 
-          <article class="upload-panel" data-upload-panel="stand-akhir" hidden>
+          <article class="upload-panel" data-upload-panel="stand-meter" hidden>
             <span class="step-badge">5</span>
             <div>
               <span class="upload-label">Struk Petugas</span>
@@ -423,6 +434,88 @@
                 <tr>
                   <td class="empty-state" colspan="4">Belum ada data. Upload DIL dan Saldo Awal terlebih dahulu.</td>
                 </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-tab-panel="lpb" hidden>
+        <div class="section-head">
+          <div>
+            <h2>Monitoring LPB</h2>
+            <p>Bandingkan hasil LPB bulan sebelumnya dengan hasil LPB terbaru berdasarkan tanggal baca dan petugas.</p>
+          </div>
+          <div class="section-actions">
+            <button class="button secondary" id="exportLpbJpgButton" type="button">Download JPG</button>
+            <button class="button primary" id="exportLpbExcelButton" type="button">Download Excel</button>
+          </div>
+        </div>
+
+        <section class="lpb-controls">
+          <article class="lpb-upload-card">
+            <span class="step-badge">1</span>
+            <div>
+              <span class="upload-label">Bulan Sebelumnya</span>
+              <h2>Hasil LPB Bulan Sebelumnya</h2>
+              <p>Format Excel hanya memerlukan kolom <strong>IDPEL</strong>.</p>
+            </div>
+            <label class="file-button">
+              Upload LPB Bulan Sebelumnya
+              <input id="lpbPreviousInput" type="file" accept=".xlsx,.xls,.csv" />
+            </label>
+            <span class="file-status" id="lpbPreviousStatus">Belum ada data.</span>
+          </article>
+
+          <article class="lpb-upload-card">
+            <span class="step-badge">2</span>
+            <div>
+              <span class="upload-label">Bulan Terbaru</span>
+              <h2>Hasil LPB Bulan Terbaru</h2>
+              <p>Upload langsung file Monitoring Fisik Meter Prabayar.</p>
+            </div>
+            <label class="file-button">
+              Upload LPB Bulan Terbaru
+              <input id="lpbLatestInput" type="file" accept=".xlsx,.xls,.csv" />
+            </label>
+            <span class="file-status" id="lpbLatestStatus">Belum ada data.</span>
+          </article>
+
+          <article class="lpb-filter-card">
+            <div class="lpb-filter-grid">
+              <label class="field" for="lpbStartDateInput">
+                <span>Tanggal Awal Ditampilkan</span>
+                <input id="lpbStartDateInput" type="date" />
+              </label>
+              <label class="field" for="lpbEndDateInput">
+                <span>Tanggal Akhir Ditampilkan</span>
+                <input id="lpbEndDateInput" type="date" />
+              </label>
+              <label class="field" for="lpbTargetInput">
+                <span>Target Bulanan per Biller</span>
+                <input id="lpbTargetInput" type="number" min="0" step="1" value="501" />
+              </label>
+            </div>
+            <div class="lpb-stat-grid">
+              <div><span>LPB Terbaru</span><strong id="lpbLatestCount">0</strong></div>
+              <div><span>Hangus/Duplikat Bulan Lalu</span><strong id="lpbDuplicateCount">0</strong></div>
+              <div><span>Realisasi Bersih</span><strong id="lpbEligibleCount">0</strong></div>
+            </div>
+          </article>
+        </section>
+
+        <section class="table-section lpb-table-section">
+          <div class="report-heading lpb-report-heading">
+            <div>
+              <h2>MONITORING LPB ULP SABAK</h2>
+              <p id="lpbTableDate">-</p>
+            </div>
+          </div>
+          <div class="table-wrap lpb-table-wrap">
+            <table id="lpbTable" class="lpb-table">
+              <thead id="lpbTableHead"></thead>
+              <tbody id="lpbTableBody">
+                <tr><td class="empty-state">Upload file LPB bulan sebelumnya dan LPB bulan terbaru.</td></tr>
               </tbody>
             </table>
           </div>
@@ -732,6 +825,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260930-stand-split-v1"></script>
+    <script src="./app.js?v=20261013-lpb-v1"></script>
   </body>
 </html>
