@@ -85,6 +85,16 @@
   font-size: 18px;
 }
 
+.lpb-filter-note {
+  margin: 0;
+  padding: 9px 11px;
+  border-left: 4px solid #147aa8;
+  background: #eef7fb;
+  color: #36566b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .lpb-table-section {
   font-family: Arial, sans-serif;
 }
@@ -160,6 +170,15 @@
   min-width: 58px;
   font-weight: 800;
   background: linear-gradient(90deg, #63be7b var(--lpb-progress), #ffffff var(--lpb-progress));
+}
+
+.lpb-achieved-row td:not(.lpb-coordinator) {
+  background-color: #e2f0d9;
+}
+
+.lpb-achieved-row .lpb-percent.is-achieved {
+  color: #fff;
+  background: #00b050;
 }
 
 .lpb-subtotal-row td {

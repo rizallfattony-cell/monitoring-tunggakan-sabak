@@ -10,7 +10,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="./styles.css?v=20260622-table-maximize" />
     <link rel="stylesheet" href="./invoice.css?v=20260930-invoice-v3" />
-    <link rel="stylesheet" href="./lpb.css?v=20261013-lpb-v1" />
+    <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -496,6 +496,7 @@
                 <input id="lpbTargetInput" type="number" min="0" step="1" value="501" />
               </label>
             </div>
+            <p class="lpb-filter-note"><strong>Catatan:</strong> rentang tanggal hanya mengatur kolom yang ditampilkan. Realisasi, persentase, dan kurang tetap dihitung kumulatif dari tanggal 1 sampai tanggal akhir yang dipilih.</p>
             <div class="lpb-stat-grid">
               <div><span>LPB Terbaru</span><strong id="lpbLatestCount">0</strong></div>
               <div><span>Hangus/Duplikat Bulan Lalu</span><strong id="lpbDuplicateCount">0</strong></div>
@@ -825,6 +826,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20261013-lpb-v1"></script>
+    <script src="./app.js?v=20261016-lpb-v2"></script>
   </body>
 </html>

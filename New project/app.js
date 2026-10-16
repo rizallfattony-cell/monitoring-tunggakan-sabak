@@ -2700,12 +2700,21 @@ function getLpbReportData() {
     const key = `${row.username}|${row.readDate}`;
     countMap.set(key, (countMap.get(key) || 0) + 1);
   });
+  const cumulativeStartDate = isIsoDate(endDate) ? `${endDate.slice(0, 7)}-01` : "";
+  const cumulativeRows = eligibleRows.filter((row) => (
+    (!cumulativeStartDate || row.readDate >= cumulativeStartDate)
+    && (!endDate || row.readDate <= endDate)
+  ));
+  const cumulativeCountMap = new Map();
+  cumulativeRows.forEach((row) => {
+    cumulativeCountMap.set(row.username, (cumulativeCountMap.get(row.username) || 0) + 1);
+  });
   const target = state.lpbMonitoring.targetPerBiller;
   const coordinatorNames = [...new Set(LPB_PETUGAS.map((item) => item.coordinator))];
   const groups = coordinatorNames.map((coordinator) => {
     const rows = LPB_PETUGAS.filter((item) => item.coordinator === coordinator).map((item) => {
       const daily = Object.fromEntries(dates.map((date) => [date, countMap.get(`${item.username}|${date}`) || 0]));
-      const realization = dates.reduce((sum, date) => sum + daily[date], 0);
+      const realization = cumulativeCountMap.get(item.username) || 0;
       return {
         ...item,
         daily,
@@ -2726,6 +2735,8 @@ function getLpbReportData() {
     duplicateCount: duplicateRows.length,
     eligibleCount: eligibleRows.length,
     visibleCount: visibleRows.length,
+    cumulativeCount: cumulativeRows.length,
+    cumulativeStartDate,
     startDate,
     endDate,
   };
@@ -2774,14 +2785,15 @@ function renderLpbMonitoring() {
   let body = "";
   data.groups.forEach((group) => {
     group.rows.forEach((row, index) => {
-      body += `<tr>
+      const achieved = row.percent >= 1;
+      body += `<tr class="${achieved ? "lpb-achieved-row" : ""}">
         <td>${index + 1}</td>
         <td class="lpb-biller">${escapeHtml(row.biller)}</td>
         ${index === 0 ? `<td class="lpb-coordinator" rowspan="${group.rows.length}">${escapeHtml(group.coordinator)}</td>` : ""}
         <td class="lpb-number">${formatNumber(row.target)}</td>
         ${data.dates.map((date) => `<td class="lpb-number">${row.daily[date] ? formatNumber(row.daily[date]) : ""}</td>`).join("")}
         <td class="lpb-number"><strong>${formatNumber(row.realization)}</strong></td>
-        <td class="lpb-percent" style="--lpb-progress:${Math.min(100, Math.round(row.percent * 100))}%">${Math.round(row.percent * 100)}%</td>
+        <td class="lpb-percent${achieved ? " is-achieved" : ""}" style="--lpb-progress:${Math.min(100, Math.round(row.percent * 100))}%">${Math.round(row.percent * 100)}%</td>
         <td class="lpb-number"><strong>${formatNumber(row.remaining)}</strong></td>
       </tr>`;
     });
@@ -2925,12 +2937,19 @@ function exportLpbExcel() {
       const fill = row <= 1 ? "FFFFFFFF"
         : row === 3 ? "FF92D050"
           : exportRow?.type === "grand" ? "FF808080"
-            : exportRow?.type === "subtotal" ? "FFA6A6A6" : "FFFFFFFF";
+            : exportRow?.type === "subtotal" ? "FFA6A6A6"
+              : exportRow?.type === "detail" && exportRow.percent >= 1 ? "FFE2F0D9" : "FFFFFFFF";
+      const achievedPercentCell = exportRow?.type === "detail" && exportRow.percent >= 1 && col === headers.length - 2;
       worksheet[ref].s = {
         ...(worksheet[ref].s || {}),
-        font: { name: "Arial", sz: row <= 1 ? 14 : 10, bold: row <= 3 || exportRow?.type !== "detail" },
+        font: {
+          name: "Arial",
+          sz: row <= 1 ? 14 : 10,
+          bold: row <= 3 || exportRow?.type !== "detail" || achievedPercentCell,
+          color: achievedPercentCell ? { rgb: "FFFFFFFF" } : undefined,
+        },
         alignment: { horizontal: col === 1 ? "left" : "center", vertical: "center", wrapText: true },
-        fill: { fgColor: { rgb: fill } },
+        fill: { fgColor: { rgb: achievedPercentCell ? "FF00B050" : fill } },
       };
     }
   }
@@ -2992,7 +3011,10 @@ function exportLpbJpg() {
   let y = titleHeight + headerHeight;
   rows.forEach((row) => {
     x = margin;
-    const fill = row.type === "grand" ? "#808080" : row.type === "subtotal" ? "#a6a6a6" : "#ffffff";
+    const achieved = row.type === "detail" && Number(row.percent || 0) >= 1;
+    const fill = row.type === "grand" ? "#808080"
+      : row.type === "subtotal" ? "#a6a6a6"
+        : achieved ? "#e2f0d9" : "#ffffff";
     columns.forEach((column) => {
       let value = row[column.key];
       if (column.date) value = row.daily?.[column.date] || "";
@@ -3005,10 +3027,11 @@ function exportLpbJpg() {
       const cellHeight = column.key === "coordinator" && row.coordinatorSpan
         ? rowHeight * row.coordinatorSpan
         : rowHeight;
-      const cellFill = column.key === "percent" && row.type === "detail" ? "#63be7b" : fill;
+      const cellFill = column.key === "percent" && achieved ? "#00b050" : fill;
       drawCell(ctx, x, y, column.width, cellHeight, value ?? "", {
         fill: cellFill,
         bold: row.type !== "detail" || column.key === "biller",
+        color: column.key === "percent" && achieved ? "#ffffff" : "#111111",
         align: column.align,
       });
       x += column.width;
@@ -3763,7 +3786,7 @@ function drawCell(ctx, x, y, width, height, value, options = {}) {
   ctx.strokeStyle = "#cfdbe5";
   ctx.lineWidth = 1;
   ctx.strokeRect(x, y, width, height);
-  ctx.fillStyle = options.danger ? "#c1121f" : "#10202f";
+  ctx.fillStyle = options.color || (options.danger ? "#c1121f" : "#10202f");
   ctx.font = `${options.bold ? "700" : "400"} 14px Arial`;
   ctx.textBaseline = "middle";
   const text = String(value ?? "");
