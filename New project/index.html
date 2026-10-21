@@ -749,10 +749,16 @@
                   <input id="invoiceDaya" type="text" autocomplete="off" placeholder="1300" />
                 </label>
               </div>
-              <label class="field" for="invoiceTagihan">
-                <span>Tagihan (RPTAG + BK)</span>
-                <input id="invoiceTagihan" type="text" inputmode="numeric" autocomplete="off" placeholder="485323" />
-              </label>
+              <div class="invoice-field-row">
+                <label class="field" for="invoiceTagihan">
+                  <span>Tagihan (RPTAG)</span>
+                  <input id="invoiceTagihan" type="text" inputmode="numeric" autocomplete="off" placeholder="485323" />
+                </label>
+                <label class="field" for="invoiceTerlambat">
+                  <span>Biaya Terlambat (RPBK)</span>
+                  <input id="invoiceTerlambat" type="text" inputmode="numeric" autocomplete="off" value="0" />
+                </label>
+              </div>
             </div>
 
             <div class="invoice-batch-controls" id="invoiceBatchControls" hidden>
@@ -820,6 +826,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20261021-invoice-v7"></script>
+    <script src="./app.js?v=20261021-invoice-restore-v8"></script>
   </body>
 </html>

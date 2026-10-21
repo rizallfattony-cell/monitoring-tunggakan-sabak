@@ -212,6 +212,7 @@ const els = {
   invoiceRekening: document.querySelector("#invoiceRekening"),
   invoiceKota: document.querySelector("#invoiceKota"),
   invoiceTagihan: document.querySelector("#invoiceTagihan"),
+  invoiceTerlambat: document.querySelector("#invoiceTerlambat"),
   invoiceAdminFee: document.querySelector("#invoiceAdminFee"),
   invoiceManager: document.querySelector("#invoiceManager"),
   invoiceStatus: document.querySelector("#invoiceStatus"),
@@ -511,8 +512,8 @@ function loadInvoiceCustomer() {
   if (els.invoiceTarif) els.invoiceTarif.value = customer.tarif || "";
   if (els.invoiceDaya) els.invoiceDaya.value = customer.daya || "";
   if (els.invoiceKodeKedudukan) els.invoiceKodeKedudukan.value = customer.koked || "";
-  const combinedBill = customer.rptag + customer.rpbk;
-  if (els.invoiceTagihan) els.invoiceTagihan.value = combinedBill ? formatIntegerInput(combinedBill) : "0";
+  if (els.invoiceTagihan) els.invoiceTagihan.value = customer.rptag ? formatIntegerInput(customer.rptag) : "0";
+  if (els.invoiceTerlambat) els.invoiceTerlambat.value = customer.rpbk ? formatIntegerInput(customer.rpbk) : "0";
   setInvoiceStatus(`Data IDPEL ${idpel} berhasil dimuat ke invoice.`);
   renderInvoicePreview();
 }
@@ -558,6 +559,7 @@ function renderInvoicePreview() {
 
 function readInvoiceForm() {
   const tagihan = parseFlexibleRupiah(els.invoiceTagihan?.value || 0);
+  const terlambat = parseFlexibleRupiah(els.invoiceTerlambat?.value || 0);
   const admin = parseFlexibleRupiah(els.invoiceAdminFee?.value || 0);
   return {
     idpel: cleanText(els.invoiceIdpel?.value || ""),
@@ -569,8 +571,9 @@ function readInvoiceForm() {
     rekening: cleanText(els.invoiceRekening?.value || formatInvoiceMonth(new Date())).toUpperCase(),
     kota: cleanText(els.invoiceKota?.value || "Sabak"),
     tagihan,
+    terlambat,
     admin,
-    total: tagihan + admin,
+    total: tagihan + terlambat + admin,
     manager: cleanText(els.invoiceManager?.value || "MARWAN MASALAN").toUpperCase(),
   };
 }
@@ -590,7 +593,8 @@ function getInvoicesForPreview() {
     .map((customer) => ({
       ...customer,
       kodeKedudukan: customer.koked,
-      tagihan: customer.rptag + customer.rpbk,
+      tagihan: customer.rptag,
+      terlambat: customer.rpbk,
       total: customer.rptag + customer.rpbk + admin,
       ...shared,
     }));
@@ -615,9 +619,9 @@ function buildInvoiceHtml(data) {
       </div>
       <div class="invoice-data-row"><span>Alamat</span><b>:</b><strong class="invoice-fit">${safe(data.alamat)}</strong></div>
       <div class="invoice-data-row"><span>Tarip / daya</span><b>:</b><strong>${safe(tarifDaya)}</strong></div>
-      ${buildInvoiceMoneyHtml("Rekening", data.rekening, null)}
-      ${buildInvoiceMoneyHtml("Jumlah Biaya Keterlambatan s.d bulan", "", null)}
-      ${buildInvoiceMoneyHtml("Jumlah Tagihan", "", data.total, true)}
+      ${buildInvoiceMoneyHtml("Rekening", data.rekening, data.tagihan)}
+      ${buildInvoiceMoneyHtml("Jumlah Biaya Keterlambatan s.d bulan", "", data.terlambat)}
+      ${buildInvoiceMoneyHtml("Jumlah Tagihan ( belum termasuk biaya Administrasi )", "", data.total, true)}
       <p class="invoice-notice">Dengan ini kami informasikan tagihan listrik saudara/i sesuai dengan data di atas. Kami menghimbau agar dapat melunasi tagihan rekening listrik sebelum tanggal 20 setiap bulannya dan bila telat dari tempo yang sudah di tentukan maka akan <strong>kami lakukan pemutusan sementara dan migrasi ke KWH Prabayar.</strong> Terimakasih bagi pelanggan yang sudah tepat waktu,selamat menikmati aliran listrik. "<strong>SALAM LISTRIK UNTUK KEHIDUPAN YANG LEBIH BAIK</strong>".</p>
       <div class="invoice-lower">
         <section class="invoice-receipt">
@@ -639,11 +643,10 @@ function buildInvoiceHtml(data) {
 }
 
 function buildInvoiceMoneyHtml(label, value, amount, total = false) {
-  const amountText = amount === null || amount === undefined ? "" : formatInvoiceMoney(amount);
   return `
     <div class="invoice-money-row${value ? " invoice-money-account" : ""}${total ? " invoice-money-total" : ""}">
       <div class="invoice-money-label"><span>${escapeHtml(label)}</span><b>:</b>${value ? `<strong>${escapeHtml(value)}</strong>` : ""}</div>
-      <div class="invoice-money-value"><span>Rp :</span><strong>${amountText}</strong></div>
+      <div class="invoice-money-value"><span>Rp :</span><strong>${formatInvoiceMoney(amount)}</strong></div>
     </div>
   `;
 }
