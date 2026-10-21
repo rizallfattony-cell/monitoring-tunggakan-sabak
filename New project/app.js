@@ -2636,7 +2636,7 @@ function normalizeLpbLatestRows(rows) {
 function normalizeLpbDate(value) {
   if (value instanceof Date && !Number.isNaN(value.getTime())) return formatLocalIsoDate(value);
   if (typeof value === "number" || /^\d{5}(?:\.\d+)?$/.test(String(value || "").trim())) {
-    const parsed = window.XLSX?.SSF?.parse_date_code?.(Number(value) + (7 / 24));
+    const parsed = window.XLSX?.SSF?.parse_date_code?.(Number(value));
     if (parsed?.y && parsed?.m && parsed?.d) {
       return `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(parsed.d).padStart(2, "0")}`;
     }
@@ -2644,12 +2644,10 @@ function normalizeLpbDate(value) {
   const text = cleanText(value);
   const iso = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T\s]+(\d{1,2})[:.](\d{1,2})(?:[:.](\d{1,2}))?)?/);
   if (iso) {
-    if (iso[4] !== undefined) return formatLpbWibDate(iso[1], iso[2], iso[3], iso[4], iso[5], iso[6]);
     return `${iso[1]}-${String(iso[2]).padStart(2, "0")}-${String(iso[3]).padStart(2, "0")}`;
   }
   const dmy = text.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:[T\s]+(\d{1,2})[:.](\d{1,2})(?:[:.](\d{1,2}))?)?/);
   if (dmy) {
-    if (dmy[4] !== undefined) return formatLpbWibDate(dmy[3], dmy[2], dmy[1], dmy[4], dmy[5], dmy[6]);
     return `${dmy[3]}-${String(dmy[2]).padStart(2, "0")}-${String(dmy[1]).padStart(2, "0")}`;
   }
   const namedDmy = text.match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})(?:[T\s]+(\d{1,2})[:.](\d{1,2})(?:[:.](\d{1,2}))?)?/i);
@@ -2659,29 +2657,10 @@ function normalizeLpbDate(value) {
       jul: 7, aug: 8, agu: 8, sep: 9, oct: 10, okt: 10, nov: 11,
       dec: 12, des: 12,
     }[namedDmy[2].slice(0, 3).toLowerCase()];
-    if (month && namedDmy[4] !== undefined) {
-      return formatLpbWibDate(namedDmy[3], month, namedDmy[1], namedDmy[4], namedDmy[5], namedDmy[6]);
-    }
     if (month) return `${namedDmy[3]}-${String(month).padStart(2, "0")}-${String(namedDmy[1]).padStart(2, "0")}`;
   }
   const date = new Date(text);
   return Number.isNaN(date.getTime()) ? "" : formatLocalIsoDate(date);
-}
-
-function formatLpbWibDate(year, month, day, hour = 0, minute = 0, second = 0) {
-  const shifted = new Date(Date.UTC(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    Number(hour || 0) + 7,
-    Number(minute || 0),
-    Number(second || 0),
-  ));
-  return [
-    shifted.getUTCFullYear(),
-    String(shifted.getUTCMonth() + 1).padStart(2, "0"),
-    String(shifted.getUTCDate()).padStart(2, "0"),
-  ].join("-");
 }
 
 function formatLocalIsoDate(date) {
