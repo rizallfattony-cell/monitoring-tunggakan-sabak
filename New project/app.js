@@ -511,7 +511,9 @@ function loadInvoiceCustomer() {
   if (els.invoiceAlamat) els.invoiceAlamat.value = customer.alamat || "";
   if (els.invoiceTarif) els.invoiceTarif.value = customer.tarif || "";
   if (els.invoiceDaya) els.invoiceDaya.value = customer.daya || "";
-  if (els.invoiceKodeKedudukan) els.invoiceKodeKedudukan.value = customer.koked || "";
+  if (els.invoiceKodeKedudukan) {
+    els.invoiceKodeKedudukan.value = formatInvoiceKodeKedudukan(customer.kolok, customer.koked);
+  }
   if (els.invoiceTagihan) els.invoiceTagihan.value = customer.rptag ? formatIntegerInput(customer.rptag) : "0";
   if (els.invoiceTerlambat) els.invoiceTerlambat.value = customer.rpbk ? formatIntegerInput(customer.rpbk) : "0";
   setInvoiceStatus(`Data IDPEL ${idpel} berhasil dimuat ke invoice.`);
@@ -592,7 +594,7 @@ function getInvoicesForPreview() {
     .filter((customer) => state.selectedInvoiceIds.has(customer.idpel))
     .map((customer) => ({
       ...customer,
-      kodeKedudukan: customer.koked,
+      kodeKedudukan: formatInvoiceKodeKedudukan(customer.kolok, customer.koked),
       tagihan: customer.rptag,
       terlambat: customer.rpbk,
       total: customer.rptag + customer.rpbk + admin,
@@ -640,6 +642,10 @@ function buildInvoiceHtml(data) {
       <footer class="invoice-footer">"ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN"</footer>
     </article>
   `;
+}
+
+function formatInvoiceKodeKedudukan(kolok, koked) {
+  return `${cleanText(kolok || "")}${cleanText(koked || "")}`;
 }
 
 function buildInvoiceMoneyHtml(label, value, amount, total = false) {
