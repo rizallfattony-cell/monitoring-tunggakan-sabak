@@ -76,6 +76,7 @@ const state = {
   syncStatusRows: [],
   invoiceMode: "single",
   selectedInvoiceIds: new Set(),
+  petugasRows: [],
 };
 
 const els = {
@@ -100,6 +101,18 @@ const els = {
   tableDate: document.querySelector("#tableDate"),
   reportDate: document.querySelector("#reportDate"),
   overviewQuote: document.querySelector("#overviewQuote"),
+  overviewSaldoAkhir: document.querySelector("#overviewSaldoAkhir"),
+  overviewSaldoAkhirNote: document.querySelector("#overviewSaldoAkhirNote"),
+  overviewIdpelTersisa: document.querySelector("#overviewIdpelTersisa"),
+  overviewIdpelNote: document.querySelector("#overviewIdpelNote"),
+  overviewPelunasan: document.querySelector("#overviewPelunasan"),
+  overviewPelunasanNote: document.querySelector("#overviewPelunasanNote"),
+  overviewPencapaian: document.querySelector("#overviewPencapaian"),
+  overviewPencapaianBar: document.querySelector("#overviewPencapaianBar"),
+  overviewOfficerList: document.querySelector("#overviewOfficerList"),
+  overviewDilStatus: document.querySelector("#overviewDilStatus"),
+  overviewAwalStatus: document.querySelector("#overviewAwalStatus"),
+  overviewAkhirStatus: document.querySelector("#overviewAkhirStatus"),
   searchInput: document.querySelector("#searchInput"),
   sortSelect: document.querySelector("#sortSelect"),
   exportButton: document.querySelector("#exportButton"),
@@ -257,6 +270,7 @@ async function boot() {
   initializeLpbMonitoring();
   initializeInvoiceForm();
   attachEvents();
+  initializeMainMenu();
   initSupabase();
   await hydrate();
   await hydrateSession();
@@ -310,6 +324,7 @@ function attachEvents() {
   els.premiumList?.addEventListener("click", handlePremiumClick);
   els.tableBody.addEventListener("click", handleCountClick);
   els.tableFoot.addEventListener("click", handleCountClick);
+  els.overviewOfficerList?.addEventListener("click", handleOverviewOfficerClick);
   els.closeModalButton.addEventListener("click", closeExportModal);
   els.cancelExportButton.addEventListener("click", closeExportModal);
   els.confirmExportButton.addEventListener("click", confirmPendingExport);
@@ -413,6 +428,12 @@ function toggleMainMenu() {
   els.menuToggleButton?.setAttribute("aria-expanded", String(!collapsed));
 }
 
+function initializeMainMenu() {
+  if (!els.workspaceLayout || !window.matchMedia("(max-width: 680px)").matches) return;
+  els.workspaceLayout.classList.add("is-menu-collapsed");
+  els.menuToggleButton?.setAttribute("aria-expanded", "false");
+}
+
 function toggleTableMaximize(section) {
   const isActive = section.classList.contains("is-maximized");
   closeMaximizedTable();
@@ -491,7 +512,7 @@ function renderUploadView() {
 
 function tabTitle(tabName) {
   const titles = {
-    overview: "Overview",
+    overview: "Dashboard",
     upload: "Upload Data",
     laporan: "Laporan",
     "pelunasan-harian": "Pelunasan Harian",
@@ -1575,6 +1596,7 @@ async function rejectPremiumRequest(id) {
 }
 
 function renderPetugasRows(rows) {
+  state.petugasRows = rows;
   const totalRupiah = rows.reduce((sum, row) => sum + Number(row.rptag || 0), 0);
   els.metricAwal.textContent = formatNumber(rows.length);
   els.metricAkhir.textContent = formatRupiah(totalRupiah);
@@ -1608,6 +1630,7 @@ function renderPetugasRows(rows) {
     : `<tr><td class="empty-state" colspan="10">Belum ada tunggakan untuk user ini.</td></tr>`;
 
   renderPetugasHeader();
+  renderOverviewDashboard();
 }
 
 function renderPetugasHeader() {
@@ -3241,6 +3264,7 @@ function computeTotals(rows) {
 }
 
 function render() {
+  renderOverviewDashboard();
   if (state.profile?.role === "petugas") return;
   renderAdminHeader();
   const rows = getVisibleRows();
@@ -3259,6 +3283,93 @@ function render() {
   els.metricPersen.textContent = formatPercent(state.totals.persenTagihan);
   renderAnomalies();
   if (state.invoiceMode === "batch") renderInvoiceBatchControls();
+}
+
+function renderOverviewDashboard() {
+  if (!els.overviewSaldoAkhir) return;
+  const petugasMode = state.profile?.role === "petugas";
+  const petugasRows = state.petugasRows || [];
+  const petugasTotal = petugasRows.reduce((sum, row) => sum + Number(row.rptag || 0), 0);
+  const totals = petugasMode
+    ? {
+        awalId: petugasRows.length,
+        akhirId: petugasRows.length,
+        akhirRupiah: petugasTotal,
+        pelunasanPel: 0,
+        pelunasanRupiah: 0,
+        persenTagihan: 0,
+      }
+    : state.totals;
+
+  els.overviewSaldoAkhir.textContent = formatRupiah(totals.akhirRupiah);
+  els.overviewSaldoAkhirNote.textContent = `${formatNumber(totals.akhirId)} pelanggan masih menunggak`;
+  els.overviewIdpelTersisa.textContent = formatNumber(totals.akhirId);
+  els.overviewIdpelNote.textContent = petugasMode
+    ? state.profile?.petugas || "Data petugas"
+    : `Dari ${formatNumber(totals.awalId)} IDPEL awal`;
+  els.overviewPelunasan.textContent = formatRupiah(totals.pelunasanRupiah);
+  els.overviewPelunasanNote.textContent = `${formatNumber(totals.pelunasanPel)} pelanggan selesai`;
+  els.overviewPencapaian.textContent = formatPercent(totals.persenTagihan);
+  els.overviewPencapaianBar.style.width = `${Math.max(0, Math.min(100, totals.persenTagihan || 0))}%`;
+
+  renderOverviewOfficerList(petugasMode);
+  renderOverviewDataStatus();
+}
+
+function renderOverviewOfficerList(petugasMode) {
+  if (!els.overviewOfficerList) return;
+  if (petugasMode) {
+    const total = state.petugasRows.reduce((sum, row) => sum + Number(row.rptag || 0), 0);
+    els.overviewOfficerList.innerHTML = `
+      <button class="overview-officer-row" type="button" data-overview-petugas="${escapeHtml(state.profile?.petugas || "")}">
+        <span class="overview-officer-rank">1</span>
+        <span class="overview-officer-name"><strong>${escapeHtml(state.profile?.petugas || "Petugas")}</strong><small>Daftar pelanggan akun ini</small></span>
+        <span class="overview-officer-balance">${formatRupiah(total)}</span>
+        <span class="overview-officer-percent">${formatNumber(state.petugasRows.length)} IDPEL</span>
+      </button>
+    `;
+    return;
+  }
+
+  const rows = [...state.report]
+    .filter((row) => row.awalRupiah > 0)
+    .sort((a, b) => a.persenTagihan - b.persenTagihan || b.akhirRupiah - a.akhirRupiah)
+    .slice(0, 6);
+  els.overviewOfficerList.innerHTML = rows.length
+    ? rows.map((row, index) => `
+        <button class="overview-officer-row" type="button" data-overview-petugas="${escapeHtml(row.petugas)}">
+          <span class="overview-officer-rank">${index + 1}</span>
+          <span class="overview-officer-name"><strong>${escapeHtml(row.petugas)}</strong><small>${formatNumber(row.akhirId)} IDPEL tersisa</small></span>
+          <span class="overview-officer-balance">${formatRupiah(row.akhirRupiah)}</span>
+          <span class="overview-officer-percent">${formatPercent(row.persenTagihan)}</span>
+        </button>
+      `).join("")
+    : '<p class="overview-empty">Belum ada data petugas. Upload DIL, saldo awal, dan saldo akhir terlebih dahulu.</p>';
+}
+
+function renderOverviewDataStatus() {
+  setOverviewDataStatus(els.overviewDilStatus, "dil", state.dil.length);
+  setOverviewDataStatus(els.overviewAwalStatus, "awal", state.awal.length);
+  setOverviewDataStatus(els.overviewAkhirStatus, "akhir", state.akhir.length);
+}
+
+function setOverviewDataStatus(element, kind, count) {
+  if (!element) return;
+  const timestamp = formatUploadTimestamp(state.uploadMeta?.[kind]?.uploadedAt);
+  element.textContent = count
+    ? `${formatNumber(count)} baris${timestamp ? ` · ${timestamp}` : ""}`
+    : "Belum tersedia";
+  element.closest(".overview-status-row")?.classList.toggle("is-ready", count > 0);
+}
+
+function handleOverviewOfficerClick(event) {
+  const button = event.target.closest("[data-overview-petugas]");
+  if (!button) return;
+  if (state.profile?.role !== "petugas" && els.searchInput) {
+    els.searchInput.value = button.dataset.overviewPetugas || "";
+    render();
+  }
+  switchTab("laporan");
 }
 
 function getLowPerformerNames(rows) {

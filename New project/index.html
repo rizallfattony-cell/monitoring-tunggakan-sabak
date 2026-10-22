@@ -66,6 +66,10 @@
             <button class="collapse-menu-button" type="button" aria-label="Tutup menu">&times;</button>
           </div>
           <nav class="tree-menu">
+            <button class="tree-parent dashboard-menu-button is-active" type="button" data-tab="overview">
+              <span class="dashboard-menu-icon" aria-hidden="true"></span>
+              Dashboard
+            </button>
             <section class="tree-group">
               <button class="tree-parent" type="button" data-tree-toggle="database">
                 <span class="tree-arrow" aria-hidden="true"></span>
@@ -120,7 +124,7 @@
 
         <section class="content-workspace">
           <div class="workspace-tab-strip">
-            <span class="workspace-tab-title" id="workspaceTabTitle">Overview</span>
+            <span class="workspace-tab-title" id="workspaceTabTitle">Dashboard</span>
           </div>
 
           <div class="workspace-body">
@@ -137,10 +141,75 @@
 
             <section class="tab-panel is-active" data-tab-panel="overview">
               <div class="overview-panel">
-                <div class="overview-clean">
-                  <h1>Simontok Super Web</h1>
-                  <p class="overview-clock" id="reportDate">Memuat waktu device...</p>
+                <header class="overview-heading">
+                  <div>
+                    <span class="overview-eyebrow">Ringkasan Operasional</span>
+                    <h1>Dashboard Tunggakan</h1>
+                    <p class="overview-clock" id="reportDate">Memuat waktu device...</p>
+                  </div>
                   <p class="overview-quote" id="overviewQuote">Menyiapkan motivasi kerja hari ini...</p>
+                </header>
+
+                <section class="overview-kpi-grid" aria-label="Ringkasan tunggakan">
+                  <article class="overview-kpi overview-kpi-primary">
+                    <span>Saldo Akhir</span>
+                    <strong id="overviewSaldoAkhir">Rp0</strong>
+                    <small id="overviewSaldoAkhirNote">Belum ada data pelanggan</small>
+                  </article>
+                  <article class="overview-kpi">
+                    <span>IDPEL Tersisa</span>
+                    <strong id="overviewIdpelTersisa">0</strong>
+                    <small id="overviewIdpelNote">Dari 0 IDPEL awal</small>
+                  </article>
+                  <article class="overview-kpi overview-kpi-success">
+                    <span>Pelunasan</span>
+                    <strong id="overviewPelunasan">Rp0</strong>
+                    <small id="overviewPelunasanNote">0 pelanggan selesai</small>
+                  </article>
+                  <article class="overview-kpi">
+                    <span>Pencapaian</span>
+                    <strong id="overviewPencapaian">0%</strong>
+                    <div class="overview-progress" aria-hidden="true"><i id="overviewPencapaianBar"></i></div>
+                  </article>
+                </section>
+
+                <div class="overview-dashboard-grid">
+                  <section class="overview-performance">
+                    <div class="overview-section-title">
+                      <div>
+                        <h2>Petugas Perlu Perhatian</h2>
+                        <p>Diurutkan dari pencapaian tagihan terendah.</p>
+                      </div>
+                      <button class="overview-text-button" type="button" data-tab="laporan">Lihat monitoring</button>
+                    </div>
+                    <div class="overview-officer-list" id="overviewOfficerList">
+                      <p class="overview-empty">Belum ada data petugas.</p>
+                    </div>
+                  </section>
+
+                  <aside class="overview-data-status">
+                    <div class="overview-section-title">
+                      <div>
+                        <h2>Status Data</h2>
+                        <p>Data utama yang sedang digunakan.</p>
+                      </div>
+                    </div>
+                    <div class="overview-status-list">
+                      <div class="overview-status-row">
+                        <i aria-hidden="true"></i>
+                        <div><strong>DIL</strong><span id="overviewDilStatus">Belum tersedia</span></div>
+                      </div>
+                      <div class="overview-status-row">
+                        <i aria-hidden="true"></i>
+                        <div><strong>Saldo Awal</strong><span id="overviewAwalStatus">Belum tersedia</span></div>
+                      </div>
+                      <div class="overview-status-row">
+                        <i aria-hidden="true"></i>
+                        <div><strong>Saldo Akhir</strong><span id="overviewAkhirStatus">Belum tersedia</span></div>
+                      </div>
+                    </div>
+                    <button class="button secondary overview-upload-button" type="button" data-tab="upload" data-upload-view="database">Kelola data</button>
+                  </aside>
                 </div>
               </div>
             </section>
