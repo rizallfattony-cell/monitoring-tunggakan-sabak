@@ -2048,7 +2048,7 @@ async function publishReceiptMeters() {
   }
 }
 
-async function insertInChunks(tableName, rows, chunkSize = 100, progress = {}) {
+async function insertInChunks(tableName, rows, chunkSize = 500, progress = {}) {
   const total = rows.length;
   for (let index = 0; index < rows.length; index += chunkSize) {
     const chunk = rows.slice(index, index + chunkSize);
