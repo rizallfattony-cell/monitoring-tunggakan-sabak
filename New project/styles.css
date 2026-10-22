@@ -2877,6 +2877,15 @@ body {
   max-width: none;
 }
 
+.overview-panel > .overview-heading,
+.overview-panel > .overview-kpi-grid,
+.overview-panel > .overview-dashboard-grid {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
 .overview-heading {
   align-items: center;
   margin-bottom: 24px;
