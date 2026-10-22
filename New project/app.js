@@ -238,6 +238,9 @@ const els = {
   saveAppReleaseButton: document.querySelector("#saveAppReleaseButton"),
   appReleaseStatus: document.querySelector("#appReleaseStatus"),
   workspaceTabTitle: document.querySelector("#workspaceTabTitle"),
+  workspaceLayout: document.querySelector(".workspace-layout"),
+  menuToggleButton: document.querySelector("#menuToggleButton"),
+  collapseMenuButton: document.querySelector(".collapse-menu-button"),
   treeToggleButtons: [...document.querySelectorAll("[data-tree-toggle]")],
   adminOnlyMenus: [...document.querySelectorAll(".admin-only-menu")],
   tabButtons: [...document.querySelectorAll("[data-tab]")],
@@ -298,6 +301,8 @@ function attachEvents() {
   });
   els.loginButton.addEventListener("click", () => loginOnline("panel"));
   els.logoutButton.addEventListener("click", logoutOnline);
+  els.menuToggleButton?.addEventListener("click", toggleMainMenu);
+  els.collapseMenuButton?.addEventListener("click", toggleMainMenu);
   els.loadCloudButton.addEventListener("click", loadCloudData);
   els.saveCloudButton.addEventListener("click", saveCloudData);
   els.refreshPremiumButton?.addEventListener("click", loadPremiumRequests);
@@ -400,6 +405,12 @@ function initializeTableMaximizeButtons() {
     button.addEventListener("click", () => toggleTableMaximize(section));
     actions.prepend(button);
   });
+}
+
+function toggleMainMenu() {
+  if (!els.workspaceLayout) return;
+  const collapsed = els.workspaceLayout.classList.toggle("is-menu-collapsed");
+  els.menuToggleButton?.setAttribute("aria-expanded", String(!collapsed));
 }
 
 function toggleTableMaximize(section) {

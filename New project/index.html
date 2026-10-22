@@ -4,11 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Simontok Super Web</title>
-    <meta name="theme-color" content="#006b8f" />
+    <meta name="theme-color" content="#123b5d" />
     <link rel="icon" type="image/png" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="apple-touch-icon" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260622-table-maximize" />
+    <link rel="stylesheet" href="./styles.css?v=20261022-shell-redesign-v1" />
     <link rel="stylesheet" href="./invoice.css?v=20260930-invoice-v3" />
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -37,18 +37,33 @@
 
     <main class="app-shell" id="appShell" hidden>
       <header class="top-app-bar">
-        <strong>Selamat Datang : Admin Ganteng</strong>
-        <button class="legacy-logout-button" id="logoutButton" type="button">
-          <span aria-hidden="true"></span>
-          Logout
-        </button>
+        <div class="top-app-identity">
+          <button class="top-menu-button" id="menuToggleButton" type="button" aria-label="Buka atau tutup menu" aria-expanded="true">&#9776;</button>
+          <span class="brand-mark" aria-hidden="true">S</span>
+          <div class="brand-copy">
+            <strong>SIMONTOK</strong>
+            <span>Super Web</span>
+          </div>
+        </div>
+        <div class="top-app-context">
+          <strong>Monitoring Operasional</strong>
+          <span>ULP Sabak</span>
+        </div>
+        <div class="top-app-user">
+          <span class="user-avatar" aria-hidden="true">AG</span>
+          <div class="user-copy">
+            <strong>Admin Ganteng</strong>
+            <span>Administrator</span>
+          </div>
+          <button class="legacy-logout-button" id="logoutButton" type="button">Keluar</button>
+        </div>
       </header>
 
       <div class="workspace-layout">
         <aside class="side-menu" aria-label="Menu Simontok Super Web">
           <div class="side-menu-title">
-            <strong>Simontok Super Web</strong>
-            <button class="collapse-menu-button" type="button" aria-label="Minimize menu">&laquo;</button>
+            <span>Navigasi</span>
+            <button class="collapse-menu-button" type="button" aria-label="Tutup menu">&times;</button>
           </div>
           <nav class="tree-menu">
             <section class="tree-group">
