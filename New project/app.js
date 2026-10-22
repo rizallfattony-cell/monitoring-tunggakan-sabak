@@ -271,6 +271,7 @@ async function boot() {
   initializeInvoiceForm();
   attachEvents();
   initializeMainMenu();
+  window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
   initSupabase();
   await hydrate();
   await hydrateSession();
@@ -3321,11 +3322,12 @@ function renderOverviewOfficerList(petugasMode) {
   if (petugasMode) {
     const total = state.petugasRows.reduce((sum, row) => sum + Number(row.rptag || 0), 0);
     els.overviewOfficerList.innerHTML = `
+      <div class="overview-officer-head"><span>#</span><span>Petugas</span><span>Sisa tagihan</span><span>Pelanggan</span></div>
       <button class="overview-officer-row" type="button" data-overview-petugas="${escapeHtml(state.profile?.petugas || "")}">
         <span class="overview-officer-rank">1</span>
         <span class="overview-officer-name"><strong>${escapeHtml(state.profile?.petugas || "Petugas")}</strong><small>Daftar pelanggan akun ini</small></span>
         <span class="overview-officer-balance">${formatRupiah(total)}</span>
-        <span class="overview-officer-percent">${formatNumber(state.petugasRows.length)} IDPEL</span>
+        <span class="overview-officer-score"><strong>${formatNumber(state.petugasRows.length)}</strong></span>
       </button>
     `;
     return;
@@ -3336,14 +3338,21 @@ function renderOverviewOfficerList(petugasMode) {
     .sort((a, b) => a.persenTagihan - b.persenTagihan || b.akhirRupiah - a.akhirRupiah)
     .slice(0, 6);
   els.overviewOfficerList.innerHTML = rows.length
-    ? rows.map((row, index) => `
+    ? `
+      <div class="overview-officer-head"><span>#</span><span>Petugas</span><span>Sisa tagihan</span><span>Pencapaian</span></div>
+      ${rows.map((row, index) => `
         <button class="overview-officer-row" type="button" data-overview-petugas="${escapeHtml(row.petugas)}">
           <span class="overview-officer-rank">${index + 1}</span>
           <span class="overview-officer-name"><strong>${escapeHtml(row.petugas)}</strong><small>${formatNumber(row.akhirId)} IDPEL tersisa</small></span>
           <span class="overview-officer-balance">${formatRupiah(row.akhirRupiah)}</span>
-          <span class="overview-officer-percent">${formatPercent(row.persenTagihan)}</span>
+          <span class="overview-officer-score">
+            <i class="overview-officer-meter"><b style="width:${Math.max(0, Math.min(100, row.persenTagihan || 0))}%"></b></i>
+            <strong>${formatPercent(row.persenTagihan)}</strong>
+          </span>
         </button>
-      `).join("")
+      `).join("")}
+      <div class="overview-performance-legend"><span><i class="is-priority"></i>Di bawah 60%: prioritas</span><span><i class="is-warning"></i>60–79%: perlu dorongan</span></div>
+    `
     : '<p class="overview-empty">Belum ada data petugas. Upload DIL, saldo awal, dan saldo akhir terlebih dahulu.</p>';
 }
 
@@ -3355,9 +3364,9 @@ function renderOverviewDataStatus() {
 
 function setOverviewDataStatus(element, kind, count) {
   if (!element) return;
-  const timestamp = formatUploadTimestamp(state.uploadMeta?.[kind]?.uploadedAt);
-  element.textContent = count
-    ? `${formatNumber(count)} baris${timestamp ? ` · ${timestamp}` : ""}`
+  const timestamp = formatDateTime(state.uploadMeta?.[kind]?.uploadedAt);
+  element.innerHTML = count
+    ? `${formatNumber(count)} baris${timestamp && timestamp !== "-" ? `<small>${escapeHtml(timestamp)}</small>` : ""}`
     : "Belum tersedia";
   element.closest(".overview-status-row")?.classList.toggle("is-ready", count > 0);
 }
