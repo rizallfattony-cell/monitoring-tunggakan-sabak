@@ -85,7 +85,7 @@ begin
   where profile.role <> 'admin'
     and profile.premium_package in ('P1', 'P2', 'P3')
     and month_start = date_trunc('month', current_date)::date
-  on conflict (user_id, billing_month) do nothing;
+  on conflict on constraint monitoring_premium_payments_user_month_key do nothing;
 
   return query
   select
@@ -170,7 +170,7 @@ begin
     case when p_paid_at is null then null else auth.uid() end,
     now()
   )
-  on conflict (user_id, billing_month) do update
+  on conflict on constraint monitoring_premium_payments_user_month_key do update
   set paid_at = excluded.paid_at,
       payment_note = excluded.payment_note,
       marked_by = excluded.marked_by,
