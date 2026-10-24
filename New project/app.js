@@ -64,7 +64,7 @@ const state = {
   supabaseClient: null,
   user: null,
   profile: null,
-  premiumRequests: [],
+  premiumUsers: [],
   saldoAkhirRataRata: emptySaldoAverageState(),
   dailyPelunasan: emptyDailyPelunasanState(),
   comparisonMonitoring: emptyComparisonMonitoringState(),
@@ -129,11 +129,25 @@ const els = {
   uploadPanelTitle: document.querySelector("#uploadPanelTitle"),
   uploadPanelDescription: document.querySelector("#uploadPanelDescription"),
   uploadPanels: [...document.querySelectorAll("[data-upload-panel]")],
-  premiumPanel: document.querySelector("#premiumPanel"),
-  premiumStatus: document.querySelector("#premiumStatus"),
-  premiumList: document.querySelector("#premiumList"),
-  refreshPremiumButton: document.querySelector("#refreshPremiumButton"),
-  togglePremiumButton: document.querySelector("#togglePremiumButton"),
+  premiumAccessForm: document.querySelector("#premiumAccessForm"),
+  premiumUserSelect: document.querySelector("#premiumUserSelect"),
+  premiumPackageSelect: document.querySelector("#premiumPackageSelect"),
+  premiumStartDate: document.querySelector("#premiumStartDate"),
+  premiumEndDate: document.querySelector("#premiumEndDate"),
+  premiumAdminNote: document.querySelector("#premiumAdminNote"),
+  premiumFormHint: document.querySelector("#premiumFormHint"),
+  premiumFormStatus: document.querySelector("#premiumFormStatus"),
+  resetPremiumFormButton: document.querySelector("#resetPremiumFormButton"),
+  refreshPremiumUsersButton: document.querySelector("#refreshPremiumUsersButton"),
+  premiumSearchInput: document.querySelector("#premiumSearchInput"),
+  premiumStatusFilter: document.querySelector("#premiumStatusFilter"),
+  premiumMonitoringStatus: document.querySelector("#premiumMonitoringStatus"),
+  premiumUsersTableBody: document.querySelector("#premiumUsersTableBody"),
+  premiumActiveCount: document.querySelector("#premiumActiveCount"),
+  premiumExpiringCount: document.querySelector("#premiumExpiringCount"),
+  premiumExpiredCount: document.querySelector("#premiumExpiredCount"),
+  premiumInactiveCount: document.querySelector("#premiumInactiveCount"),
+  premiumDurationButtons: [...document.querySelectorAll("[data-premium-duration]")],
   loginForm: document.querySelector("#loginForm"),
   emailInput: document.querySelector("#emailInput"),
   passwordInput: document.querySelector("#passwordInput"),
@@ -269,6 +283,7 @@ async function boot() {
   initializeDailyPelunasanControls();
   initializeLpbMonitoring();
   initializeInvoiceForm();
+  resetPremiumForm();
   attachEvents();
   initializeMainMenu();
   window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
@@ -320,9 +335,16 @@ function attachEvents() {
   els.collapseMenuButton?.addEventListener("click", toggleMainMenu);
   els.loadCloudButton.addEventListener("click", loadCloudData);
   els.saveCloudButton.addEventListener("click", saveCloudData);
-  els.refreshPremiumButton?.addEventListener("click", loadPremiumRequests);
-  els.togglePremiumButton?.addEventListener("click", togglePremiumPanel);
-  els.premiumList?.addEventListener("click", handlePremiumClick);
+  els.premiumAccessForm?.addEventListener("submit", savePremiumAccess);
+  els.premiumUserSelect?.addEventListener("change", handlePremiumUserSelection);
+  els.resetPremiumFormButton?.addEventListener("click", resetPremiumForm);
+  els.refreshPremiumUsersButton?.addEventListener("click", loadPremiumUsers);
+  els.premiumSearchInput?.addEventListener("input", renderPremiumUsers);
+  els.premiumStatusFilter?.addEventListener("change", renderPremiumUsers);
+  els.premiumUsersTableBody?.addEventListener("click", handlePremiumTableClick);
+  els.premiumDurationButtons.forEach((button) => {
+    button.addEventListener("click", () => setPremiumDuration(Number(button.dataset.premiumDuration)));
+  });
   els.tableBody.addEventListener("click", handleCountClick);
   els.tableFoot.addEventListener("click", handleCountClick);
   els.overviewOfficerList?.addEventListener("click", handleOverviewOfficerClick);
@@ -483,6 +505,7 @@ function switchTab(tabName) {
   if (tabName === "upload") renderUploadView();
   if (tabName === "comparison") renderComparisonMonitoring();
   if (tabName === "lpb") renderLpbMonitoring();
+  if (tabName === "premium") loadPremiumUsers();
   if (tabName === "sync-status") {
     loadSyncStatus();
     loadAppRelease();
@@ -1115,9 +1138,9 @@ async function logoutOnline() {
   await state.supabaseClient.auth.signOut();
   state.user = null;
   state.profile = null;
-  state.premiumRequests = [];
+  state.premiumUsers = [];
   updateOnlineUi();
-  renderPremiumRequests();
+  renderPremiumUsers();
   recompute();
 }
 
@@ -1313,287 +1336,229 @@ async function loadPetugasData() {
   setOnlineStatus(`${formatNumber((data || []).length)} pelanggan tersisa dimuat untuk ${state.profile?.petugas || "petugas ini"}.`);
 }
 
-async function loadPremiumRequests() {
+async function loadPremiumUsers() {
   if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") {
-    state.premiumRequests = [];
-    renderPremiumRequests();
+    state.premiumUsers = [];
+    renderPremiumUsers();
     return;
   }
 
-  if (els.premiumStatus) els.premiumStatus.textContent = "Memuat pengajuan premium...";
-  const { data, error } = await state.supabaseClient
-    .from("monitoring_premium_requests")
-    .select("id,user_id,username,package_code,amount,proof_path,status,created_at,reviewed_at,reviewer_note,request_type,requested_device_id")
-    .order("created_at", { ascending: false })
-    .limit(50);
+  if (els.premiumMonitoringStatus) els.premiumMonitoringStatus.textContent = "Memuat pengguna premium...";
+  const { data, error } = await state.supabaseClient.rpc("admin_list_premium_users");
 
   if (error) {
-    if (els.premiumStatus) els.premiumStatus.textContent = `Gagal memuat pengajuan: ${error.message}`;
-    state.premiumRequests = [];
-    renderPremiumRequests();
+    if (els.premiumMonitoringStatus) {
+      els.premiumMonitoringStatus.textContent = `Gagal memuat data: ${error.message}. Pastikan migrasi premium admin sudah dijalankan.`;
+    }
+    state.premiumUsers = [];
+    renderPremiumUsers();
     return;
   }
 
-  state.premiumRequests = data || [];
-  renderPremiumRequests();
+  state.premiumUsers = data || [];
+  syncPremiumUserOptions();
+  renderPremiumUsers();
 }
 
-function renderPremiumRequests() {
-  if (!els.premiumList) return;
-  const requests = state.premiumRequests || [];
-  const pendingCount = requests.filter((row) => row.status === "pending").length;
-  if (els.premiumStatus) {
-    els.premiumStatus.textContent = state.profile?.role === "admin"
-      ? `${formatNumber(pendingCount)} menunggu ACC dari ${formatNumber(requests.length)} pengajuan terakhir.`
-      : "Login admin untuk melihat pengajuan premium.";
-  }
-
-  if (!requests.length) {
-    els.premiumList.innerHTML = `<div class="empty-premium">Belum ada pengajuan premium.</div>`;
-    syncPremiumCollapseButton();
-    return;
-  }
-
-  els.premiumList.innerHTML = requests.map((row) => {
-    const pending = row.status === "pending";
-    const deviceReset = row.request_type === "device_reset";
-    return `
-      <article class="premium-card">
-        <div>
-          <h3>
-            ${escapeHtml(row.username || "-")}
-            <span class="premium-badge">${deviceReset ? "VERIFIKASI DEVICE" : escapeHtml(row.package_code || "-")}</span>
-          </h3>
-          <p class="premium-meta">
-            ${deviceReset ? "Permintaan ganti device premium" : `Nominal ${formatRupiah(Number(row.amount || 0))}`} - ${premiumStatusLabel(row.status)}
-            <br />Upload: ${formatDateTime(row.created_at)}
-            ${row.reviewed_at ? `<br />Review: ${formatDateTime(row.reviewed_at)}` : ""}
-          </p>
-        </div>
-        <div class="premium-actions">
-          ${deviceReset ? "" : `<button class="button secondary" type="button" data-proof="${escapeHtml(row.proof_path)}">Lihat Bukti</button>`}
-          ${deviceReset ? "" : `<select data-package-select="${escapeHtml(row.id)}">
-            ${["P1", "P2", "P3"].map((pkg) => `
-              <option value="${pkg}" ${row.package_code === pkg ? "selected" : ""}>${pkg} - ${formatRupiah(premiumPackageAmount(pkg))}</option>
-            `).join("")}
-          </select>
-          <button class="button secondary" type="button" data-update-package="${escapeHtml(row.id)}">Ubah Paket</button>`}
-          ${pending ? `<button class="button primary" type="button" data-approve="${escapeHtml(row.id)}">${deviceReset ? "ACC Device" : "ACC 30 Hari"}</button>` : ""}
-          ${pending ? `<button class="button secondary" type="button" data-reject="${escapeHtml(row.id)}">Tolak</button>` : ""}
-        </div>
-      </article>
-    `;
+function syncPremiumUserOptions() {
+  if (!els.premiumUserSelect) return;
+  const selected = els.premiumUserSelect.value;
+  const options = state.premiumUsers.map((row) => {
+    const label = `${row.petugas || row.username || row.email} (${row.username || row.email})`;
+    return `<option value="${escapeHtml(row.user_id)}">${escapeHtml(label)}</option>`;
   }).join("");
-  syncPremiumCollapseButton();
+  els.premiumUserSelect.innerHTML = `<option value="">Pilih pengguna</option>${options}`;
+  if (state.premiumUsers.some((row) => row.user_id === selected)) els.premiumUserSelect.value = selected;
 }
 
-function togglePremiumPanel() {
-  if (!els.premiumPanel) return;
-  els.premiumPanel.classList.toggle("is-collapsed");
-  syncPremiumCollapseButton();
-}
+function renderPremiumUsers() {
+  if (!els.premiumUsersTableBody) return;
+  const users = state.premiumUsers || [];
+  const statusCounts = users.reduce((counts, row) => {
+    const status = premiumAccessStatus(row);
+    counts[status] = (counts[status] || 0) + 1;
+    return counts;
+  }, {});
+  if (els.premiumActiveCount) els.premiumActiveCount.textContent = formatNumber((statusCounts.active || 0) + (statusCounts.expiring || 0));
+  if (els.premiumExpiringCount) els.premiumExpiringCount.textContent = formatNumber(statusCounts.expiring || 0);
+  if (els.premiumExpiredCount) els.premiumExpiredCount.textContent = formatNumber(statusCounts.expired || 0);
+  if (els.premiumInactiveCount) els.premiumInactiveCount.textContent = formatNumber(statusCounts.inactive || 0);
 
-function syncPremiumCollapseButton() {
-  if (!els.togglePremiumButton || !els.premiumPanel) return;
-  els.togglePremiumButton.textContent = els.premiumPanel.classList.contains("is-collapsed")
-    ? "Tampilkan"
-    : "Minimize";
-}
+  const query = cleanText(els.premiumSearchInput?.value).toLowerCase();
+  const filter = els.premiumStatusFilter?.value || "all";
+  const filtered = users.filter((row) => {
+    const haystack = `${row.petugas || ""} ${row.username || ""} ${row.email || ""}`.toLowerCase();
+    const status = premiumAccessStatus(row);
+    return (!query || haystack.includes(query)) && (filter === "all" || filter === status || (filter === "active" && status === "expiring"));
+  });
 
-async function handlePremiumClick(event) {
-  const proofPath = event.target?.dataset?.proof;
-  const approveId = event.target?.dataset?.approve;
-  const rejectId = event.target?.dataset?.reject;
-  const updatePackageId = event.target?.dataset?.updatePackage;
-
-  if (proofPath) {
-    const { data, error } = await state.supabaseClient.storage
-      .from("premium-proofs")
-      .createSignedUrl(proofPath, 60 * 5);
-    if (error) {
-      alert(`Gagal membuka bukti: ${error.message}`);
-      return;
-    }
-    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  if (els.premiumMonitoringStatus) {
+    els.premiumMonitoringStatus.textContent = `${formatNumber(filtered.length)} dari ${formatNumber(users.length)} pengguna ditampilkan.`;
+  }
+  if (!filtered.length) {
+    els.premiumUsersTableBody.innerHTML = '<tr><td class="empty-state" colspan="7">Tidak ada pengguna yang sesuai.</td></tr>';
     return;
   }
 
-  if (approveId) {
-    await approvePremiumRequest(approveId);
-    return;
-  }
-
-  if (updatePackageId) {
-    await updatePremiumRequestPackage(updatePackageId);
-    return;
-  }
-
-  if (rejectId) {
-    await rejectPremiumRequest(rejectId);
-  }
+  els.premiumUsersTableBody.innerHTML = filtered.map((row) => {
+    const status = premiumAccessStatus(row);
+    const remaining = Number(row.days_remaining);
+    const period = row.premium_active_until
+      ? `${row.premium_active_from ? formatShortDate(row.premium_active_from) : "-"}<br><strong>s.d. ${formatShortDate(row.premium_active_until)}</strong>`
+      : "Belum diatur";
+    const remainingText = status === "inactive"
+      ? "-"
+      : status === "expired"
+        ? `${formatNumber(Math.abs(remaining || 0))} hari lewat`
+        : `${formatNumber(Math.max(0, remaining || 0))} hari`;
+    return `
+      <tr>
+        <td><strong>${escapeHtml(row.petugas || row.username || "-")}</strong><small>${escapeHtml(row.username || row.email || "-")}</small></td>
+        <td><span class="premium-package-chip">${escapeHtml(row.premium_package || "-")}</span></td>
+        <td>${period}</td>
+        <td>${remainingText}</td>
+        <td><span class="premium-status-badge is-${status}">${premiumAccessStatusLabel(status)}</span></td>
+        <td>${row.premium_device_id ? '<span class="premium-device-state is-bound">Terikat</span>' : '<span class="premium-device-state">Belum terikat</span>'}</td>
+        <td>
+          <div class="premium-row-actions">
+            <button class="icon-button" type="button" data-premium-edit="${escapeHtml(row.user_id)}" title="Atur atau perpanjang" aria-label="Atur premium"><i data-lucide="pencil" aria-hidden="true"></i></button>
+            ${row.premium_device_id ? `<button class="icon-button" type="button" data-premium-reset-device="${escapeHtml(row.user_id)}" title="Reset perangkat" aria-label="Reset perangkat"><i data-lucide="rotate-ccw" aria-hidden="true"></i></button>` : ""}
+            ${status !== "inactive" ? `<button class="icon-button is-danger" type="button" data-premium-disable="${escapeHtml(row.user_id)}" title="Nonaktifkan premium" aria-label="Nonaktifkan premium"><i data-lucide="ban" aria-hidden="true"></i></button>` : ""}
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+  window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
 }
 
-async function updatePremiumRequestPackage(id) {
+function premiumAccessStatus(row) {
+  if (!row?.premium_package || row.premium_package === "FREE" || !row?.premium_active_until) return "inactive";
+  const remaining = Number(row.days_remaining);
+  if (!Number.isFinite(remaining)) {
+    const today = new Date(`${formatLocalIsoDate(new Date())}T00:00:00`);
+    const end = new Date(`${row.premium_active_until}T00:00:00`);
+    const days = Math.floor((end - today) / 86400000);
+    if (days < 0) return "expired";
+    return days <= 7 ? "expiring" : "active";
+  }
+  if (remaining < 0) return "expired";
+  return remaining <= 7 ? "expiring" : "active";
+}
+
+function premiumAccessStatusLabel(status) {
+  if (status === "active") return "Aktif";
+  if (status === "expiring") return "Segera berakhir";
+  if (status === "expired") return "Kedaluwarsa";
+  return "Belum premium";
+}
+
+function handlePremiumUserSelection() {
+  const row = state.premiumUsers.find((item) => item.user_id === els.premiumUserSelect?.value);
+  if (!row) {
+    if (els.premiumFormHint) els.premiumFormHint.textContent = "Pilih pengguna yang akan diaktifkan.";
+    return;
+  }
+  if (els.premiumPackageSelect) {
+    els.premiumPackageSelect.value = ["P1", "P2", "P3"].includes(row.premium_package) ? row.premium_package : "P1";
+  }
+  if (els.premiumStartDate) els.premiumStartDate.value = row.premium_active_from || formatLocalIsoDate(new Date());
+  if (els.premiumEndDate) els.premiumEndDate.value = row.premium_active_until || addDaysDateString(new Date(), 30);
+  if (els.premiumAdminNote) els.premiumAdminNote.value = row.premium_admin_note || "";
+  if (els.premiumFormHint) els.premiumFormHint.textContent = `Mengatur ${row.petugas || row.username || row.email}.`;
+  if (els.premiumFormStatus) els.premiumFormStatus.textContent = "Silakan periksa paket dan tanggal, lalu simpan.";
+}
+
+function resetPremiumForm() {
+  els.premiumAccessForm?.reset();
+  if (els.premiumStartDate) els.premiumStartDate.value = formatLocalIsoDate(new Date());
+  if (els.premiumEndDate) els.premiumEndDate.value = addDaysDateString(new Date(), 30);
+  if (els.premiumPackageSelect) els.premiumPackageSelect.value = "P1";
+  if (els.premiumFormHint) els.premiumFormHint.textContent = "Pilih pengguna yang akan diaktifkan.";
+  if (els.premiumFormStatus) els.premiumFormStatus.textContent = "Belum ada perubahan.";
+}
+
+function setPremiumDuration(days) {
+  const startValue = els.premiumStartDate?.value || formatLocalIsoDate(new Date());
+  const start = new Date(`${startValue}T00:00:00`);
+  if (Number.isNaN(start.getTime())) return;
+  if (els.premiumEndDate) els.premiumEndDate.value = addDaysDateString(start, days);
+}
+
+async function savePremiumAccess(event) {
+  event.preventDefault();
   if (!ensureAdmin()) return;
-  const request = state.premiumRequests.find((row) => row.id === id);
-  if (!request) return;
-  const select = els.premiumList.querySelector(`select[data-package-select="${CSS.escape(id)}"]`);
-  const packageCode = select?.value;
-  if (!["P1", "P2", "P3"].includes(packageCode)) {
-    alert("Pilih paket yang valid.");
+  const userId = els.premiumUserSelect?.value;
+  const packageCode = els.premiumPackageSelect?.value;
+  const activeFrom = els.premiumStartDate?.value;
+  const activeUntil = els.premiumEndDate?.value;
+  if (!userId || !["P1", "P2", "P3"].includes(packageCode) || !activeFrom || !activeUntil) {
+    alert("Lengkapi pengguna, paket, dan periode premium.");
+    return;
+  }
+  if (activeUntil < activeFrom) {
+    alert("Tanggal berakhir tidak boleh sebelum tanggal mulai.");
     return;
   }
 
-  const amount = premiumPackageAmount(packageCode);
-  startProgress("Ubah Paket Premium", `Mengubah ${request.username} ke ${packageCode}...`);
-
-  const { error: requestError } = await state.supabaseClient
-    .from("monitoring_premium_requests")
-    .update({
-      package_code: packageCode,
-      amount,
-      reviewer_note: request.status === "approved"
-        ? `Paket dikoreksi admin ke ${packageCode}`
-        : `Paket diubah admin ke ${packageCode}`,
-    })
-    .eq("id", id);
-
-  if (requestError) {
-    failProgress(`Gagal update pengajuan: ${requestError.message}`);
-    alert(`Gagal update pengajuan: ${requestError.message}`);
-    return;
-  }
-
-  if (request.status === "approved") {
-    const { error: profileError } = await state.supabaseClient
-      .from("monitoring_profiles")
-      .update({
-        premium_package: packageCode,
-        premium_updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", request.user_id);
-
-    if (profileError) {
-      failProgress(`Pengajuan berubah, tapi profil gagal update: ${profileError.message}`);
-      alert(`Pengajuan berubah, tapi profil gagal update: ${profileError.message}`);
-      return;
-    }
-  }
-
-  finishProgress(`Paket ${request.username} berhasil diubah ke ${packageCode}.`);
-  await loadPremiumRequests();
-}
-
-async function approvePremiumRequest(id) {
-  if (!ensureAdmin()) return;
-  const request = state.premiumRequests.find((row) => row.id === id);
-  if (!request) return;
-
-  if (request.request_type === "device_reset") {
-    await approveDeviceResetRequest(request);
-    return;
-  }
-
-  const activeUntil = addDaysDateString(new Date(), 30);
-  startProgress("ACC Premium", `Mengaktifkan ${request.username} sampai ${activeUntil}...`);
-
-  const { error: profileError } = await state.supabaseClient
-    .from("monitoring_profiles")
-    .update({
-      premium_package: request.package_code,
-      premium_active_until: activeUntil,
-      premium_device_id: null,
-      premium_device_bound_at: null,
-      premium_updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", request.user_id);
-
-  if (profileError) {
-    failProgress(`Gagal update paket: ${profileError.message}`);
-    alert(`Gagal update paket: ${profileError.message}`);
-    return;
-  }
-
-  const { error: requestError } = await state.supabaseClient
-    .from("monitoring_premium_requests")
-    .update({
-      status: "approved",
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: state.user.id,
-      reviewer_note: `Aktif sampai ${activeUntil}`,
-    })
-    .eq("id", id);
-
-  if (requestError) {
-    failProgress(`Paket aktif, tapi gagal update status pengajuan: ${requestError.message}`);
-    alert(`Paket aktif, tapi gagal update status pengajuan: ${requestError.message}`);
-    return;
-  }
-
-  finishProgress(`Premium ${request.username} aktif sampai ${activeUntil}.`);
-  await loadPremiumRequests();
-}
-
-async function approveDeviceResetRequest(request) {
-  if (!request.requested_device_id) {
-    alert("Device ID pengajuan kosong.");
-    return;
-  }
-
-  startProgress("ACC Device", `Mengganti device premium ${request.username}...`);
-  const { error: profileError } = await state.supabaseClient
-    .from("monitoring_profiles")
-    .update({
-      premium_device_id: request.requested_device_id,
-      premium_device_bound_at: new Date().toISOString(),
-      premium_updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", request.user_id);
-
-  if (profileError) {
-    failProgress(`Gagal update device premium: ${profileError.message}`);
-    alert(`Gagal update device premium: ${profileError.message}`);
-    return;
-  }
-
-  const { error: requestError } = await state.supabaseClient
-    .from("monitoring_premium_requests")
-    .update({
-      status: "approved",
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: state.user.id,
-      reviewer_note: "Device premium diganti admin",
-    })
-    .eq("id", request.id);
-
-  if (requestError) {
-    failProgress(`Device berubah, tapi status pengajuan gagal: ${requestError.message}`);
-    alert(`Device berubah, tapi status pengajuan gagal: ${requestError.message}`);
-    return;
-  }
-
-  finishProgress(`Device premium ${request.username} berhasil diverifikasi.`);
-  await loadPremiumRequests();
-}
-
-async function rejectPremiumRequest(id) {
-  if (!ensureAdmin()) return;
-  const { error } = await state.supabaseClient
-    .from("monitoring_premium_requests")
-    .update({
-      status: "rejected",
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: state.user.id,
-      reviewer_note: "Ditolak admin",
-    })
-    .eq("id", id);
-
+  const row = state.premiumUsers.find((item) => item.user_id === userId);
+  const label = row?.petugas || row?.username || "pengguna";
+  if (els.premiumFormStatus) els.premiumFormStatus.textContent = `Menyimpan akses ${label}...`;
+  const { error } = await state.supabaseClient.rpc("admin_set_premium_access", {
+    p_user_id: userId,
+    p_package: packageCode,
+    p_active_from: activeFrom,
+    p_active_until: activeUntil,
+    p_note: cleanText(els.premiumAdminNote?.value),
+  });
   if (error) {
-    alert(`Gagal menolak pengajuan: ${error.message}`);
+    if (els.premiumFormStatus) els.premiumFormStatus.textContent = `Gagal menyimpan: ${error.message}`;
+    alert(`Gagal menyimpan premium: ${error.message}`);
     return;
   }
+  if (els.premiumFormStatus) els.premiumFormStatus.textContent = `Premium ${label} aktif sampai ${formatShortDate(activeUntil)}.`;
+  await loadPremiumUsers();
+}
 
-  await loadPremiumRequests();
+async function handlePremiumTableClick(event) {
+  const button = event.target.closest("button");
+  if (!button) return;
+  const editId = button.dataset.premiumEdit;
+  const disableId = button.dataset.premiumDisable;
+  const resetDeviceId = button.dataset.premiumResetDevice;
+  if (editId) {
+    els.premiumUserSelect.value = editId;
+    handlePremiumUserSelection();
+    els.premiumAccessForm?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (disableId) await disablePremiumAccess(disableId);
+  if (resetDeviceId) await resetPremiumDevice(resetDeviceId);
+}
+
+async function disablePremiumAccess(userId) {
+  if (!ensureAdmin()) return;
+  const row = state.premiumUsers.find((item) => item.user_id === userId);
+  const label = row?.petugas || row?.username || "pengguna ini";
+  if (!confirm(`Nonaktifkan premium ${label}?`)) return;
+  const { error } = await state.supabaseClient.rpc("admin_disable_premium_access", { p_user_id: userId });
+  if (error) {
+    alert(`Gagal menonaktifkan premium: ${error.message}`);
+    return;
+  }
+  await loadPremiumUsers();
+}
+
+async function resetPremiumDevice(userId) {
+  if (!ensureAdmin()) return;
+  const row = state.premiumUsers.find((item) => item.user_id === userId);
+  const label = row?.petugas || row?.username || "pengguna ini";
+  if (!confirm(`Reset perangkat premium ${label}? Pengguna dapat mengikat perangkat baru saat membuka aplikasi.`)) return;
+  const { error } = await state.supabaseClient.rpc("admin_reset_premium_device", { p_user_id: userId });
+  if (error) {
+    alert(`Gagal mereset perangkat: ${error.message}`);
+    return;
+  }
+  await loadPremiumUsers();
 }
 
 function renderPetugasRows(rows) {
@@ -2146,7 +2111,6 @@ function updateOnlineUi() {
   if (els.onlineButton) els.onlineButton.textContent = online ? "Online Aktif" : "Login Online";
   if (els.loginForm) els.loginForm.hidden = online;
   if (els.syncActions) els.syncActions.hidden = !online || state.profile?.role === "petugas";
-  if (els.premiumPanel) els.premiumPanel.hidden = !online || state.profile?.role !== "admin";
   applyRoleView();
   updateHeaderActions();
   const adminStatus = state.profile?.fallback
@@ -5905,7 +5869,7 @@ function premiumPackageAmount(packageCode) {
 function addDaysDateString(date, days) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
-  return next.toISOString().slice(0, 10);
+  return formatLocalIsoDate(next);
 }
 
 function escapeHtml(value) {

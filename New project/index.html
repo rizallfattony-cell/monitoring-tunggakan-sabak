@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="apple-touch-icon" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20261022-dashboard-full-v4" />
+    <link rel="stylesheet" href="./styles.css?v=20261024-premium-admin-v1" />
     <link rel="stylesheet" href="./invoice.css?v=20260930-invoice-v3" />
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -115,6 +115,7 @@
               <div class="tree-children">
                 <button class="tree-child" type="button" data-tab="upload" data-upload-view="stand-meter">Upload Stand</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="sync-status">Status Sinkron Petugas</button>
+                <button class="tree-child admin-only-menu" type="button" data-tab="premium">Kelola Premium</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="invoice">Cetak Invoice</button>
               </div>
             </section>
@@ -775,6 +776,127 @@
         </section>
       </section>
 
+      <section class="tab-panel" data-tab-panel="premium" hidden>
+        <div class="premium-admin-page">
+          <div class="section-head premium-page-head">
+            <div>
+              <p class="eyebrow">SIMONTOK SUPER APP</p>
+              <h2>Kelola Pengguna Premium</h2>
+              <p>Aktifkan premium setelah bukti pembayaran diterima manual. Tentukan paket dan masa aktif langsung dari web.</p>
+            </div>
+            <button class="button secondary" id="refreshPremiumUsersButton" type="button">
+              <i data-lucide="refresh-cw" aria-hidden="true"></i>
+              Refresh
+            </button>
+          </div>
+
+          <section class="premium-summary-grid" aria-label="Ringkasan pengguna premium">
+            <article><span>Premium aktif</span><strong id="premiumActiveCount">0</strong><small>pengguna</small></article>
+            <article><span>Segera berakhir</span><strong id="premiumExpiringCount">0</strong><small>7 hari ke depan</small></article>
+            <article><span>Kedaluwarsa</span><strong id="premiumExpiredCount">0</strong><small>perlu ditinjau</small></article>
+            <article><span>Belum premium</span><strong id="premiumInactiveCount">0</strong><small>pengguna</small></article>
+          </section>
+
+          <div class="premium-admin-layout">
+            <form class="premium-access-form" id="premiumAccessForm">
+              <div class="premium-form-heading">
+                <div>
+                  <h3>Atur Akses Premium</h3>
+                  <p id="premiumFormHint">Pilih pengguna yang akan diaktifkan.</p>
+                </div>
+                <button class="icon-button" id="resetPremiumFormButton" type="button" title="Kosongkan formulir" aria-label="Kosongkan formulir">
+                  <i data-lucide="rotate-ccw" aria-hidden="true"></i>
+                </button>
+              </div>
+
+              <label class="field" for="premiumUserSelect">
+                <span>Pengguna</span>
+                <select id="premiumUserSelect" required>
+                  <option value="">Pilih pengguna</option>
+                </select>
+              </label>
+
+              <label class="field" for="premiumPackageSelect">
+                <span>Paket premium</span>
+                <select id="premiumPackageSelect" required>
+                  <option value="P1">P1 - Rp15.000</option>
+                  <option value="P2">P2 - Rp25.000</option>
+                  <option value="P3">P3 - Rp50.000</option>
+                </select>
+              </label>
+
+              <div class="premium-date-grid">
+                <label class="field" for="premiumStartDate">
+                  <span>Mulai aktif</span>
+                  <input id="premiumStartDate" type="date" required />
+                </label>
+                <label class="field" for="premiumEndDate">
+                  <span>Aktif sampai</span>
+                  <input id="premiumEndDate" type="date" required />
+                </label>
+              </div>
+
+              <div class="premium-duration-options" aria-label="Pilihan cepat masa aktif">
+                <button type="button" data-premium-duration="30">30 hari</button>
+                <button type="button" data-premium-duration="90">90 hari</button>
+                <button type="button" data-premium-duration="365">1 tahun</button>
+              </div>
+
+              <label class="field" for="premiumAdminNote">
+                <span>Catatan admin</span>
+                <textarea id="premiumAdminNote" rows="3" placeholder="Contoh: Bukti pembayaran diterima melalui WhatsApp"></textarea>
+              </label>
+
+              <p class="premium-form-status" id="premiumFormStatus">Belum ada perubahan.</p>
+              <button class="button primary premium-save-button" id="savePremiumAccessButton" type="submit">
+                <i data-lucide="save" aria-hidden="true"></i>
+                Simpan Akses Premium
+              </button>
+            </form>
+
+            <section class="premium-monitoring-panel">
+              <div class="premium-monitoring-toolbar">
+                <div>
+                  <h3>Monitoring Premium</h3>
+                  <p id="premiumMonitoringStatus">Memuat data pengguna...</p>
+                </div>
+                <div class="premium-filter-controls">
+                  <label class="premium-search" for="premiumSearchInput">
+                    <i data-lucide="search" aria-hidden="true"></i>
+                    <input id="premiumSearchInput" type="search" placeholder="Cari nama atau user" />
+                  </label>
+                  <select id="premiumStatusFilter" aria-label="Filter status premium">
+                    <option value="all">Semua status</option>
+                    <option value="active">Aktif</option>
+                    <option value="expiring">Segera berakhir</option>
+                    <option value="expired">Kedaluwarsa</option>
+                    <option value="inactive">Belum premium</option>
+                  </select>
+                </div>
+              </div>
+              <div class="premium-table-wrap">
+                <table class="premium-users-table">
+                  <thead>
+                    <tr>
+                      <th>Pengguna</th>
+                      <th>Paket</th>
+                      <th>Masa Aktif</th>
+                      <th>Sisa</th>
+                      <th>Status</th>
+                      <th>Perangkat</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="premiumUsersTableBody">
+                    <tr><td class="empty-state" colspan="7">Klik Refresh untuk memuat pengguna.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
       <section class="tab-panel" data-tab-panel="invoice" hidden>
         <div class="section-head">
           <div>
@@ -907,6 +1029,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script src="./app.js?v=20261022-reference-redesign-v3"></script>
+    <script src="./app.js?v=20261024-premium-admin-v1"></script>
   </body>
 </html>
