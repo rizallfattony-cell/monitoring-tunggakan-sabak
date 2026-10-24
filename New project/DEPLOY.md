@@ -40,6 +40,9 @@ https://monitoring-tunggakan-sabak.vercel.app
 
 ## Setelah Online
 
+Untuk mengaktifkan rekap pembayaran Premium bulanan, jalankan sekali file
+`supabase-schema-step-18-premium-payments.sql` di SQL Editor Supabase setelah migrasi Premium step 17.
+
 Alur admin:
 
 ```text

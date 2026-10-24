@@ -65,6 +65,7 @@ const state = {
   user: null,
   profile: null,
   premiumUsers: [],
+  premiumPayments: [],
   saldoAkhirRataRata: emptySaldoAverageState(),
   dailyPelunasan: emptyDailyPelunasanState(),
   comparisonMonitoring: emptyComparisonMonitoringState(),
@@ -148,6 +149,13 @@ const els = {
   premiumExpiredCount: document.querySelector("#premiumExpiredCount"),
   premiumInactiveCount: document.querySelector("#premiumInactiveCount"),
   premiumDurationButtons: [...document.querySelectorAll("[data-premium-duration]")],
+  premiumPaymentMonth: document.querySelector("#premiumPaymentMonth"),
+  premiumPaymentStatus: document.querySelector("#premiumPaymentStatus"),
+  premiumPaymentsTableBody: document.querySelector("#premiumPaymentsTableBody"),
+  premiumPaymentTotalCount: document.querySelector("#premiumPaymentTotalCount"),
+  premiumPaymentPaidCount: document.querySelector("#premiumPaymentPaidCount"),
+  premiumPaymentUnpaidCount: document.querySelector("#premiumPaymentUnpaidCount"),
+  premiumPaymentRevenue: document.querySelector("#premiumPaymentRevenue"),
   loginForm: document.querySelector("#loginForm"),
   emailInput: document.querySelector("#emailInput"),
   passwordInput: document.querySelector("#passwordInput"),
@@ -284,6 +292,7 @@ async function boot() {
   initializeLpbMonitoring();
   initializeInvoiceForm();
   resetPremiumForm();
+  initializePremiumPaymentMonth();
   attachEvents();
   initializeMainMenu();
   window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
@@ -338,10 +347,12 @@ function attachEvents() {
   els.premiumAccessForm?.addEventListener("submit", savePremiumAccess);
   els.premiumUserSelect?.addEventListener("change", handlePremiumUserSelection);
   els.resetPremiumFormButton?.addEventListener("click", resetPremiumForm);
-  els.refreshPremiumUsersButton?.addEventListener("click", loadPremiumUsers);
+  els.refreshPremiumUsersButton?.addEventListener("click", loadPremiumAdminData);
   els.premiumSearchInput?.addEventListener("input", renderPremiumUsers);
   els.premiumStatusFilter?.addEventListener("change", renderPremiumUsers);
   els.premiumUsersTableBody?.addEventListener("click", handlePremiumTableClick);
+  els.premiumPaymentMonth?.addEventListener("change", loadPremiumPayments);
+  els.premiumPaymentsTableBody?.addEventListener("click", handlePremiumPaymentClick);
   els.premiumDurationButtons.forEach((button) => {
     button.addEventListener("click", () => setPremiumDuration(Number(button.dataset.premiumDuration)));
   });
@@ -505,7 +516,7 @@ function switchTab(tabName) {
   if (tabName === "upload") renderUploadView();
   if (tabName === "comparison") renderComparisonMonitoring();
   if (tabName === "lpb") renderLpbMonitoring();
-  if (tabName === "premium") loadPremiumUsers();
+  if (tabName === "premium") loadPremiumAdminData();
   if (tabName === "sync-status") {
     loadSyncStatus();
     loadAppRelease();
@@ -1360,6 +1371,41 @@ async function loadPremiumUsers() {
   renderPremiumUsers();
 }
 
+function initializePremiumPaymentMonth() {
+  if (!els.premiumPaymentMonth) return;
+  els.premiumPaymentMonth.value = formatLocalIsoDate(new Date()).slice(0, 7);
+}
+
+async function loadPremiumAdminData() {
+  await Promise.all([loadPremiumUsers(), loadPremiumPayments()]);
+}
+
+async function loadPremiumPayments() {
+  if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") {
+    state.premiumPayments = [];
+    renderPremiumPayments();
+    return;
+  }
+
+  const selectedMonth = els.premiumPaymentMonth?.value || formatLocalIsoDate(new Date()).slice(0, 7);
+  if (els.premiumPaymentStatus) els.premiumPaymentStatus.textContent = "Memuat rekap pembayaran...";
+  const { data, error } = await state.supabaseClient.rpc("admin_list_premium_payments", {
+    p_billing_month: `${selectedMonth}-01`,
+  });
+
+  if (error) {
+    state.premiumPayments = [];
+    renderPremiumPayments();
+    if (els.premiumPaymentStatus) {
+      els.premiumPaymentStatus.textContent = `Gagal memuat rekap: ${error.message}. Jalankan migrasi database step 18.`;
+    }
+    return;
+  }
+
+  state.premiumPayments = data || [];
+  renderPremiumPayments();
+}
+
 function syncPremiumUserOptions() {
   if (!els.premiumUserSelect) return;
   const selected = els.premiumUserSelect.value;
@@ -1429,6 +1475,114 @@ function renderPremiumUsers() {
       </tr>`;
   }).join("");
   window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
+}
+
+function renderPremiumPayments() {
+  if (!els.premiumPaymentsTableBody) return;
+  const rows = state.premiumPayments || [];
+  const paidRows = rows.filter((row) => row.paid_at);
+  const revenue = paidRows.reduce((total, row) => total + Number(row.amount || 0), 0);
+
+  if (els.premiumPaymentTotalCount) els.premiumPaymentTotalCount.textContent = formatNumber(rows.length);
+  if (els.premiumPaymentPaidCount) els.premiumPaymentPaidCount.textContent = formatNumber(paidRows.length);
+  if (els.premiumPaymentUnpaidCount) els.premiumPaymentUnpaidCount.textContent = formatNumber(rows.length - paidRows.length);
+  if (els.premiumPaymentRevenue) els.premiumPaymentRevenue.textContent = formatRupiah(revenue);
+  if (els.premiumPaymentStatus) {
+    const monthLabel = formatPremiumBillingMonth(els.premiumPaymentMonth?.value);
+    els.premiumPaymentStatus.textContent = `${formatNumber(paidRows.length)} dari ${formatNumber(rows.length)} biller sudah membayar untuk ${monthLabel}.`;
+  }
+
+  if (!rows.length) {
+    els.premiumPaymentsTableBody.innerHTML = '<tr><td class="empty-state" colspan="8">Belum ada pengguna premium yang ditagihkan pada bulan ini.</td></tr>';
+    return;
+  }
+
+  els.premiumPaymentsTableBody.innerHTML = rows.map((row) => {
+    const status = row.payment_status || (row.paid_at ? "paid" : "unpaid");
+    const paymentDate = row.paid_at || recommendedPremiumPaymentDate(row);
+    return `
+      <tr data-premium-payment-user="${escapeHtml(row.user_id)}">
+        <td><strong>${escapeHtml(row.petugas || row.username || "-")}</strong><small>${escapeHtml(row.username || "-")}</small></td>
+        <td><span class="premium-package-chip">${escapeHtml(row.package_code || "-")}</span></td>
+        <td><strong>${formatRupiah(Number(row.amount || 0))}</strong></td>
+        <td>${formatShortDate(row.due_start)}<small>s.d. ${formatShortDate(row.due_end)}</small></td>
+        <td><input class="premium-payment-date" data-payment-date type="date" min="${escapeHtml(row.due_start || "")}" max="${escapeHtml(row.due_end || "")}" value="${escapeHtml(paymentDate)}" /></td>
+        <td><span class="premium-payment-badge is-${status}">${premiumPaymentStatusLabel(status)}</span></td>
+        <td><input class="premium-payment-note" data-payment-note type="text" maxlength="120" value="${escapeHtml(row.payment_note || "")}" placeholder="Catatan" /></td>
+        <td>
+          <div class="premium-payment-actions">
+            <button class="button secondary" type="button" data-premium-payment-save="${escapeHtml(row.user_id)}"><i data-lucide="save" aria-hidden="true"></i>Simpan</button>
+            ${row.paid_at ? `<button class="icon-button is-danger" type="button" data-premium-payment-unpay="${escapeHtml(row.user_id)}" title="Batalkan pembayaran" aria-label="Batalkan pembayaran"><i data-lucide="undo-2" aria-hidden="true"></i></button>` : ""}
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+  window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
+}
+
+function recommendedPremiumPaymentDate(row) {
+  if (!row?.due_start || !row?.due_end) return "";
+  const today = formatLocalIsoDate(new Date());
+  if (today < row.due_start) return row.due_start;
+  if (today > row.due_end) return row.due_end;
+  return today;
+}
+
+function formatPremiumBillingMonth(value) {
+  if (!/^\d{4}-\d{2}$/.test(String(value || ""))) return "bulan terpilih";
+  return new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" })
+    .format(new Date(`${value}-01T00:00:00`));
+}
+
+function premiumPaymentStatusLabel(status) {
+  if (status === "paid") return "Sudah bayar";
+  if (status === "overdue") return "Terlambat";
+  return "Belum bayar";
+}
+
+async function handlePremiumPaymentClick(event) {
+  const button = event.target.closest("button");
+  if (!button) return;
+  const userId = button.dataset.premiumPaymentSave || button.dataset.premiumPaymentUnpay;
+  if (!userId) return;
+  const rowElement = button.closest("tr");
+  const payment = state.premiumPayments.find((row) => row.user_id === userId);
+  if (!payment) return;
+
+  if (button.dataset.premiumPaymentUnpay) {
+    const label = payment.petugas || payment.username || "petugas ini";
+    if (!confirm(`Batalkan status pembayaran ${label} untuk ${formatPremiumBillingMonth(els.premiumPaymentMonth?.value)}?`)) return;
+    await savePremiumPaymentRecord(payment, null, rowElement?.querySelector("[data-payment-note]")?.value || "");
+    return;
+  }
+
+  const paidAt = rowElement?.querySelector("[data-payment-date]")?.value || "";
+  if (!paidAt) {
+    alert("Pilih tanggal pembayaran terlebih dahulu.");
+    return;
+  }
+  await savePremiumPaymentRecord(payment, paidAt, rowElement?.querySelector("[data-payment-note]")?.value || "");
+}
+
+async function savePremiumPaymentRecord(payment, paidAt, note) {
+  if (!ensureAdmin()) return;
+  const selectedMonth = els.premiumPaymentMonth?.value || formatLocalIsoDate(new Date()).slice(0, 7);
+  const label = payment.petugas || payment.username || "petugas";
+  if (els.premiumPaymentStatus) {
+    els.premiumPaymentStatus.textContent = paidAt ? `Menyimpan pembayaran ${label}...` : `Membatalkan pembayaran ${label}...`;
+  }
+  const { error } = await state.supabaseClient.rpc("admin_set_premium_payment", {
+    p_user_id: payment.user_id,
+    p_billing_month: `${selectedMonth}-01`,
+    p_paid_at: paidAt || null,
+    p_note: cleanText(note),
+  });
+  if (error) {
+    if (els.premiumPaymentStatus) els.premiumPaymentStatus.textContent = `Gagal menyimpan pembayaran: ${error.message}`;
+    alert(`Gagal menyimpan pembayaran premium: ${error.message}`);
+    return;
+  }
+  await loadPremiumPayments();
 }
 
 function premiumAccessStatus(row) {
