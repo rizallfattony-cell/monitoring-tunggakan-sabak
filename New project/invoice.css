@@ -264,8 +264,9 @@
 }
 
 .invoice-sheet {
-  width: 9.5in;
-  height: 9.8in;
+  position: relative;
+  width: 8.5in;
+  height: 11in;
   margin: 0 auto 16px;
   overflow: hidden;
   background: #fff;
@@ -277,10 +278,12 @@
 }
 
 .invoice-document {
+  position: absolute;
+  left: 0;
   box-sizing: border-box;
-  width: 9.5in;
-  height: 4.9in;
-  padding: 0.08in 0.82in 0.04in 0.48in;
+  width: 8.5in;
+  height: 5.5in;
+  padding: 0.12in 0.42in 0.04in 0.42in;
   overflow: hidden;
   color: #000;
   background: #fff;
@@ -288,8 +291,14 @@
   font-size: 9.25pt;
   line-height: 1.02;
   letter-spacing: 0;
-  break-inside: avoid-page;
-  page-break-inside: avoid;
+}
+
+.invoice-document:nth-child(1) {
+  top: 0;
+}
+
+.invoice-document:nth-child(2) {
+  top: 5.5in;
 }
 
 .invoice-document:first-child {
@@ -473,14 +482,14 @@
 }
 
 @page {
-  size: 9.5in 11in;
+  size: 8.5in 11in;
   margin: 0;
 }
 
 @media print {
   html,
   body {
-    width: 9.5in !important;
+    width: 8.5in !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
@@ -498,7 +507,7 @@
   body.invoice-printing #invoicePrintArea {
     position: absolute !important;
     inset: 0 auto auto 0 !important;
-    width: 9.5in !important;
+    width: 8.5in !important;
     max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -508,8 +517,8 @@
   }
 
   body.invoice-printing .invoice-sheet {
-    width: 9.5in !important;
-    height: 9.8in !important;
+    width: 8.5in !important;
+    height: 11in !important;
     margin: 0 !important;
     overflow: hidden !important;
     box-shadow: none !important;
@@ -525,7 +534,5 @@
   body.invoice-printing .invoice-document {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
-    break-inside: avoid-page !important;
-    page-break-inside: avoid !important;
   }
 }
