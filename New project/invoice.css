@@ -265,7 +265,7 @@
 
 .invoice-sheet {
   width: 9.5in;
-  height: 10.5in;
+  height: 9.8in;
   margin: 0 auto 16px;
   overflow: hidden;
   background: #fff;
@@ -279,7 +279,7 @@
 .invoice-document {
   box-sizing: border-box;
   width: 9.5in;
-  height: 5.25in;
+  height: 4.9in;
   padding: 0.08in 0.82in 0.04in 0.48in;
   overflow: hidden;
   color: #000;
@@ -509,7 +509,7 @@
 
   body.invoice-printing .invoice-sheet {
     width: 9.5in !important;
-    height: 10.5in !important;
+    height: 9.8in !important;
     margin: 0 !important;
     overflow: hidden !important;
     box-shadow: none !important;
