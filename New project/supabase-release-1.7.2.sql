@@ -1,5 +1,14 @@
 -- APK 1.7.2 harus tersedia di hosting dan lulus tes sebelum menjalankan file ini.
 \set ON_ERROR_STOP on
+do $$
+begin
+  if exists (select 1 from public.monitoring_profiles where premium_package in ('SIMONTOK_PREMIUM', 'BILLMAN_PRO'))
+    or exists (select 1 from public.monitoring_app_releases where
+      case when latest_version ~ '^[0-9]+(\.[0-9]+)*$' then string_to_array(latest_version, '.')::int[] >= array[1,7,3] else false end)
+  then raise exception 'Skema paket sudah diperbarui. Gunakan supabase-release-1.7.3.sql, bukan script 1.7.2.';
+  end if;
+end;
+$$;
 \ir supabase-schema-step-19-premium-billing-gate.sql
 
 begin;

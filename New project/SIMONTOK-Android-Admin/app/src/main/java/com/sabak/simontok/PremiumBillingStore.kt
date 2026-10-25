@@ -15,6 +15,7 @@ class PremiumBillingStore(private val context: Context) {
 
     fun save(username: String, lease: PremiumBillingLease) {
         val json = lease.status.toJson()
+            .put("app_version_code", BuildConfig.VERSION_CODE)
             .put("checked_elapsed_ms", lease.checkedElapsedMillis)
             .put("boot_count", lease.bootCount)
         prefs.edit().putString(username.uppercase(Locale.US), json.toString()).apply()
@@ -23,6 +24,7 @@ class PremiumBillingStore(private val context: Context) {
     fun read(username: String): PremiumBillingLease? = runCatching {
         val raw = prefs.getString(username.uppercase(Locale.US), null) ?: return@runCatching null
         val json = JSONObject(raw)
+        if (json.optInt("app_version_code", -1) != BuildConfig.VERSION_CODE) return@runCatching null
         PremiumBillingLease(
             status = json.toPremiumBillingStatus(),
             checkedElapsedMillis = json.getLong("checked_elapsed_ms"),

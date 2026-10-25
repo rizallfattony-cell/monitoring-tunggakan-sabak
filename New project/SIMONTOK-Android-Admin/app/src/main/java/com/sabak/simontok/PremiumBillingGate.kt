@@ -28,7 +28,6 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.NotificationsActive
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -60,6 +59,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ViewModelProvider
 import java.io.IOException
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -92,18 +92,21 @@ internal fun PremiumBillingGate(
     val refreshSession by rememberUpdatedState(freshSession)
     val statusLoader by rememberUpdatedState(fetchStatus)
     val bootCount = remember { store.bootCount() }
+    val reminder = remember(username) {
+        ViewModelProvider(context)[PremiumBillingReminderModel::class.java].forUser(username)
+    }
     var lease by remember(username) { mutableStateOf(store.read(username)) }
     var nowElapsed by remember { mutableStateOf(SystemClock.elapsedRealtime()) }
     var request by remember(username) { mutableStateOf(0) }
     var checking by remember(username) { mutableStateOf(false) }
     var error by remember(username) { mutableStateOf<String?>(null) }
-    var dismissedReminder by remember(username) { mutableStateOf<String?>(null) }
+    var showReminder by remember(username) { mutableStateOf(false) }
+    var showAccounts by remember(username) { mutableStateOf(false) }
 
     DisposableEffect(lifecycle, username) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 nowElapsed = SystemClock.elapsedRealtime()
-                dismissedReminder = null
                 if (!checking) request += 1
             }
         }
@@ -155,13 +158,36 @@ internal fun PremiumBillingGate(
     val current = lease
     val blocked = current?.status?.accessBlocked == true
     val fresh = current?.isFresh(nowElapsed, bootCount) == true
+    val reminderEligible = fresh && current?.status?.shouldRemind == true && !blocked
+    LaunchedEffect(current?.status?.shouldRemind) {
+        if (current?.status?.shouldRemind != true) {
+            showReminder = false
+            showAccounts = false
+        }
+    }
+    val dismissReminder = {
+        reminder.recordInteraction(SystemClock.elapsedRealtime())
+        showReminder = false
+    }
+    LaunchedEffect(username, reminderEligible) {
+        while (reminderEligible) {
+            val now = SystemClock.elapsedRealtime()
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && !showReminder && !showAccounts && reminder.isDue(now)) {
+                reminder.recordInteraction(now)
+                showReminder = true
+            }
+            delay(30_000)
+        }
+    }
     BackHandler(enabled = blocked || !fresh) { }
     val retry = { if (!checking) request += 1 }
     val confirm = {
         val status = current?.status
         val period = status?.billingMonth?.let(::billingMonthLabel).orEmpty()
         val amount = status?.amount?.let(::billingRupiah).orEmpty()
-        val message = "Halo Admin, saya $username ingin konfirmasi pembayaran Premium ${status?.packageCode.orEmpty()} bulan $period sebesar $amount. Mohon pengecekan pembayaran saya."
+        dismissReminder()
+        showAccounts = false
+        val message = "Halo Admin, saya $username ingin konfirmasi pembayaran ${premiumPackageLabel(status?.packageCode.orEmpty())} bulan $period sebesar $amount. Mohon pengecekan pembayaran saya."
         openPremiumAdmin(context, message)
         Unit
     }
@@ -169,8 +195,8 @@ internal fun PremiumBillingGate(
     if (blocked) {
         BillingGateBackground {
             PremiumBillingNotice(
-                status = current!!.status, checking = checking, error = error,
-                onConfirm = confirm, onRefresh = retry, onLogout = onLogout
+                status = current!!.status, error = error,
+                onPay = { showAccounts = true }, onConfirm = confirm, onLogout = onLogout
             )
         }
     } else if (!fresh) {
@@ -187,20 +213,23 @@ internal fun PremiumBillingGate(
         }
     } else {
         content()
-        if (current!!.status.shouldRemind && dismissedReminder != current.status.reminderKey) {
+        if (current!!.status.shouldRemind && showReminder) {
             Dialog(
-                onDismissRequest = { dismissedReminder = current.status.reminderKey },
+                onDismissRequest = dismissReminder,
                 properties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
                 Box(Modifier.fillMaxWidth().padding(20.dp).widthIn(max = 440.dp)) {
                     PremiumBillingNotice(
-                        status = current.status, checking = checking, error = error,
-                        onClose = { dismissedReminder = current.status.reminderKey },
-                        onConfirm = confirm, onRefresh = retry
+                        status = current.status, error = error,
+                        onClose = dismissReminder,
+                        onPay = { showAccounts = true }, onConfirm = confirm
                     )
                 }
             }
         }
+    }
+    if (showAccounts && current?.status?.shouldRemind == true) {
+        PremiumPaymentAccountsDialog(onDismiss = { showAccounts = false }, onConfirm = confirm)
     }
 }
 
@@ -214,11 +243,10 @@ private fun BillingGateBackground(content: @Composable () -> Unit) {
 @Composable
 internal fun PremiumBillingNotice(
     status: PremiumBillingStatus,
-    checking: Boolean = false,
     error: String? = null,
     onClose: (() -> Unit)? = null,
+    onPay: () -> Unit,
     onConfirm: () -> Unit,
-    onRefresh: () -> Unit,
     onLogout: (() -> Unit)? = null
 ) {
     Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
@@ -243,7 +271,7 @@ internal fun PremiumBillingNotice(
             Text(if (status.accessBlocked) "Akses Ditangguhkan" else "Pengingat Tagihan", color = BillingInk, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
             Text("Tagihan ${billingMonthLabel(status.billingMonth)}", color = BillingMuted, fontSize = 15.sp, textAlign = TextAlign.Center)
             Text(billingRupiah(status.amount), color = BillingBlue, fontSize = 38.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
-            Text("Paket ${status.packageCode}", color = BillingMuted, fontSize = 13.sp)
+            Text(premiumPackageLabel(status.packageCode), color = BillingMuted, fontSize = 13.sp, textAlign = TextAlign.Center)
 
             Row(
                 Modifier.fillMaxWidth().background(Color(0xFFEBF7FF), RoundedCornerShape(8.dp)).padding(14.dp),
@@ -266,13 +294,10 @@ internal fun PremiumBillingNotice(
             if (error != null) Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, textAlign = TextAlign.Center)
 
             Button(
-                onClick = onConfirm, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp),
+                onClick = onPay, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BillingBlue)
-            ) { Text("Konfirmasi ke Admin", modifier = Modifier.padding(vertical = 5.dp), fontWeight = FontWeight.Bold) }
-            OutlinedButton(onClick = onRefresh, enabled = !checking, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = BillingBlue)) {
-                Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text(if (checking) "  Memeriksa..." else "  Cek Status Pembayaran")
-            }
+            ) { Text("BAYAR", modifier = Modifier.padding(vertical = 5.dp), fontWeight = FontWeight.Bold) }
+            OutlinedButton(onClick = onConfirm, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = BillingBlue)) { Text("Konfirmasi ke Admin") }
             if (onLogout != null) TextButton(onClick = onLogout, colors = ButtonDefaults.textButtonColors(contentColor = BillingBlue)) { Text("Keluar akun") }
             Text("Terima kasih atas pembayaran tepat waktu.", color = BillingMuted, fontSize = 11.sp, textAlign = TextAlign.Center)
             Spacer(Modifier.height(1.dp))

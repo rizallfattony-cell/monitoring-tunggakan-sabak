@@ -1,5 +1,9 @@
 # Pembaruan Pengingat Tagihan APK
 
+Versi terbaru adalah 1.7.3. Ikuti `PREMIUM-BILLING-1.7.3.md` untuk pengingat per jam,
+paket baru dan rekening salin. Instruksi 1.7.2 di bawah disimpan sebagai riwayat;
+jangan gunakan script 1.7.2 setelah migrasi paket baru.
+
 ## Status
 
 Backend step 19 dan integrasi APK 1.7.2 disiapkan dari folder

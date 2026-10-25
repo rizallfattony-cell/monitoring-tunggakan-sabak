@@ -1016,6 +1016,7 @@ fun premiumPackageAmount(packageCode: String): Int {
         "P1" -> 15000
         "P2" -> 25000
         "P3" -> 50000
+        "SIMONTOK_PREMIUM", "BILLMAN_PRO" -> 50000
         else -> 0
     }
 }

@@ -2812,12 +2812,7 @@ private fun usernameToName(username: String): String {
 }
 
 private fun premiumPackageTitle(packageCode: String): String {
-    return when (packageCode.uppercase(Locale.US)) {
-        "P1" -> "Paket 1"
-        "P2" -> "Paket 2"
-        "P3" -> "Paket 3"
-        else -> "FREE"
-    }
+    return premiumPackageLabel(packageCode)
 }
 
 private fun premiumPackageBenefit(packageCode: String): String {
@@ -2825,6 +2820,7 @@ private fun premiumPackageBenefit(packageCode: String): String {
         "P1" -> "Tambahan tagihan maksimal Rp5.000"
         "P2" -> "Tambahan tagihan maksimal Rp10.000"
         "P3" -> "Tambahan tagihan bebas"
+        "SIMONTOK_PREMIUM", "BILLMAN_PRO" -> "Tambahan tagihan bebas"
         else -> "Fitur gratis"
     }
 }
@@ -2835,6 +2831,7 @@ private fun premiumExtraLimit(status: PremiumStatus): Double? {
         "P1" -> 5000.0
         "P2" -> 10000.0
         "P3" -> null
+        "SIMONTOK_PREMIUM", "BILLMAN_PRO" -> null
         else -> 0.0
     }
 }
@@ -2843,8 +2840,8 @@ private fun premiumExtraInfo(status: PremiumStatus): String {
     val limit = premiumExtraLimit(status)
     return when {
         !status.isActive() -> "Premium belum aktif."
-        limit == null -> "Paket 3: tambahan nominal bebas."
-        else -> "${status.packageCode}: maksimal tambahan ${formatRupiah(limit)}."
+        limit == null -> "${premiumPackageLabel(status.packageCode)}: tambahan nominal bebas."
+        else -> "${premiumPackageLabel(status.packageCode)}: maksimal tambahan ${formatRupiah(limit)}."
     }
 }
 

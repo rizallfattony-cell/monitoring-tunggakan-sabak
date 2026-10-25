@@ -1462,7 +1462,7 @@ function renderPremiumUsers() {
     return `
       <tr>
         <td><strong>${escapeHtml(row.petugas || row.username || "-")}</strong><small>${escapeHtml(row.username || row.email || "-")}</small></td>
-        <td><span class="premium-package-chip">${escapeHtml(row.premium_package || "-")}</span></td>
+        <td><span class="premium-package-chip">${escapeHtml(premiumPackageLabel(row.premium_package))}</span></td>
         <td>${period}</td>
         <td>${remainingText}</td>
         <td><span class="premium-status-badge is-${status}">${premiumAccessStatusLabel(status)}</span></td>
@@ -1505,7 +1505,7 @@ function renderPremiumPayments() {
     return `
       <tr data-premium-payment-user="${escapeHtml(row.user_id)}">
         <td><strong>${escapeHtml(row.petugas || row.username || "-")}</strong><small>${escapeHtml(row.username || "-")}</small></td>
-        <td><span class="premium-package-chip">${escapeHtml(row.package_code || "-")}</span></td>
+        <td><span class="premium-package-chip">${escapeHtml(premiumPackageLabel(row.package_code))}</span></td>
         <td><strong>${formatRupiah(Number(row.amount || 0))}</strong></td>
         <td>${formatShortDate(row.due_start)}<small>s.d. ${formatShortDate(row.due_end)}</small></td>
         <td><input class="premium-payment-date" data-payment-date type="date" min="${escapeHtml(row.due_start || "")}" max="${premiumPaymentToday()}" value="${escapeHtml(paymentDate)}" /></td>
@@ -1575,7 +1575,7 @@ function exportPremiumPaymentsExcel() {
         index + 1,
         row.petugas || row.username || "-",
         row.username || "-",
-        row.package_code || "-",
+        premiumPackageLabel(row.package_code),
         Number(row.amount || 0),
         excelDateValue(row.due_start),
         excelDateValue(row.due_end),
@@ -1592,7 +1592,7 @@ function exportPremiumPaymentsExcel() {
     { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
   ];
   worksheet["!cols"] = [
-    { wch: 6 }, { wch: 24 }, { wch: 20 }, { wch: 9 }, { wch: 14 },
+    { wch: 6 }, { wch: 24 }, { wch: 20 }, { wch: 24 }, { wch: 14 },
     { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 15 }, { wch: 30 },
   ];
   worksheet["!autofilter"] = { ref: `A6:J${matrix.length}` };
@@ -1694,7 +1694,7 @@ function handlePremiumUserSelection() {
     return;
   }
   if (els.premiumPackageSelect) {
-    els.premiumPackageSelect.value = ["P1", "P2", "P3"].includes(row.premium_package) ? row.premium_package : "P1";
+    els.premiumPackageSelect.value = row.premium_package === "BILLMAN_PRO" ? "BILLMAN_PRO" : "SIMONTOK_PREMIUM";
   }
   if (els.premiumStartDate) els.premiumStartDate.value = row.premium_active_from || formatLocalIsoDate(new Date());
   if (els.premiumEndDate) els.premiumEndDate.value = row.premium_active_until || addDaysDateString(new Date(), 30);
@@ -1707,7 +1707,7 @@ function resetPremiumForm() {
   els.premiumAccessForm?.reset();
   if (els.premiumStartDate) els.premiumStartDate.value = formatLocalIsoDate(new Date());
   if (els.premiumEndDate) els.premiumEndDate.value = addDaysDateString(new Date(), 30);
-  if (els.premiumPackageSelect) els.premiumPackageSelect.value = "P1";
+  if (els.premiumPackageSelect) els.premiumPackageSelect.value = "SIMONTOK_PREMIUM";
   if (els.premiumFormHint) els.premiumFormHint.textContent = "Pilih pengguna yang akan diaktifkan.";
   if (els.premiumFormStatus) els.premiumFormStatus.textContent = "Belum ada perubahan.";
 }
@@ -1726,7 +1726,7 @@ async function savePremiumAccess(event) {
   const packageCode = els.premiumPackageSelect?.value;
   const activeFrom = els.premiumStartDate?.value;
   const activeUntil = els.premiumEndDate?.value;
-  if (!userId || !["P1", "P2", "P3"].includes(packageCode) || !activeFrom || !activeUntil) {
+  if (!userId || !["SIMONTOK_PREMIUM", "BILLMAN_PRO"].includes(packageCode) || !activeFrom || !activeUntil) {
     alert("Lengkapi pengguna, paket, dan periode premium.");
     return;
   }
@@ -6095,10 +6095,14 @@ function premiumStatusLabel(status) {
 }
 
 function premiumPackageAmount(packageCode) {
-  if (packageCode === "P1") return 15000;
-  if (packageCode === "P2") return 25000;
-  if (packageCode === "P3") return 50000;
+  if (["P1", "P2", "P3", "SIMONTOK_PREMIUM", "BILLMAN_PRO"].includes(packageCode)) return 50000;
   return 0;
+}
+
+function premiumPackageLabel(packageCode) {
+  if (packageCode === "BILLMAN_PRO") return "BILLMAN PRO";
+  if (["P1", "P2", "P3", "SIMONTOK_PREMIUM"].includes(packageCode)) return "SIMONTOK PREMIUM";
+  return packageCode === "FREE" ? "FREE" : "-";
 }
 
 function addDaysDateString(date, days) {
