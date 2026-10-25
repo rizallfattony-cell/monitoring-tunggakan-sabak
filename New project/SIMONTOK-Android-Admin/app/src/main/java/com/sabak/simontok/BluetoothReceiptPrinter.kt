@@ -196,11 +196,12 @@ fun buildReceiptText(
     meter: ReceiptMeter?,
     settings: ReceiptSettings,
     extraCharge: Double = 0.0,
-    now: Date = Date()
+    now: Date = Date(),
+    transactionId: String = newReceiptTransactionId(),
+    reference: String = newReceiptReference()
 ): String {
-    val date = SimpleDateFormat("dd/MM/yyyy", Locale("id", "ID")).format(now)
-    val time = SimpleDateFormat("HH:mm:ss", Locale("id", "ID")).format(now)
-    val transactionId = randomDigits(10)
+    val date = SimpleDateFormat("dd/MM/yyyy", Locale("id", "ID")).apply { timeZone = java.util.TimeZone.getTimeZone("Asia/Jakarta") }.format(now)
+    val time = SimpleDateFormat("HH:mm:ss", Locale("id", "ID")).apply { timeZone = java.util.TimeZone.getTimeZone("Asia/Jakarta") }.format(now)
     val billMonth = formatReceiptMonth(now)
     val stand = listOfNotNull(meter?.standAwal?.takeIf { it.isNotBlank() }, meter?.standAkhir?.takeIf { it.isNotBlank() })
         .joinToString("-")
@@ -223,7 +224,7 @@ fun buildReceiptText(
         appendLine(labelValue("Nama", row.nama.uppercase(Locale("id", "ID"))))
         appendLine(labelValue("Tarif/Daya", "${row.tarif}/${row.daya}"))
         appendLine(labelValue("Stand Meter", stand))
-        appendLine(labelValueWrapped("Reff", randomRef(), 15))
+        appendLine(labelValueWrapped("Reff", reference, 15))
         appendLine()
         appendLine("Rincian Tagihan")
         appendLine(moneyLine(billMonth, tagihan))
@@ -269,12 +270,16 @@ private fun formatRupiahPlain(value: Double): String {
 
 private fun formatReceiptMonth(date: Date): String {
     val names = listOf("Jan", "Feb", "Maret", "April", "Mei", "Juni", "Juli", "Agust", "Sept", "Okt", "Nov", "Des")
-    val calendar = Calendar.getInstance(Locale("id", "ID"))
+    val calendar = Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Jakarta"), Locale("id", "ID"))
     calendar.time = date
     val month = names[calendar.get(Calendar.MONTH)]
     val year = calendar.get(Calendar.YEAR).toString().takeLast(2)
     return "$month$year"
 }
+
+internal fun newReceiptTransactionId(): String = randomDigits(10)
+
+internal fun newReceiptReference(): String = randomRef()
 
 private fun randomDigits(length: Int): String {
     val random = SecureRandom()

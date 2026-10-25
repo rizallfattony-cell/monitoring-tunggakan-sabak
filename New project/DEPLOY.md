@@ -40,6 +40,10 @@ https://monitoring-tunggakan-sabak.vercel.app
 
 ## Setelah Online
 
+Untuk riwayat cetak dan rekap pendapatan Android 1.7.4, ikuti
+`RECEIPT-HISTORY-1.7.4.md`. Script publikasi menerapkan database terlebih dahulu,
+kemudian mengunggah web/APK, memverifikasi hosting, baru mengaktifkan update wajib.
+
 Untuk mengaktifkan rekap pembayaran Premium bulanan, jalankan sekali file
 `supabase-schema-step-18-premium-payments.sql` di SQL Editor Supabase setelah migrasi Premium step 17.
 

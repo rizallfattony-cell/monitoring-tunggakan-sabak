@@ -1,4 +1,10 @@
 \set ON_ERROR_STOP on
+do $$ begin
+  if exists(select 1 from public.monitoring_app_releases where id='android'
+    and string_to_array(latest_version,'.')::int[] > array[1,7,3]) then
+    raise exception 'Versi produksi lebih baru. Gunakan script rilis terbaru, jangan turunkan versi.';
+  end if;
+end $$;
 select to_regprocedure('public.get_my_premium_billing_status()') is not null as billing_gate_ready \gset
 \if :billing_gate_ready
 \else

@@ -917,6 +917,7 @@ private fun HomeScreen(
     var showSettings by remember { mutableStateOf(false) }
     var showPrinter by remember { mutableStateOf(false) }
     var showPrintList by remember { mutableStateOf(false) }
+    var showReceiptHistory by remember { mutableStateOf(false) }
     var showExportExcel by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
     var printMessage by remember { mutableStateOf<String?>(null) }
@@ -943,6 +944,10 @@ private fun HomeScreen(
     val deviceId = remember { deviceStore.deviceId() }
     val standbyStartedAt = remember(accessToken) { System.currentTimeMillis() }
     var lastNotifiedVersion by remember(accessToken) { mutableStateOf(dataVersion.orEmpty()) }
+
+    LaunchedEffect(username) {
+        ReceiptHistorySync.schedule(context)
+    }
 
     LaunchedEffect(customerListState, username, listSearchQuery) {
         var lastIndex = customerListState.firstVisibleItemIndex
@@ -1173,6 +1178,10 @@ private fun HomeScreen(
                 showMoreMenu = false
                 showExportExcel = true
             },
+            onReceiptHistory = {
+                showMoreMenu = false
+                showReceiptHistory = true
+            },
             onPrinter = {
                 showMoreMenu = false
                 showPrinter = true
@@ -1375,13 +1384,16 @@ private fun HomeScreen(
             onDismiss = { receiptPreview = null },
             onPrint = {
                 receiptPreview = null
-                printPreparedReceipt(preview.printText, receiptSettings, printer) { printMessage = it }
+                printPreparedReceipt(preview.snapshot, username, context, receiptSettings, printer) { printMessage = it }
             }
         )
     }
 
     printMessage?.let { message ->
         MessageDialog(message = message, onDismiss = { printMessage = null })
+    }
+    if (showReceiptHistory) {
+        ReceiptHistoryDialog(context, username, printer, receiptSettings.printerAddress) { showReceiptHistory = false }
     }
 }
 
@@ -1607,6 +1619,7 @@ private fun MoreMenuDialog(
     onDismiss: () -> Unit,
     onAdminPremium: () -> Unit,
     onExportExcel: () -> Unit,
+    onReceiptHistory: () -> Unit,
     onPrinter: () -> Unit,
     onSettings: () -> Unit,
     onUpgrade: () -> Unit,
@@ -1625,6 +1638,9 @@ private fun MoreMenuDialog(
                 Text("Fitur tambahan aplikasi", color = TextMuted, fontSize = 12.sp)
                 Spacer(Modifier.height(8.dp))
                 Text("DATA & TOOLS", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                MoreMenuItem("Riwayat Cetak", "Struk asli dan cetak ulang", onClick = onReceiptHistory) {
+                    Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = BrightTeal, modifier = Modifier.size(20.dp))
+                }
                 MoreMenuItem("Export Excel", "Download data berdasarkan KOLOK", onClick = onExportExcel) {
                     Icon(Icons.Outlined.ContentCopy, contentDescription = null, tint = BrightTeal, modifier = Modifier.size(20.dp))
                 }
@@ -2415,7 +2431,10 @@ private fun ReceiptPreviewDialog(
     val maxExtra = premiumExtraLimit(premiumStatus)
     val extra = extraText.filter(Char::isDigit).toDoubleOrNull() ?: 0.0
     val normalizedExtra = extra.coerceAtMost(maxExtra ?: extra)
-    val previewText = buildReceiptText(preview.row, preview.meter, preview.settings, normalizedExtra)
+    val snapshot = remember(preview, normalizedExtra) {
+        ReceiptSnapshot.create(preview.identity, preview.row, preview.meter, preview.settings, normalizedExtra.toLong())
+    }
+    val previewText = snapshot.text
 
     Dialog(onDismissRequest = onDismiss) {
         Card(shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
@@ -2426,7 +2445,7 @@ private fun ReceiptPreviewDialog(
                     TextField(
                         value = extraText,
                         onValueChange = { raw ->
-                            val clean = normalizeIdpel(raw)
+                            val clean = normalizeIdpel(raw).take(12)
                             val value = clean.toDoubleOrNull() ?: 0.0
                             if (maxExtra != null && value > maxExtra) {
                                 extraText = maxExtra.toLong().toString()
@@ -2464,7 +2483,7 @@ private fun ReceiptPreviewDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     DialogButton("Batal", filled = false, onClick = onDismiss, modifier = Modifier.weight(1f))
                     DialogButton("Cetak", filled = true, onClick = {
-                        preview.printText = previewText
+                        preview.snapshot = snapshot
                         onPrint()
                     }, modifier = Modifier.weight(1f))
                 }
@@ -2500,7 +2519,7 @@ private fun prepareReceiptPreview(
         val result = runCatching {
             val meter = AppMemoryCache.home?.meters?.get(row.idpel)
                 ?: runCatching { api.fetchReceiptMeter(accessToken, row.idpel) }.getOrNull()
-            ReceiptPreview(row, meter, settings, buildReceiptText(row, meter, settings))
+            ReceiptPreview(row, meter, settings)
         }
 
         runOnMainThread {
@@ -2527,7 +2546,7 @@ private fun searchReceiptByIdpel(
                 ?: throw IllegalStateException("IDPEL $normalized tidak ditemukan di saldo akhir.")
             val meter = AppMemoryCache.home?.meters?.get(row.idpel)
                 ?: runCatching { api.fetchReceiptMeter(accessToken, row.idpel) }.getOrNull()
-            ReceiptPreview(row, meter, settings, buildReceiptText(row, meter, settings))
+            ReceiptPreview(row, meter, settings)
         }
 
         runOnMainThread {
@@ -2538,14 +2557,16 @@ private fun searchReceiptByIdpel(
 }
 
 private fun printPreparedReceipt(
-    text: String,
+    snapshot: ReceiptSnapshot,
+    username: String,
+    context: Context,
     settings: ReceiptSettings,
     printer: BluetoothReceiptPrinter,
     onMessage: (String) -> Unit
 ) {
     thread {
         val message = runCatching {
-            printer.print(settings.printerAddress, text)
+            sendReceiptAndRecord(context, username, snapshot, false) { printer.print(settings.printerAddress, it) }
             "Struk berhasil dikirim ke printer."
         }.getOrElse {
             "Gagal cetak struk: ${it.message ?: "periksa printer dan data stand meter."}"
@@ -2773,8 +2794,10 @@ private data class ReceiptPreview(
     val row: CustomerDebt,
     val meter: ReceiptMeter?,
     val settings: ReceiptSettings,
-    var printText: String
-)
+    val identity: ReceiptIdentity = ReceiptIdentity()
+) {
+    var snapshot: ReceiptSnapshot = ReceiptSnapshot.create(identity, row, meter, settings, 0)
+}
 
 private fun sortCustomerRows(rows: List<CustomerDebt>): List<CustomerDebt> {
     return rows.sortedWith { first, second ->

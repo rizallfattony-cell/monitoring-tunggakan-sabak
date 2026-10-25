@@ -283,6 +283,7 @@ const els = {
   tabPanels: [...document.querySelectorAll("[data-tab-panel]")],
 };
 
+const receiptHistoryController = window.SimontokReceiptHistory.create({ getState: () => state });
 boot();
 
 async function boot() {
@@ -519,6 +520,7 @@ function switchTab(tabName) {
   if (tabName === "comparison") renderComparisonMonitoring();
   if (tabName === "lpb") renderLpbMonitoring();
   if (tabName === "premium") loadPremiumAdminData();
+  if (tabName === "receipt-history") receiptHistoryController.load();
   if (tabName === "sync-status") {
     loadSyncStatus();
     loadAppRelease();
@@ -560,6 +562,7 @@ function tabTitle(tabName) {
     invoice: "Cetak Invoice",
     "sync-status": "Status Sinkron Petugas",
     premium: "Premium",
+    "receipt-history": "Riwayat Cetak",
   };
   return titles[tabName] || "Overview";
 }
@@ -1151,6 +1154,7 @@ async function logoutOnline() {
   await state.supabaseClient.auth.signOut();
   state.user = null;
   state.profile = null;
+  receiptHistoryController.reset();
   state.premiumUsers = [];
   updateOnlineUi();
   renderPremiumUsers();
@@ -2341,6 +2345,7 @@ function ensureAdmin() {
 
 function updateOnlineUi() {
   const online = Boolean(state.user);
+  receiptHistoryController.onAuthChange();
   if (els.authGate) els.authGate.hidden = online;
   if (els.appShell) els.appShell.hidden = !online;
   if (els.onlineButton) els.onlineButton.textContent = online ? "Online Aktif" : "Login Online";
@@ -2382,7 +2387,7 @@ function applyRoleView() {
   if (dailyTab) dailyTab.hidden = petugasMode;
   if (dailyPanel && petugasMode) dailyPanel.hidden = true;
   if (comparisonPanel && petugasMode) comparisonPanel.hidden = true;
-  if (petugasMode && ["saldo-rata", "pelunasan-harian", "comparison", "premium", "sync-status"].includes(state.activeTab)) switchTab("laporan");
+  if (petugasMode && ["saldo-rata", "pelunasan-harian", "comparison", "premium", "sync-status", "receipt-history"].includes(state.activeTab)) switchTab("laporan");
   if (els.uploadGrid) els.uploadGrid.hidden = petugasMode;
   if (els.summaryGrid) els.summaryGrid.hidden = petugasMode;
   if (els.toolbar) els.toolbar.hidden = false;

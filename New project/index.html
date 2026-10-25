@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="./styles.css?v=20261025-premium-payment-export-v1" />
     <link rel="stylesheet" href="./invoice.css?v=20261024-invoice-tractor-v7" />
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
+    <link rel="stylesheet" href="./receipt-history.css?v=174" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -116,6 +117,7 @@
                 <button class="tree-child" type="button" data-tab="upload" data-upload-view="stand-meter">Upload Stand</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="sync-status">Status Sinkron Petugas</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="premium">Kelola Premium</button>
+                <button class="tree-child admin-only-menu" type="button" data-tab="receipt-history">Riwayat Cetak</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="invoice">Cetak Invoice</button>
               </div>
             </section>
@@ -943,6 +945,40 @@
         </div>
       </section>
 
+      <section class="tab-panel receipt-history-panel" data-tab-panel="receipt-history" hidden>
+        <header class="section-head">
+          <div><p class="eyebrow">TRANSAKSI PETUGAS</p><h2>Riwayat Cetak</h2></div>
+          <div class="section-actions">
+            <label class="field" for="receiptHistoryMonth"><span>Bulan transaksi</span><input id="receiptHistoryMonth" type="month" /></label>
+            <button class="icon-button" id="receiptHistoryRefresh" type="button" title="Muat ulang" aria-label="Muat ulang riwayat"><i data-lucide="refresh-cw"></i></button>
+            <button class="button secondary" id="receiptHistoryExport" type="button" title="Export seluruh transaksi pada bulan terpilih"><i data-lucide="file-spreadsheet"></i>Export Bulanan</button>
+          </div>
+        </header>
+        <p id="receiptHistoryStatus" role="status" aria-live="polite"></p>
+        <div class="receipt-history-metrics">
+          <article><span>Struk asli</span><strong id="receiptHistoryOriginals">0</strong></article>
+          <article><span>Cetak ulang</span><strong id="receiptHistoryReprints">0</strong></article>
+          <article><span>Pendapatan tambahan</span><strong id="receiptHistoryIncome">Rp0</strong></article>
+          <article><span>Petugas bertransaksi</span><strong id="receiptHistoryActive">0</strong></article>
+        </div>
+        <h3>Rekap Petugas</h3>
+        <div class="receipt-history-table-wrap"><table class="receipt-history-table">
+          <thead><tr><th>Petugas</th><th>Struk asli</th><th>Cetak ulang</th><th>Pendapatan tambahan</th></tr></thead>
+          <tbody id="receiptHistorySummary"></tbody>
+        </table></div>
+        <header class="receipt-history-detail-head"><h3>Detail Transaksi</h3><div class="receipt-history-filters">
+          <select id="receiptHistoryPetugas" aria-label="Filter petugas"><option value="">Semua petugas</option></select>
+          <input id="receiptHistorySearch" type="search" placeholder="Petugas, IDPEL, nama, referensi" aria-label="Cari transaksi" />
+        </div></header>
+        <div class="receipt-history-table-wrap"><table class="receipt-history-table receipt-history-details">
+          <thead><tr><th>Waktu asli (WIB)</th><th>Petugas</th><th>IDPEL / Pelanggan</th><th>Tagihan asli</th><th>Tambahan</th><th>Admin bank</th><th>Total bayar</th><th>Referensi</th><th>Cetak ulang</th><th>Aksi</th></tr></thead>
+          <tbody id="receiptHistoryDetails"></tbody>
+        </table></div>
+        <footer class="receipt-history-pager"><span id="receiptHistoryPage"></span><div>
+          <button class="icon-button" id="receiptHistoryPrev" type="button" title="Halaman sebelumnya" aria-label="Halaman sebelumnya"><i data-lucide="chevron-left"></i></button>
+          <button class="icon-button" id="receiptHistoryNext" type="button" title="Halaman berikutnya" aria-label="Halaman berikutnya"><i data-lucide="chevron-right"></i></button>
+        </div></footer>
+      </section>
       <section class="tab-panel" data-tab-panel="invoice" hidden>
         <div class="section-head">
           <div>
@@ -1075,6 +1111,11 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script src="./app.js?v=20261025-premium-packages-v173"></script>
+    <dialog id="receiptHistoryPreview" aria-labelledby="receiptHistoryPreviewTitle">
+      <header><h2 id="receiptHistoryPreviewTitle">Struk Asli</h2><button class="icon-button" id="receiptHistoryClosePreview" type="button" aria-label="Tutup preview" title="Tutup"><i data-lucide="x"></i></button></header>
+      <pre id="receiptHistoryPreviewText"></pre>
+    </dialog>
+    <script src="./receipt-history.js?v=174"></script>
+    <script src="./app.js?v=20261025-receipt-history-v174"></script>
   </body>
 </html>
