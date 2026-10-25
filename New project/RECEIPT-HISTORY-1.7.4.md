@@ -32,6 +32,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 ```
 
 Masukkan password DATABASE BARU hanya pada prompt. Script tidak menyimpannya ke file.
+Script mencari Git otomatis dari PATH, instalasi standar Windows, atau Git bawaan runtime Codex. Tidak perlu mengubah PATH. Lokasi lain dapat diberikan melalui parameter `-GitPath "C:\lokasi\git.exe"`.
 Script memeriksa repo bersih/main, menerapkan persiapan database dan step 21, melakukan git push, memverifikasi hash APK hosted dan marker web, baru menjalankan release 1.7.4 untuk update wajib.
 Script dapat diulang jika jaringan/deployment gagal. Tidak ada penurunan versi atau penambahan pendapatan ketika migrasi diulang.
 Database Kelola Premium dan rekap pembayaran sebelumnya (step 17/18) harus sudah tersedia. Script persiapan menerapkan step 19 bila belum ada dan memperbarui step 20 (dua paket Rp50.000) tanpa mengubah pembayaran yang sudah lunas. Script tidak menurunkan versi produksi yang lebih baru.
