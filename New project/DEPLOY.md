@@ -43,6 +43,11 @@ https://monitoring-tunggakan-sabak.vercel.app
 Untuk mengaktifkan rekap pembayaran Premium bulanan, jalankan sekali file
 `supabase-schema-step-18-premium-payments.sql` di SQL Editor Supabase setelah migrasi Premium step 17.
 
+Untuk APK 1.7.2 dengan pengingat dan penguncian tagihan, ikuti
+`PREMIUM-BILLING-UPDATE.md`. Setelah APK versi khusus tersedia di hosting,
+jalankan `supabase-release-1.7.2.sql` melalui script PowerShell migrasi,
+bukan langsung melalui SQL Editor (file release memakai perintah psql `\ir`).
+
 Alur admin:
 
 ```text

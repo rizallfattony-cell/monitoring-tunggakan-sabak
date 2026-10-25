@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "825884941217",
+    "project_id": "simontok-push-notification",
+    "storage_bucket": "simontok-push-notification.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:825884941217:android:924a6a301202c7f1a449e0",
+        "android_client_info": {
+          "package_name": "com.sabak.simontok"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHauOu3zuKCErzDByOinDwAlTgjNmh270"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

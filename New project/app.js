@@ -1508,7 +1508,7 @@ function renderPremiumPayments() {
         <td><span class="premium-package-chip">${escapeHtml(row.package_code || "-")}</span></td>
         <td><strong>${formatRupiah(Number(row.amount || 0))}</strong></td>
         <td>${formatShortDate(row.due_start)}<small>s.d. ${formatShortDate(row.due_end)}</small></td>
-        <td><input class="premium-payment-date" data-payment-date type="date" min="${escapeHtml(row.due_start || "")}" max="${escapeHtml(row.due_end || "")}" value="${escapeHtml(paymentDate)}" /></td>
+        <td><input class="premium-payment-date" data-payment-date type="date" min="${escapeHtml(row.due_start || "")}" max="${premiumPaymentToday()}" value="${escapeHtml(paymentDate)}" /></td>
         <td><span class="premium-payment-badge is-${status}">${premiumPaymentStatusLabel(status)}</span></td>
         <td><input class="premium-payment-note" data-payment-note type="text" maxlength="120" value="${escapeHtml(row.payment_note || "")}" placeholder="Catatan" /></td>
         <td>
@@ -1524,10 +1524,15 @@ function renderPremiumPayments() {
 
 function recommendedPremiumPaymentDate(row) {
   if (!row?.due_start || !row?.due_end) return "";
-  const today = formatLocalIsoDate(new Date());
+  const today = premiumPaymentToday();
   if (today < row.due_start) return row.due_start;
-  if (today > row.due_end) return row.due_end;
   return today;
+}
+
+function premiumPaymentToday() {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const value = (type) => parts.find((part) => part.type === type).value;
+  return `${value("year")}-${value("month")}-${value("day")}`;
 }
 
 function formatPremiumBillingMonth(value) {
