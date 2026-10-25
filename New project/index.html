@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="apple-touch-icon" href="./simontok-super-web.png?v=20260614-brand" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20261024-premium-payment-v2" />
+    <link rel="stylesheet" href="./styles.css?v=20261025-premium-payment-export-v1" />
     <link rel="stylesheet" href="./invoice.css?v=20261024-invoice-tractor-v7" />
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -902,10 +902,16 @@
                 <h3>Pembayaran Premium Biller</h3>
                 <p id="premiumPaymentStatus">Pilih bulan untuk memuat rekap pembayaran.</p>
               </div>
-              <label class="premium-month-control" for="premiumPaymentMonth">
-                <span>Bulan tagihan</span>
-                <input id="premiumPaymentMonth" type="month" />
-              </label>
+              <div class="premium-payment-toolbar-actions">
+                <label class="premium-month-control" for="premiumPaymentMonth">
+                  <span>Bulan tagihan</span>
+                  <input id="premiumPaymentMonth" type="month" />
+                </label>
+                <button class="button secondary" id="exportPremiumPaymentsButton" type="button">
+                  <i data-lucide="file-spreadsheet" aria-hidden="true"></i>
+                  Export Excel
+                </button>
+              </div>
             </div>
 
             <div class="premium-payment-summary" aria-label="Ringkasan pembayaran premium">
@@ -1070,6 +1076,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script src="./app.js?v=20261024-premium-payment-v2"></script>
+    <script src="./app.js?v=20261025-premium-payment-export-v1"></script>
   </body>
 </html>

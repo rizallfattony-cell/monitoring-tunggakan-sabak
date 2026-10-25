@@ -156,6 +156,7 @@ const els = {
   premiumPaymentPaidCount: document.querySelector("#premiumPaymentPaidCount"),
   premiumPaymentUnpaidCount: document.querySelector("#premiumPaymentUnpaidCount"),
   premiumPaymentRevenue: document.querySelector("#premiumPaymentRevenue"),
+  exportPremiumPaymentsButton: document.querySelector("#exportPremiumPaymentsButton"),
   loginForm: document.querySelector("#loginForm"),
   emailInput: document.querySelector("#emailInput"),
   passwordInput: document.querySelector("#passwordInput"),
@@ -352,6 +353,7 @@ function attachEvents() {
   els.premiumStatusFilter?.addEventListener("change", renderPremiumUsers);
   els.premiumUsersTableBody?.addEventListener("click", handlePremiumTableClick);
   els.premiumPaymentMonth?.addEventListener("change", loadPremiumPayments);
+  els.exportPremiumPaymentsButton?.addEventListener("click", exportPremiumPaymentsExcel);
   els.premiumPaymentsTableBody?.addEventListener("click", handlePremiumPaymentClick);
   els.premiumDurationButtons.forEach((button) => {
     button.addEventListener("click", () => setPremiumDuration(Number(button.dataset.premiumDuration)));
@@ -1538,6 +1540,80 @@ function premiumPaymentStatusLabel(status) {
   if (status === "paid") return "Sudah bayar";
   if (status === "overdue") return "Terlambat";
   return "Belum bayar";
+}
+
+function exportPremiumPaymentsExcel() {
+  const rows = state.premiumPayments || [];
+  if (!rows.length) {
+    alert("Belum ada data pembayaran premium untuk bulan yang dipilih.");
+    return;
+  }
+  if (!window.XLSX) {
+    alert("Fitur Excel belum siap. Muat ulang halaman lalu coba kembali.");
+    return;
+  }
+
+  const selectedMonth = els.premiumPaymentMonth?.value || formatLocalIsoDate(new Date()).slice(0, 7);
+  const monthLabel = formatPremiumBillingMonth(selectedMonth);
+  const paidRows = rows.filter((row) => row.paid_at);
+  const revenue = paidRows.reduce((total, row) => total + Number(row.amount || 0), 0);
+  const matrix = [
+    ["REKAP PEMBAYARAN PREMIUM BILLER"],
+    [`Periode: ${monthLabel}`],
+    [],
+    ["Total Biller", rows.length, "Sudah Bayar", paidRows.length, "Belum Bayar", rows.length - paidRows.length, "Penerimaan", revenue],
+    [],
+    ["No", "Petugas", "Username", "Paket", "Tagihan", "Mulai Pembayaran", "Batas Pembayaran", "Tanggal Bayar", "Status", "Catatan"],
+    ...rows.map((row, index) => {
+      const status = row.payment_status || (row.paid_at ? "paid" : "unpaid");
+      return [
+        index + 1,
+        row.petugas || row.username || "-",
+        row.username || "-",
+        row.package_code || "-",
+        Number(row.amount || 0),
+        excelDateValue(row.due_start),
+        excelDateValue(row.due_end),
+        excelDateValue(row.paid_at),
+        premiumPaymentStatusLabel(status),
+        row.payment_note || "",
+      ];
+    }),
+  ];
+
+  const worksheet = XLSX.utils.aoa_to_sheet(matrix);
+  worksheet["!merges"] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
+  ];
+  worksheet["!cols"] = [
+    { wch: 6 }, { wch: 24 }, { wch: 20 }, { wch: 9 }, { wch: 14 },
+    { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 15 }, { wch: 30 },
+  ];
+  worksheet["!autofilter"] = { ref: `A6:J${matrix.length}` };
+  worksheet["!freeze"] = { xSplit: 0, ySplit: 6, topLeftCell: "A7", activePane: "bottomLeft", state: "frozen" };
+
+  const currencyCells = ["H4"];
+  for (let rowIndex = 7; rowIndex <= matrix.length; rowIndex += 1) currencyCells.push(`E${rowIndex}`);
+  currencyCells.forEach((ref) => {
+    if (worksheet[ref]) worksheet[ref].z = '"Rp" #,##0';
+  });
+  for (let rowIndex = 7; rowIndex <= matrix.length; rowIndex += 1) {
+    ["F", "G", "H"].forEach((column) => {
+      const cell = worksheet[`${column}${rowIndex}`];
+      if (cell?.v instanceof Date) cell.z = "dd/mm/yyyy";
+    });
+  }
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Pembayaran Premium");
+  XLSX.writeFile(workbook, `rekap-pembayaran-premium-${selectedMonth}.xlsx`);
+}
+
+function excelDateValue(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return "";
+  const [year, month, day] = String(value).split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 async function handlePremiumPaymentClick(event) {

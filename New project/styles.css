@@ -2141,6 +2141,25 @@ tfoot td {
   font-size: 12px;
 }
 
+.premium-payment-toolbar-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.premium-payment-toolbar-actions .button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.premium-payment-toolbar-actions .button svg {
+  width: 16px;
+  height: 16px;
+}
+
 .premium-month-control {
   min-width: 185px;
   display: grid;
