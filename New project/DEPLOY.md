@@ -40,6 +40,10 @@ https://monitoring-tunggakan-sabak.vercel.app
 
 ## Setelah Online
 
+Perbaikan aktivasi premium/perangkat pada APK 1.7.5 dijelaskan di
+`PREMIUM-ACTIVATION-1.7.5.md`. Terapkan step 22 sebelum mengaktifkan update wajib;
+script publikasi versi 1.7.5 mengatur urutan tersebut otomatis.
+
 Untuk riwayat cetak dan rekap pendapatan Android 1.7.4, ikuti
 `RECEIPT-HISTORY-1.7.4.md`. Script publikasi menerapkan database terlebih dahulu,
 kemudian mengunggah web/APK, memverifikasi hosting, baru mengaktifkan update wajib.

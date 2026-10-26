@@ -72,6 +72,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -107,6 +108,9 @@ import kotlin.concurrent.thread
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 private val DeepTeal = Color(0xFF00546D)
 private val BrightTeal = Color(0xFF13AFC4)
@@ -927,10 +931,12 @@ private fun HomeScreen(
     var premiumStatus by remember(username) {
         mutableStateOf(
             premiumStatusStore.read(username)
-                ?: if (isSuperUser(username)) PremiumStatus(packageCode = "P3", activeUntil = "2099-12-31") else PremiumStatus()
+                ?: if (isSuperUser(username)) PremiumStatus(packageCode = "P3", activeUntil = "2099-12-31", deviceBound = true) else PremiumStatus()
         )
     }
     var showUpgrade by remember { mutableStateOf(false) }
+    var premiumStatusError by remember(username) { mutableStateOf<String?>(null) }
+    val premiumScope = rememberCoroutineScope()
     var showAdminPremium by remember { mutableStateOf(false) }
     var adminPremiumRequests by remember { mutableStateOf<List<PremiumAdminRequest>>(emptyList()) }
     var adminPremiumBusyId by remember { mutableStateOf<String?>(null) }
@@ -987,7 +993,17 @@ private fun HomeScreen(
         result.onSuccess { status ->
             premiumStatusStore.save(username, status)
             premiumStatus = status
+            premiumStatusError = null
+        }.onFailure { premiumStatusError = "Status premium belum dapat diperbarui. Periksa koneksi atau hubungi admin." }
+    }
+
+    DisposableEffect(context, username, accessToken) {
+        val lifecycle = (context as ComponentActivity).lifecycle
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) premiumScope.launch { refreshPremiumStatus() }
         }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
     }
 
     LaunchedEffect(accessToken, username, deviceId) {
@@ -1343,6 +1359,7 @@ private fun HomeScreen(
         PremiumAccessInfoDialog(
             username = username,
             currentStatus = premiumStatus,
+            statusError = premiumStatusError,
             onDismiss = { showUpgrade = false }
         )
     }
@@ -1534,7 +1551,7 @@ private fun DataUpdateBanner(
 
 @Composable
 private fun PremiumWarningBar(premiumStatus: PremiumStatus, onOpen: () -> Unit) {
-    if (!premiumStatus.isActive() || !premiumStatus.boundToOtherDevice) return
+    if (!premiumStatus.hasActivePeriod() || !premiumStatus.boundToOtherDevice) return
     Row(
         Modifier
             .fillMaxWidth()
@@ -1669,8 +1686,8 @@ private fun MoreMenuDialog(
                 }
                 if (!isAdmin) {
                     MoreMenuItem(
-                        if (premiumStatus.isActive()) "Status Premium" else "Upgrade Premium",
-                        if (premiumStatus.isActive()) "Aktif sampai ${premiumStatus.activeUntil}" else "Hubungi admin untuk aktivasi",
+                        if (premiumStatus.hasActivePeriod()) "Status Premium" else "Upgrade Premium",
+                        if (premiumStatus.hasActivePeriod()) "Aktif sampai ${premiumStatus.activeUntil}" else "Hubungi admin untuk aktivasi",
                         onClick = onUpgrade
                     ) {
                         Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = BrightTeal, modifier = Modifier.size(20.dp))
@@ -2420,7 +2437,7 @@ private fun MessageDialog(message: String, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun ReceiptPreviewDialog(
+internal fun ReceiptPreviewDialog(
     preview: ReceiptPreview,
     premiumStatus: PremiumStatus,
     onDismiss: () -> Unit,
@@ -2466,7 +2483,7 @@ private fun ReceiptPreviewDialog(
                         fontSize = 11.sp
                     )
                 } else {
-                    Text("Fitur tambah tagihan khusus user premium.", color = TextMuted, fontSize = 11.sp)
+                    Text(if (premiumStatus.hasActivePeriod()) "Premium belum terhubung ke perangkat ini. Periksa Status Premium pada Menu." else "Fitur tambah tagihan khusus user premium.", color = TextMuted, fontSize = 11.sp)
                 }
                 LazyColumn(
                     modifier = Modifier
@@ -2790,7 +2807,7 @@ private fun escapeExcel(value: String): String {
         .replace("\"", "&quot;")
 }
 
-private data class ReceiptPreview(
+internal data class ReceiptPreview(
     val row: CustomerDebt,
     val meter: ReceiptMeter?,
     val settings: ReceiptSettings,

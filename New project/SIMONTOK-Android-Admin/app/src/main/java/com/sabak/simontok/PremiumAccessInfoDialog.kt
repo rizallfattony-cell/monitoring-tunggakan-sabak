@@ -31,14 +31,20 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 
 @Composable
-internal fun PremiumAccessInfoDialog(username: String, currentStatus: PremiumStatus, onDismiss: () -> Unit) {
+internal fun PremiumAccessInfoDialog(username: String, currentStatus: PremiumStatus, statusError: String? = null, onDismiss: () -> Unit) {
     val context = LocalContext.current
     var showAccounts by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = onDismiss) {
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Premium SIMONTOK", fontSize = 21.sp, fontWeight = FontWeight.Bold)
-                Text(if (currentStatus.isActive()) "${premiumPackageLabel(currentStatus.packageCode)} aktif sampai ${billingDateLabel(currentStatus.activeUntil.orEmpty())}" else "Belum aktif")
+                Text(when {
+                    currentStatus.isActive() -> "${premiumPackageLabel(currentStatus.packageCode)} aktif sampai ${billingDateLabel(currentStatus.activeUntil.orEmpty())}"
+                    currentStatus.hasActivePeriod() && currentStatus.boundToOtherDevice -> "Paket masih aktif, tetapi terikat di perangkat lain. Hubungi admin untuk reset perangkat."
+                    currentStatus.hasActivePeriod() -> "Paket masih aktif. Menunggu pengikatan perangkat saat tersambung internet."
+                    else -> "Belum aktif atau masa aktif telah berakhir."
+                })
+                if (statusError != null) Text(statusError, color = Color(0xFFB42318), fontSize = 13.sp)
                 Text("Pembayaran dibuka setiap tanggal 20 hingga akhir bulan. Kirim konfirmasi dan bukti pembayaran langsung ke admin.", fontSize = 14.sp)
                 Image(painterResource(R.drawable.qris_premium), contentDescription = "QRIS pembayaran SIMONTOK", modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp), contentScale = ContentScale.Fit)
                 Button(onClick = { showAccounts = true }, modifier = Modifier.fillMaxWidth()) { Text("BAYAR") }

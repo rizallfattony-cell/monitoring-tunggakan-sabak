@@ -1,5 +1,9 @@
 [CmdletBinding()]
-param([string]$ConnectionsFile = '', [string]$GitPath = '')
+param(
+    [string]$ConnectionsFile = '',
+    [string]$GitPath = '',
+    [ValidateSet('1.7.4', '1.7.5')][string]$ReleaseVersion = '1.7.4'
+)
 $ErrorActionPreference = 'Stop'
 
 function Resolve-SimontokGitExecutable {
@@ -32,9 +36,9 @@ if (-not (Test-Path -LiteralPath $repo) -and (Test-Path -LiteralPath (Join-Path 
     $source = $workspace
     $repo = Split-Path -Parent $source
 }
-$apk = Join-Path $source 'SIMONTOK-v1.7.4.apk'
+$apk = Join-Path $source "SIMONTOK-v$ReleaseVersion.apk"
 $temporaryApk = Join-Path ([IO.Path]::GetTempPath()) ('simontok-174-' + [guid]::NewGuid().ToString() + '.apk')
-if (-not (Test-Path -LiteralPath $apk)) { throw 'APK 1.7.4 belum tersedia.' }
+if (-not (Test-Path -LiteralPath $apk)) { throw "APK $ReleaseVersion belum tersedia." }
 if (-not $ConnectionsFile) {
     $ConnectionsFile = @("$HOME\OneDrive\Documents\SIMONTOK-MIGRATION\connections.txt", "$HOME\Documents\SIMONTOK-MIGRATION\connections.txt") |
         Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
@@ -57,8 +61,8 @@ try {
     $password = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
     $databaseUrl = $template.Replace('[YOUR-PASSWORD]', [Uri]::EscapeDataString($password))
     $mount = ($source -replace '\\','/') + ':/migration:ro'
-    Write-Host '[1/4] Menerapkan migrasi riwayat cetak...' -ForegroundColor Cyan
-    & docker run --rm --volume $mount public.ecr.aws/supabase/postgres:17.11.0.004 psql --set 'ON_ERROR_STOP=1' --file '/migration/supabase-prepare-1.7.4.sql' --dbname $databaseUrl
+    Write-Host "[1/4] Menyiapkan database versi $ReleaseVersion..." -ForegroundColor Cyan
+    & docker run --rm --volume $mount public.ecr.aws/supabase/postgres:17.11.0.004 psql --set 'ON_ERROR_STOP=1' --file "/migration/supabase-prepare-$ReleaseVersion.sql" --dbname $databaseUrl
     if ($LASTEXITCODE -ne 0) { throw 'Migrasi gagal. Web dan update wajib belum dipublikasikan.' }
     Write-Host '[2/4] Mengunggah web admin dan APK ke hosting...' -ForegroundColor Cyan
     & $gitExecutable -C $repo push origin main
@@ -67,17 +71,17 @@ try {
     $ready = $false
     for ($attempt = 1; $attempt -le 60; $attempt++) {
         try {
-            Invoke-WebRequest -Uri 'https://simontok-superweb.vercel.app/SIMONTOK-v1.7.4.apk' -OutFile $temporaryApk -UseBasicParsing -TimeoutSec 30
+            Invoke-WebRequest -Uri "https://simontok-superweb.vercel.app/SIMONTOK-v$ReleaseVersion.apk" -OutFile $temporaryApk -UseBasicParsing -TimeoutSec 30
             $page = Invoke-WebRequest -Uri 'https://simontok-superweb.vercel.app/' -UseBasicParsing -TimeoutSec 30
             if ((Get-FileHash -LiteralPath $temporaryApk -Algorithm SHA256).Hash -eq $expectedHash -and $page.Content.Contains('20261025-receipt-history-v174')) { $ready = $true; break }
         } catch { }
         Start-Sleep -Seconds 5
     }
     if (-not $ready) { throw 'Hosting belum sesuai. Update wajib TIDAK diaktifkan. Tunggu deployment Vercel lalu jalankan ulang script.' }
-    Write-Host '[4/4] Mengaktifkan update wajib 1.7.4...' -ForegroundColor Cyan
-    & docker run --rm --volume $mount public.ecr.aws/supabase/postgres:17.11.0.004 psql --set 'ON_ERROR_STOP=1' --file '/migration/supabase-release-1.7.4.sql' --dbname $databaseUrl
+    Write-Host "[4/4] Mengaktifkan update wajib $ReleaseVersion..." -ForegroundColor Cyan
+    & docker run --rm --volume $mount public.ecr.aws/supabase/postgres:17.11.0.004 psql --set 'ON_ERROR_STOP=1' --file "/migration/supabase-release-$ReleaseVersion.sql" --dbname $databaseUrl
     if ($LASTEXITCODE -ne 0) { throw 'Web dan APK sudah diunggah, tetapi update wajib belum aktif. Jalankan ulang script.' }
-    Write-Host 'RILIS SIMONTOK 1.7.4 BERHASIL. Pasang pembaruan tanpa uninstall.' -ForegroundColor Green
+    Write-Host "RILIS SIMONTOK $ReleaseVersion BERHASIL. Pasang pembaruan tanpa uninstall." -ForegroundColor Green
 } finally {
     [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)
     $password = $null

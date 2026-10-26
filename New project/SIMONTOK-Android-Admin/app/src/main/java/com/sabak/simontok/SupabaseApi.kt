@@ -18,7 +18,6 @@ import java.net.URLEncoder
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.concurrent.thread
-import java.util.Base64
 
 class SupabaseApi {
     private val client = OkHttpClient()
@@ -374,67 +373,30 @@ class SupabaseApi {
     }
 
     fun fetchPremiumStatus(accessToken: String, deviceId: String): PremiumStatus {
-        val userId = currentUserIdFromToken(accessToken)
         val request = Request.Builder()
-            .url("${BuildConfig.SUPABASE_URL}/rest/v1/monitoring_profiles?select=premium_package,premium_active_until,premium_device_id&user_id=eq.$userId&limit=1")
+            .url("${BuildConfig.SUPABASE_URL}/rest/v1/rpc/get_my_premium_access")
             .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
             .addHeader("Authorization", "Bearer $accessToken")
             .addHeader("x-simontok-version", appVersionHeader)
             .addHeader("Accept", "application/json")
-            .get()
+            .post(JSONObject().put("p_device_id", deviceId).toString().toRequestBody(jsonMediaType))
             .build()
 
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
-            if (!response.isSuccessful) throw IOException("Gagal mengambil status premium.")
-            val array = JSONArray(body)
-            if (array.length() == 0) return PremiumStatus()
-            val item = array.getJSONObject(0)
-            val packageCode = item.optString("premium_package", "FREE").ifBlank { "FREE" }
-            val activeUntil = item.optString("premium_active_until").ifBlank { null }
-            val boundDevice = item.optString("premium_device_id").ifBlank { null }
-            if (packageCode != "FREE" && activeUntil != null && boundDevice.isNullOrBlank()) {
-                bindPremiumDevice(accessToken, deviceId)
-                return PremiumStatus(packageCode = packageCode, activeUntil = activeUntil, deviceBound = true)
-            }
-            return PremiumStatus(
-                packageCode = packageCode,
-                activeUntil = activeUntil,
-                deviceBound = boundDevice == deviceId,
-                boundToOtherDevice = !boundDevice.isNullOrBlank() && boundDevice != deviceId
-            )
+            if (!response.isSuccessful) throw IOException("Gagal memeriksa aktivasi premium. Pastikan migrasi aktivasi perangkat sudah diterapkan.")
+            return JSONObject(body).toPremiumAccessStatus(deviceId)
         }
     }
 
     fun fetchPremiumStatus(accessToken: String, username: String, deviceId: String): PremiumStatus {
-        if (isSuperUser(username)) return PremiumStatus(packageCode = "P3", activeUntil = "2099-12-31")
+        if (isSuperUser(username)) return PremiumStatus(packageCode = "P3", activeUntil = "2099-12-31", deviceBound = true)
         return fetchPremiumStatus(accessToken, deviceId)
-    }
-
-    private fun bindPremiumDevice(accessToken: String, deviceId: String) {
-        val payload = JSONObject()
-            .put("premium_device_id", deviceId)
-            .put("premium_device_bound_at", java.time.Instant.now().toString())
-            .toString()
-        val request = Request.Builder()
-            .url("${BuildConfig.SUPABASE_URL}/rest/v1/monitoring_profiles?user_id=eq.${currentUserIdFromToken(accessToken)}&premium_device_id=is.null")
-            .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
-            .addHeader("Authorization", "Bearer $accessToken")
-            .addHeader("x-simontok-version", appVersionHeader)
-            .addHeader("Content-Type", "application/json")
-            .addHeader("Prefer", "return=minimal")
-            .patch(payload.toRequestBody(jsonMediaType))
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            val body = response.body?.string().orEmpty()
-            if (!response.isSuccessful) throw IOException("Gagal mengikat premium ke device: $body")
-        }
     }
 
     private fun currentUserIdFromToken(accessToken: String): String {
         val payload = accessToken.split(".").getOrNull(1) ?: throw IOException("Token tidak valid.")
-        val json = String(Base64.getUrlDecoder().decode(payload))
+        val json = String(android.util.Base64.decode(payload, android.util.Base64.URL_SAFE), Charsets.UTF_8)
         return JSONObject(json).optString("sub")
     }
 
@@ -990,13 +952,16 @@ data class PremiumStatus(
     val packageCode: String = "FREE",
     val activeUntil: String? = null,
     val deviceBound: Boolean = false,
-    val boundToOtherDevice: Boolean = false
+    val boundToOtherDevice: Boolean = false,
+    val activeFrom: String? = null
 ) {
-    fun isActive(): Boolean {
+    fun hasActivePeriod(today: String = premiumTodayWib()): Boolean {
         val until = activeUntil ?: return false
-        val today = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US).format(java.util.Date())
-        return packageCode != "FREE" && until >= today && !boundToOtherDevice
+        if (!isPremiumDate(until) || !isPremiumDate(today)) return false
+        if (activeFrom != null && (!isPremiumDate(activeFrom) || activeFrom > today)) return false
+        return packageCode in setOf("P1", "P2", "P3", "SIMONTOK_PREMIUM", "BILLMAN_PRO") && until >= today
     }
+    fun isActive(today: String = premiumTodayWib()): Boolean = hasActivePeriod(today) && deviceBound && !boundToOtherDevice
 }
 
 data class PremiumAdminRequest(
