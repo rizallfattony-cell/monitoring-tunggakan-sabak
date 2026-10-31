@@ -4,6 +4,7 @@ do $$
 declare
   report_month date := (date_trunc('month', timezone('Asia/Jakarta', now())) - interval '1 month')::date;
   first_date date := report_month;
+  category_date date := (report_month + interval '2 days')::date;
   middle_date date := (report_month + interval '14 days')::date;
   last_date date := (report_month + interval '27 days')::date;
 begin
@@ -41,9 +42,12 @@ begin
     raise exception 'FAIL: duplicate officer accepted';
   exception when raise_exception then if sqlerrm like 'FAIL:%' then raise; end if; end;
   begin
-    perform public.save_debt_performance_daily_snapshot(first_date, 'kategori.xlsx', '[{"petugas":"<41500-6600","saldo_id":1,"saldo_rupiah":1}]'::jsonb);
-    raise exception 'FAIL: non-biller category accepted';
-  exception when raise_exception then if sqlerrm like 'FAIL:%' then raise; end if; end;
+    perform public.save_debt_performance_daily_snapshot(category_date, 'kategori.xlsx', '[{"petugas":"<41500-6600","saldo_id":1,"saldo_rupiah":1}]'::jsonb);
+  exception when others then
+    raise exception 'FAIL: agreed saldo category rejected: %', sqlerrm;
+  end;
+  assert (select count(*) from public.monitoring_debt_performance_daily where snapshot_date=category_date and petugas='<41500-6600') = 1,
+    'agreed saldo category is stored';
 end $$;
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);

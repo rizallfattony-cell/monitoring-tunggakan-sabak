@@ -19,7 +19,7 @@ const LPB_PETUGAS = [
   { username: "14390.istifar01", biller: "M. ROBY MASHRUR", coordinator: "WANDA EKA S" },
   { username: "14390.maulana01", biller: "MUHAMMAD TOHIR", coordinator: "WANDA EKA S" },
   { username: "14390.suwardi02", biller: "SUWARDI", coordinator: "WANDA EKA S" },
-  { username: "14390.bowo02", biller: "TRI WIBOWO", coordinator: "WANDA EKA S" },
+  { username: "14390.bowo02", biller: "TRI RIBOWO", coordinator: "WANDA EKA S" },
   { username: "14390.ilvan", biller: "ILVAN HALMAHERA", coordinator: "WANDA EKA S" },
   { username: "14390.amrizal02", biller: "AMRIZAL", coordinator: "RIZAL FATONI" },
   { username: "14390.sopian02", biller: "ARBAIN", coordinator: "RIZAL FATONI" },
@@ -30,6 +30,11 @@ const LPB_PETUGAS = [
   { username: "14390.herman02", biller: "RAHUL FARISTA R", coordinator: "RIZAL FATONI" },
   { username: "14390.vera01", biller: "NICO DIAN HADINATA", coordinator: "RIZAL FATONI" },
 ];
+const PERFORMANCE_SALDO_GROUPS = [">41500", "<41500-6600"];
+const PERFORMANCE_PARTICIPANTS = [
+  ...LPB_PETUGAS.map((item) => item.biller),
+  ...PERFORMANCE_SALDO_GROUPS,
+];
 
 function petugasLookupKey(value) {
   return cleanText(value).toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -38,6 +43,10 @@ function petugasLookupKey(value) {
 function resolvePerformancePetugas(value) {
   const key = petugasLookupKey(value);
   if (!key) return "";
+
+  if (key === "41500") return ">41500";
+  if (key === "415006600") return "<41500-6600";
+  if (key === "TRIWIBOWO") return "TRI RIBOWO";
 
   for (const item of LPB_PETUGAS) {
     const billerKey = petugasLookupKey(item.biller);
@@ -304,7 +313,7 @@ const els = {
 const receiptHistoryController = window.SimontokReceiptHistory.create({ getState: () => state });
 const debtPerformanceController = window.SimontokDebtPerformance.create({
   getState: () => state,
-  getOfficerNames: () => LPB_PETUGAS.map((row) => row.biller),
+  getOfficerNames: () => PERFORMANCE_PARTICIPANTS,
 });
 boot();
 
@@ -3431,7 +3440,7 @@ function groupSaldoByPetugas(rows, dilMap, label, options = {}) {
       continue;
     }
 
-    const petugas = dilPetugas || directPetugas;
+    const petugas = directPetugas || dilPetugas;
     const current = grouped.get(petugas) || emptySide();
     current.ids.add(row.idpel);
     current.rupiah += row.rupiah;

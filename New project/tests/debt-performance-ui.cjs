@@ -43,7 +43,7 @@ fs.mkdirSync(qa, { recursive: true });
     await page.goto(`http://127.0.0.1:${server.address().port}`);
     await page.waitForFunction(() => window.__dashboardReady);
     await page.evaluate(() => {
-      const officers = LPB_PETUGAS.map((item) => item.biller);
+      const officers = PERFORMANCE_PARTICIPANTS;
       const daily = [];
       const makeMonth = (month, lastDay, multiplier) => {
         [1, 10, 20, lastDay].forEach((day, dateIndex) => officers.forEach((petugas, officerIndex) => {
@@ -104,15 +104,15 @@ fs.mkdirSync(qa, { recursive: true });
       debtPerformanceController.load();
     });
 
-    await page.waitForFunction(() => document.querySelectorAll('#debtPerformanceLeaderboardBody tr').length === 17);
-    assert.equal(await page.locator('#debtPerformanceScope option').count(), 17);
+    await page.waitForFunction(() => document.querySelectorAll('#debtPerformanceLeaderboardBody tr').length === 19);
+    assert.equal(await page.locator('#debtPerformanceScope option').count(), 19);
     assert.equal(await page.locator('#debtPerformanceScopeWrap').isHidden(), true);
     assert.equal(await page.locator('#debtPerformanceChart svg').count(), 1);
     assert.equal(await page.locator('#debtPerformanceChart polyline').count(), 2);
     assert.ok(await page.locator('#debtPerformanceChart circle').count() >= 8);
     assert.match(await page.locator('#debtPerformanceStatus').innerText(), /4 tanggal/);
     assert.match(await page.locator('#debtPerformanceOpening').innerText(), /Rp/);
-    assert.equal(await page.locator('#debtPerformanceLeaderboardBody tr').count(), 17);
+    assert.equal(await page.locator('#debtPerformanceLeaderboardBody tr').count(), 19);
     assert.equal(await page.locator('button[data-tab="pelunasan-harian"]', { hasText: 'Upload Saldo Harian' }).count(), 1);
 
     const saveResult = await page.evaluate(async () => {
@@ -125,9 +125,9 @@ fs.mkdirSync(qa, { recursive: true });
       return { ok, call: window.__dailyRpcCalls.find((item) => item.name === 'save_debt_performance_daily_snapshot') };
     });
     assert.equal(saveResult.ok, true);
-    assert.equal(saveResult.call.params.p_rows.length, 17, 'all canonical officers are stored, including zero balance');
+    assert.equal(saveResult.call.params.p_rows.length, 19, '17 billers and two agreed saldo groups are stored, including zero balance');
     assert.deepEqual(saveResult.call.params.p_rows.find((row) => row.petugas === 'ADRI'), { petugas: 'ADRI', saldo_id: 12, saldo_rupiah: 345000 });
-    assert.equal(saveResult.call.params.p_rows.some((row) => row.petugas === '<41500-6600'), false, 'unknown categories cannot be saved as billers');
+    assert.deepEqual(saveResult.call.params.p_rows.find((row) => row.petugas === '<41500-6600'), { petugas: '<41500-6600', saldo_id: 1, saldo_rupiah: 999999 });
 
     const mappedSnapshot = await page.evaluate(() => {
       state.dil = [{ idpel: 'DIL-1', petugas: 'EKO DARWANTO', nama: 'Pelanggan DIL' }];
@@ -144,14 +144,18 @@ fs.mkdirSync(qa, { recursive: true });
         koked: '',
       });
       return buildDailyPelunasanSnapshot([
-        row('DIL-1', '>41500', 200),
+        row('DIL-1', 'kategori tidak dikenal', 200),
         row('ADRI-1', '14390.adri01', 300),
         row('OUT-1', '<41500-6600', 999999),
+        row('TRI-1', 'TRI WIBOWO', 400),
+        row('GROUP-1', '>41500', 600),
       ]);
     });
-    assert.deepEqual(Object.keys(mappedSnapshot.petugas).sort(), ['ADRI', 'EKO DARWANTO']);
-    assert.equal(mappedSnapshot.total.akhirRupiah, 500);
-    assert.equal(mappedSnapshot.ignoredRows, 1, 'category values outside the 17 billers are ignored');
+    assert.deepEqual(Object.keys(mappedSnapshot.petugas).sort(), ['<41500-6600', '>41500', 'ADRI', 'EKO DARWANTO', 'TRI RIBOWO']);
+    assert.equal(mappedSnapshot.total.akhirRupiah, 1001499);
+    assert.equal(mappedSnapshot.ignoredRows, 0, 'the agreed saldo groups are retained');
+    assert.equal(mappedSnapshot.petugas['TRI RIBOWO'].akhirRupiah, 400, 'old TRI WIBOWO spelling maps to TRI RIBOWO');
+    assert.equal(mappedSnapshot.petugas['>41500'].akhirRupiah, 600, 'agreed saldo groups override the DIL fallback');
 
     await page.locator('#debtPerformanceLeaderboardBody [data-performance-officer]').first().click();
     await page.waitForFunction(() => !document.getElementById('debtPerformanceOfficerComparison').hidden);

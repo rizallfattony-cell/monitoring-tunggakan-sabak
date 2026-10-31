@@ -238,6 +238,7 @@
       ...(primary?.available || []),
       ...(comparison?.available || []),
     ].map((row) => row.day))].sort((a, b) => a - b);
+    const chartWidth = Math.max(width, margin.left + margin.right + uploadedDays.length * 68);
     const x = (day) => {
       const index = Math.max(0, uploadedDays.indexOf(day));
       return uploadedDays.length === 1
@@ -252,24 +253,30 @@
         <text x="${margin.left - 12}" y="${py + 4}" fill="#748693" font-size="10" text-anchor="end">${escapeHtml(formatCompactRupiah(tick))}</text>`;
     }).join("");
 
-    function seriesSvg(series, color) {
+    function seriesSvg(series, color, labelPosition) {
       const linePoints = (series?.daily || [])
         .filter((row) => row.available)
         .map((row) => `${x(row.day)},${y(row.saldoRupiah)}`);
       const lines = linePoints.length > 1
         ? `<polyline points="${linePoints.join(" ")}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />`
         : "";
-      const points = (series?.daily || []).map((row) => row.available
-        ? `<circle cx="${x(row.day)}" cy="${y(row.saldoRupiah)}" r="3.5" fill="#fff" stroke="${color}" stroke-width="2"><title>${escapeHtml(`${formatDate(row.date)}: ${formatRupiah(row.saldoRupiah)}`)}</title></circle>`
-        : "").join("");
+      const points = (series?.daily || []).map((row) => {
+        if (!row.available) return "";
+        const pointY = y(row.saldoRupiah);
+        const labelY = labelPosition === "below"
+          ? Math.min(margin.top + innerHeight - 5, pointY + 15)
+          : Math.max(margin.top + 11, pointY - 10);
+        return `<circle cx="${x(row.day)}" cy="${pointY}" r="3.5" fill="#fff" stroke="${color}" stroke-width="2"><title>${escapeHtml(`${formatDate(row.date)}: ${formatRupiah(row.saldoRupiah)}`)}</title></circle>
+          <text class="performance-chart-value" x="${x(row.day)}" y="${labelY}" fill="${color}" stroke="#fff" stroke-width="3" paint-order="stroke" font-size="9" font-weight="700" text-anchor="middle">${escapeHtml(formatCompactRupiah(row.saldoRupiah))}</text>`;
+      }).join("");
       return `${lines}${points}`;
     }
 
     const dayLabels = uploadedDays.map((day) => `<text x="${x(day)}" y="${height - 16}" fill="#607481" font-size="10" text-anchor="middle">${day}</text>`).join("");
-    return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    return `<svg viewBox="0 0 ${width} ${height}" style="min-width:${chartWidth}px" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
       ${grid}
       <line x1="${margin.left}" y1="${margin.top + innerHeight}" x2="${width - margin.right}" y2="${margin.top + innerHeight}" stroke="#aebdc6" stroke-width="1" />
-      ${seriesSvg(comparison, "#d99100")}${seriesSvg(primary, "#087e8b")}${dayLabels}
+      ${seriesSvg(comparison, "#d99100", "above")}${seriesSvg(primary, "#087e8b", "below")}${dayLabels}
       <text x="${width / 2}" y="${height - 1}" fill="#7a8d99" font-size="10" text-anchor="middle">Tanggal upload</text>
     </svg>`;
   }

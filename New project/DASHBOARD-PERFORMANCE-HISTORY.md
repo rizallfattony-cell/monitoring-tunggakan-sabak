@@ -5,19 +5,20 @@ diunggah pada menu ini hanya memperbarui dashboard performa dan tidak mempublika
 data tunggakan ke aplikasi petugas.
 
 Dashboard menyediakan tampilan keseluruhan unit dan detail per petugas, perbandingan
-dua bulan, grafik saldo harian, leaderboard 17 petugas, serta riwayat satu, tiga, empat,
+dua bulan, grafik saldo harian, leaderboard 17 petugas ditambah dua kelompok saldo, serta riwayat satu, tiga, empat,
 enam, atau dua belas bulan.
 
 ## Aturan Data
 
 - Admin memilih tanggal data sebelum mengunggah file tunggakan harian.
 - Upload ulang pada tanggal yang sama mengganti snapshot tanggal itu, bukan menggandakan data.
-- Snapshot hanya menerima 17 biller resmi. Kolom `PETUGAS`/`BILLER` dipakai bila cocok dengan biller atau username resmi; selain itu sistem memakai DIL. Kategori Excel seperti `<41500-6600` tidak akan menjadi petugas.
+- Snapshot menerima 17 biller resmi, kelompok saldo `>41500`, dan `<41500-6600`. Kolom `PETUGAS`/`BILLER` yang valid diprioritaskan; DIL dipakai sebagai cadangan bila kolom tersebut kosong atau tidak dikenal.
+- Nama resmi biller adalah `TRI RIBOWO`. Ejaan lama `TRI WIBOWO` dari file terdahulu tetap dipetakan otomatis ke nama resmi tersebut.
 - Saldo awal bulan memakai tanggal upload paling awal; saldo terbaru memakai tanggal upload terakhir.
 - Ringkasan bulanan diperbarui otomatis dari snapshot harian paling awal dan terakhir.
 - Pencapaian keseluruhan dihitung dari total rupiah, bukan rata-rata persentase 17 petugas.
 - Tanggal atau bulan yang belum diunggah ditampilkan sebagai data kosong, bukan nol.
-- Grafik menampilkan label pada setiap tanggal yang benar-benar diunggah, sehingga tidak membuat tanggal tanpa upload seolah-olah ada data.
+- Grafik menampilkan tanggal upload dan saldo ringkas pada setiap titik, sehingga tidak membuat tanggal tanpa upload seolah-olah ada data.
 - Admin dapat melihat seluruh petugas. Akun petugas hanya dapat membaca namanya sendiri.
 - Tabel dashboard menyimpan agregat IDPEL dan rupiah per petugas, bukan daftar pelanggan.
 - Rupiah tunggakan mengikuti parser laporan, yaitu `RPTAG + RPBK`.
@@ -40,5 +41,5 @@ memastikan marker web serta hash APK benar, lalu mengaktifkan rilis. Sesudah akt
 
 - PostgreSQL: replace per tanggal, pembaruan ringkasan bulanan, penghapusan, RLS dan pembatasan role.
 - JavaScript: agregasi unit, persentase tertimbang, leaderboard, grafik harian dan bulan WIB.
-- Chrome headless: mode unit/petugas, dua bulan pembanding, 17 petugas, riwayat 1/3/4/6/12 bulan,
+- Chrome headless: mode unit/petugas, dua bulan pembanding, 17 petugas plus dua kelompok saldo, riwayat 1/3/4/6/12 bulan,
   desktop dan mobile tanpa overflow halaman.

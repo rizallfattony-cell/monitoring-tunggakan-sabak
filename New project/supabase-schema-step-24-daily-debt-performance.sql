@@ -40,9 +40,10 @@ set search_path = public, pg_temp
 as $$
   select upper(trim(coalesce(p_petugas, ''))) = any (array[
     'ADRI', 'ANANG RIDWAN', 'CECEP HIDAYAT', 'DEDI YANTO',
-    'M. ROBY MASHRUR', 'MUHAMMAD TOHIR', 'SUWARDI', 'TRI WIBOWO',
+    'M. ROBY MASHRUR', 'MUHAMMAD TOHIR', 'SUWARDI', 'TRI RIBOWO',
     'ILVAN HALMAHERA', 'AMRIZAL', 'ARBAIN', 'BUNJAMIN', 'DWI WIBOWO',
-    'EKO DARWANTO', 'HASIM', 'RAHUL FARISTA R', 'NICO DIAN HADINATA'
+    'EKO DARWANTO', 'HASIM', 'RAHUL FARISTA R', 'NICO DIAN HADINATA',
+    '>41500', '<41500-6600'
   ]);
 $$;
 
@@ -90,23 +91,32 @@ $$;
 
 revoke all on function public.refresh_debt_performance_month_from_daily(date, uuid) from public, anon, authenticated;
 
--- Remove category rows accidentally read as biller names by the first dashboard upload.
--- This migration is safe to rerun: it rebuilds only monthly rows backed by daily snapshots.
+-- Normalize an earlier spelling while preserving the two agreed saldo groups.
+-- This migration is safe to rerun and rebuilds only monthly rows backed by daily snapshots.
 do $$
 declare
   affected_month date;
   refresh_user uuid;
 begin
-  for affected_month in
-    select distinct date_trunc('month', snapshot_date)::date
-    from public.monitoring_debt_performance_daily
-    where not public.debt_performance_is_known_biller(petugas)
-  loop
-    delete from public.monitoring_debt_performance_monthly where month = affected_month;
-  end loop;
+  delete from public.monitoring_debt_performance_daily legacy
+  using public.monitoring_debt_performance_daily canonical
+  where legacy.snapshot_date = canonical.snapshot_date
+    and upper(legacy.petugas) = 'TRI WIBOWO'
+    and upper(canonical.petugas) = 'TRI RIBOWO';
 
-  delete from public.monitoring_debt_performance_daily
-  where not public.debt_performance_is_known_biller(petugas);
+  update public.monitoring_debt_performance_daily
+  set petugas = 'TRI RIBOWO'
+  where upper(petugas) = 'TRI WIBOWO';
+
+  delete from public.monitoring_debt_performance_monthly legacy
+  using public.monitoring_debt_performance_monthly canonical
+  where legacy.month = canonical.month
+    and upper(legacy.petugas) = 'TRI WIBOWO'
+    and upper(canonical.petugas) = 'TRI RIBOWO';
+
+  update public.monitoring_debt_performance_monthly
+  set petugas = 'TRI RIBOWO'
+  where upper(petugas) = 'TRI WIBOWO';
 
   for affected_month in
     select distinct date_trunc('month', snapshot_date)::date
