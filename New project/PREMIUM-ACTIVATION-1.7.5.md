@@ -23,7 +23,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 & ".\tools\publish-release-1.7.5.ps1"
 ```
 
-Masukkan password DATABASE BARU pada prompt. Script menerapkan step 22, mengunggah APK,
+Masukkan password DATABASE BARU pada prompt. Script menerapkan step 22 dan step 23, mengunggah APK,
 memverifikasi hash unduhan, lalu mengaktifkan update wajib 1.7.5. Jangan jalankan SQL release
 sebelum APK tersedia. Script dapat dijalankan ulang dan memiliki proteksi penurunan versi.
 
@@ -36,7 +36,8 @@ jangan mengubah data pembayaran. Reset perangkat hanya oleh admin jika benar-ben
 ## Verifikasi
 
 Build APK berhasil. 24 unit test, 17 tes emulator (termasuk riwayat cetak dan pengingat tagihan),
-serta suite PostgreSQL lokal lulus. SHA-256 APK:
+serta suite PostgreSQL lokal lulus. Rilis yang sama juga menyiapkan arsip performa tunggakan
+bulanan pada dashboard. SHA-256 APK:
 `C43B84A11D15E53422F3EDA40F0296D907785C8817B323F91272D09346682762`.
 
 - Tes Android mereproduksi hasil optString JSON null lama, memastikan parser baru tidak menganggapnya perangkat lain, dan menguji kolom Tambah tagihan pada preview cetak sebenarnya.

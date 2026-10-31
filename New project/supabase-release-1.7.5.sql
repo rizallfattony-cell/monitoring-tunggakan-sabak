@@ -2,8 +2,9 @@
 begin;
 do $$ begin
   if to_regprocedure('public.get_my_premium_access(text)') is null
-    or to_regprocedure('public.save_receipt_history(jsonb)') is null then
-    raise exception 'Terapkan migrasi perangkat premium dan riwayat cetak sebelum update 1.7.5';
+    or to_regprocedure('public.save_receipt_history(jsonb)') is null
+    or to_regprocedure('public.get_debt_performance_history(date,integer,text)') is null then
+    raise exception 'Terapkan migrasi perangkat premium, riwayat cetak, dan performa tunggakan sebelum update 1.7.5';
   end if;
   if exists(select 1 from public.monitoring_app_releases where id='android'
     and string_to_array(latest_version,'.')::int[] > array[1,7,5]) then

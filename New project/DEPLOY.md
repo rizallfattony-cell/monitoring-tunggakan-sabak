@@ -41,8 +41,12 @@ https://monitoring-tunggakan-sabak.vercel.app
 ## Setelah Online
 
 Perbaikan aktivasi premium/perangkat pada APK 1.7.5 dijelaskan di
-`PREMIUM-ACTIVATION-1.7.5.md`. Terapkan step 22 sebelum mengaktifkan update wajib;
+`PREMIUM-ACTIVATION-1.7.5.md`. Terapkan step 22 dan step 23 sebelum mengaktifkan update wajib;
 script publikasi versi 1.7.5 mengatur urutan tersebut otomatis.
+
+Riwayat performa tunggakan pada dashboard dijelaskan di
+`DASHBOARD-PERFORMANCE-HISTORY.md`. Snapshot bulanan baru disimpan ketika data
+Saldo Akhir dipublikasikan; bulan lama yang tidak pernah diarsipkan tetap kosong.
 
 Untuk riwayat cetak dan rekap pendapatan Android 1.7.4, ikuti
 `RECEIPT-HISTORY-1.7.4.md`. Script publikasi menerapkan database terlebih dahulu,

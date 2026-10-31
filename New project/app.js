@@ -284,6 +284,13 @@ const els = {
 };
 
 const receiptHistoryController = window.SimontokReceiptHistory.create({ getState: () => state });
+const debtPerformanceController = window.SimontokDebtPerformance.create({
+  getState: () => state,
+  getOfficerNames: () => [
+    ...LPB_PETUGAS.map((row) => row.biller),
+    ...state.report.map((row) => row.petugas),
+  ],
+});
 boot();
 
 async function boot() {
@@ -311,6 +318,7 @@ async function boot() {
       recompute();
     }
   }
+  await debtPerformanceController.load({ silent: true });
 }
 
 function initializeInvoiceForm() {
@@ -521,6 +529,7 @@ function switchTab(tabName) {
   if (tabName === "lpb") renderLpbMonitoring();
   if (tabName === "premium") loadPremiumAdminData();
   if (tabName === "receipt-history") receiptHistoryController.load();
+  if (tabName === "overview") debtPerformanceController.load({ silent: true });
   if (tabName === "sync-status") {
     loadSyncStatus();
     loadAppRelease();
@@ -1054,6 +1063,7 @@ async function loginOnline(source = "panel") {
   } else {
     await loadCloudData({ silentIfEmpty: true, automatic: true });
   }
+  await debtPerformanceController.load({ silent: true });
 }
 
 async function loginOnlineViaRest(email, password) {
@@ -1155,6 +1165,7 @@ async function logoutOnline() {
   state.user = null;
   state.profile = null;
   receiptHistoryController.reset();
+  debtPerformanceController.reset();
   state.premiumUsers = [];
   updateOnlineUi();
   renderPremiumUsers();
@@ -1955,6 +1966,10 @@ async function saveCloudData(options = {}) {
   if (options.publishReceiptMeters === true || (!options.skipPublish && options.publishReceiptMeters !== false)) {
     updateProgress(embeddedProgress ? 82 : 70, "Mempublish data stand meter struk...");
     await publishReceiptMeters();
+  }
+
+  if (!options.skipPublish) {
+    await debtPerformanceController.capture({ silent: true });
   }
 
   const savedMessage = stateSaveError
@@ -3492,6 +3507,7 @@ function render() {
 
 function renderOverviewDashboard() {
   if (!els.overviewSaldoAkhir) return;
+  debtPerformanceController.syncContext();
   const petugasMode = state.profile?.role === "petugas";
   const petugasRows = state.petugasRows || [];
   const petugasTotal = petugasRows.reduce((sum, row) => sum + Number(row.rptag || 0), 0);

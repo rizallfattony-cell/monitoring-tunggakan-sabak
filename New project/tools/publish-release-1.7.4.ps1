@@ -37,6 +37,7 @@ if (-not (Test-Path -LiteralPath $repo) -and (Test-Path -LiteralPath (Join-Path 
     $repo = Split-Path -Parent $source
 }
 $apk = Join-Path $source "SIMONTOK-v$ReleaseVersion.apk"
+$webMarker = if ($ReleaseVersion -eq '1.7.5') { '20261031-dashboard-history-v1' } else { '20261025-receipt-history-v174' }
 $temporaryApk = Join-Path ([IO.Path]::GetTempPath()) ('simontok-174-' + [guid]::NewGuid().ToString() + '.apk')
 if (-not (Test-Path -LiteralPath $apk)) { throw "APK $ReleaseVersion belum tersedia." }
 if (-not $ConnectionsFile) {
@@ -73,7 +74,7 @@ try {
         try {
             Invoke-WebRequest -Uri "https://simontok-superweb.vercel.app/SIMONTOK-v$ReleaseVersion.apk" -OutFile $temporaryApk -UseBasicParsing -TimeoutSec 30
             $page = Invoke-WebRequest -Uri 'https://simontok-superweb.vercel.app/' -UseBasicParsing -TimeoutSec 30
-            if ((Get-FileHash -LiteralPath $temporaryApk -Algorithm SHA256).Hash -eq $expectedHash -and $page.Content.Contains('20261025-receipt-history-v174')) { $ready = $true; break }
+            if ((Get-FileHash -LiteralPath $temporaryApk -Algorithm SHA256).Hash -eq $expectedHash -and $page.Content.Contains($webMarker)) { $ready = $true; break }
         } catch { }
         Start-Sleep -Seconds 5
     }

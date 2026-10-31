@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="./invoice.css?v=20261024-invoice-tractor-v7" />
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
     <link rel="stylesheet" href="./receipt-history.css?v=174" />
+    <link rel="stylesheet" href="./debt-performance.css?v=20261031-history-v1" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -210,6 +211,61 @@
                     <button class="button secondary overview-upload-button" type="button" data-tab="upload" data-upload-view="database">Kelola data</button>
                   </aside>
                 </div>
+
+                <section class="overview-history" id="debtPerformancePanel" aria-labelledby="debtPerformanceTitle">
+                  <header class="overview-history-head">
+                    <div>
+                      <span class="overview-eyebrow">Riwayat Bulanan</span>
+                      <h2 id="debtPerformanceTitle">Performa Tunggakan</h2>
+                      <p id="debtPerformanceStatus">Memuat riwayat performa...</p>
+                    </div>
+                    <div class="overview-history-controls">
+                      <label id="debtPerformanceScopeWrap">
+                        <span>Petugas</span>
+                        <select id="debtPerformanceScope">
+                          <option value="">Keseluruhan</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>Bulan akhir</span>
+                        <input id="debtPerformanceMonth" type="month" />
+                      </label>
+                      <div class="overview-history-range" role="group" aria-label="Rentang riwayat">
+                        <button type="button" data-debt-months="1">Per bulan</button>
+                        <button type="button" data-debt-months="3">3 bulan</button>
+                        <button type="button" data-debt-months="4">4 bulan</button>
+                        <button class="is-active" type="button" data-debt-months="6">6 bulan</button>
+                        <button type="button" data-debt-months="12">1 tahun</button>
+                      </div>
+                      <button class="icon-button overview-history-refresh" id="debtPerformanceRefresh" type="button" title="Muat ulang riwayat" aria-label="Muat ulang riwayat">
+                        <i data-lucide="refresh-cw" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </header>
+
+                  <div class="overview-history-metrics" aria-label="Ringkasan riwayat performa">
+                    <div><span>Pencapaian terbaru</span><strong id="debtPerformanceLatest">-</strong></div>
+                    <div><span>Perubahan periode</span><strong id="debtPerformanceChange">-</strong></div>
+                    <div><span>Total pelunasan</span><strong id="debtPerformancePaid">-</strong></div>
+                    <div><span>Saldo akhir terbaru</span><strong id="debtPerformanceBalance">-</strong></div>
+                  </div>
+
+                  <div class="overview-history-body">
+                    <div class="overview-history-chart-block">
+                      <div class="overview-history-chart-title">
+                        <div><strong>Pencapaian tagihan</strong><span id="debtPerformanceScopeLabel">Keseluruhan petugas</span></div>
+                        <span class="overview-history-legend"><i aria-hidden="true"></i>Pencapaian</span>
+                      </div>
+                      <div class="overview-history-chart" id="debtPerformanceChart" role="img" aria-label="Grafik riwayat pencapaian tagihan"></div>
+                    </div>
+                    <div class="overview-history-table-wrap">
+                      <table class="overview-history-table">
+                        <thead><tr><th>Bulan</th><th>Saldo awal</th><th>Saldo akhir</th><th>Pelunasan</th><th>IDPEL tersisa</th><th>Pencapaian</th></tr></thead>
+                        <tbody id="debtPerformanceTableBody"><tr><td colspan="6">Memuat data...</td></tr></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </section>
               </div>
             </section>
 
@@ -1116,6 +1172,7 @@
       <pre id="receiptHistoryPreviewText"></pre>
     </dialog>
     <script src="./receipt-history.js?v=174"></script>
-    <script src="./app.js?v=20261025-receipt-history-v174"></script>
+    <script src="./debt-performance.js?v=20261031-history-v1"></script>
+    <script src="./app.js?v=20261031-dashboard-history-v1"></script>
   </body>
 </html>

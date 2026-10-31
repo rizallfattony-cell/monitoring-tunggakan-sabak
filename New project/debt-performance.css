@@ -1,0 +1,358 @@
+.overview-history {
+  width: 100%;
+  margin-top: 24px;
+  border: 1px solid #d8e1e8;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.overview-history-head {
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #dce4ea;
+}
+
+.overview-history-head h2 {
+  margin: 0 0 4px;
+  color: #172b43;
+  font-size: 19px;
+}
+
+.overview-history-head p {
+  margin: 0;
+  color: #687b8b;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.overview-history-controls {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.overview-history-controls label {
+  display: grid;
+  gap: 5px;
+  color: #536979;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.overview-history-controls select,
+.overview-history-controls input {
+  min-width: 156px;
+  height: 36px;
+  border: 1px solid #c7d4dd;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #fff;
+  color: #203a4d;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.overview-history-range {
+  height: 36px;
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid #c7d4dd;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.overview-history-range button {
+  min-width: 62px;
+  border: 0;
+  border-right: 1px solid #d7e0e6;
+  padding: 0 10px;
+  background: #fff;
+  color: #526979;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.overview-history-range button:last-child {
+  border-right: 0;
+}
+
+.overview-history-range button:hover {
+  background: #eef5f7;
+}
+
+.overview-history-range button.is-active {
+  background: #173d60;
+  color: #fff;
+}
+
+.overview-history-refresh {
+  width: 36px;
+  height: 36px;
+  border-color: #c7d4dd;
+  border-radius: 6px;
+  color: #234b68;
+}
+
+.overview-history-refresh svg {
+  width: 16px;
+  height: 16px;
+}
+
+.overview-history-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid #dce4ea;
+  background: #f8fafb;
+}
+
+.overview-history-metrics > div {
+  min-width: 0;
+  padding: 15px 20px;
+  border-right: 1px solid #dce4ea;
+}
+
+.overview-history-metrics > div:last-child {
+  border-right: 0;
+}
+
+.overview-history-metrics span,
+.overview-history-metrics strong {
+  display: block;
+}
+
+.overview-history-metrics span {
+  margin-bottom: 5px;
+  color: #687b8b;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.overview-history-metrics strong {
+  overflow-wrap: anywhere;
+  color: #172b43;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.overview-history-metrics strong.is-positive {
+  color: #197046;
+}
+
+.overview-history-metrics strong.is-negative {
+  color: #b44816;
+}
+
+.overview-history-body {
+  display: block;
+  min-height: 360px;
+}
+
+.overview-history-chart-block {
+  min-width: 0;
+  padding: 20px;
+  border-bottom: 1px solid #dce4ea;
+}
+
+.overview-history-chart-title {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+
+.overview-history-chart-title div,
+.overview-history-chart-title strong,
+.overview-history-chart-title span {
+  display: block;
+}
+
+.overview-history-chart-title strong {
+  color: #263f51;
+  font-size: 13px;
+}
+
+.overview-history-chart-title div > span {
+  margin-top: 3px;
+  color: #718390;
+  font-size: 10px;
+}
+
+.overview-history-legend {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  color: #607481;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.overview-history-legend i {
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: #087e8b;
+}
+
+.overview-history-chart {
+  width: 100%;
+  min-height: 278px;
+}
+
+.overview-history-chart svg {
+  width: 100%;
+  height: auto;
+  min-height: 278px;
+  display: block;
+}
+
+.overview-history-empty {
+  min-height: 278px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #cbd8df;
+  color: #70828e;
+  font-size: 12px;
+  text-align: center;
+}
+
+.overview-history-table-wrap {
+  min-width: 0;
+  overflow: auto;
+}
+
+.overview-history-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.overview-history-table th,
+.overview-history-table td {
+  padding: 12px 9px;
+  border-bottom: 1px solid #e4eaee;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.overview-history-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f7f9fb;
+  color: #5c6e7e;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.overview-history-table th:first-child,
+.overview-history-table td:first-child {
+  text-align: left;
+}
+
+.overview-history-table td {
+  color: #314b5b;
+}
+
+.overview-history-table td:last-child {
+  color: #126b76;
+  font-weight: 800;
+}
+
+.overview-history-table tr.is-missing td {
+  color: #91a0aa;
+  font-style: italic;
+}
+
+.overview-history-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+@media (max-width: 1280px) {
+  .overview-history-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .overview-history-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .overview-history-chart-block {
+    border-bottom: 1px solid #dce4ea;
+  }
+}
+
+@media (max-width: 760px) {
+  .overview-history {
+    margin-top: 16px;
+  }
+
+  .overview-history-head {
+    padding: 16px;
+  }
+
+  .overview-history-controls,
+  .overview-history-controls label {
+    width: 100%;
+  }
+
+  .overview-history-controls select,
+  .overview-history-controls input {
+    width: 100%;
+  }
+
+  .overview-history-range {
+    width: 100%;
+    height: auto;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .overview-history-range button {
+    min-width: 0;
+    min-height: 38px;
+    padding: 5px;
+  }
+
+  .overview-history-refresh {
+    width: 40px;
+    flex: 0 0 40px;
+  }
+
+  .overview-history-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .overview-history-metrics > div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .overview-history-metrics > div:nth-child(-n+2) {
+    border-bottom: 1px solid #dce4ea;
+  }
+
+  .overview-history-metrics strong {
+    font-size: 17px;
+  }
+
+  .overview-history-chart-block {
+    padding: 16px 10px 12px;
+  }
+
+  .overview-history-chart-title {
+    padding: 0 6px;
+  }
+}

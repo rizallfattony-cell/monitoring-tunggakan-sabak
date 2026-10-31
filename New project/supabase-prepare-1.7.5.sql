@@ -10,3 +10,4 @@ do $$ begin
   end if;
 end $$;
 \ir supabase-schema-step-22-premium-device-activation.sql
+\ir supabase-schema-step-23-debt-performance-history.sql
