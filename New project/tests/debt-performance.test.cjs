@@ -44,8 +44,16 @@ assert.equal(leaderboard[2].available, false);
 const dailyChart = buildDailyChart(unit, buildMonthSeries([], '2026-09', 'ALL'));
 assert.match(dailyChart, /<svg/);
 assert.match(dailyChart, /Rp/);
+assert.match(dailyChart, />1<.*>15<.*>31</, 'x-axis labels follow uploaded snapshot days');
+assert.doesNotMatch(dailyChart, />5</, 'x-axis does not add calendar dates with no upload');
 assert.doesNotMatch(dailyChart, /NaN|undefined/);
 assert.match(buildDailyChart(buildMonthSeries([], '2026-10'), buildMonthSeries([], '2026-09')), /Belum ada upload/);
+
+const filteredLeaderboard = buildLeaderboard([
+  ...rows,
+  { snapshot_date: '2026-10-31', petugas: '<41500-6600', saldo_id: 9, saldo_rupiah: 999999 },
+], '2026-10', ['ANANG RIDWAN', 'ADRI']);
+assert.equal(filteredLeaderboard.length, 2, 'non-biller categories never become leaderboard officers');
 
 const history = normalizeHistoryPayload({ rows: [
   { month: '2026-09-01', available: false },

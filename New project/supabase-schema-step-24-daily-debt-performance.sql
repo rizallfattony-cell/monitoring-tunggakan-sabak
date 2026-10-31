@@ -32,6 +32,22 @@ using (
 revoke all on public.monitoring_debt_performance_daily from public, anon, authenticated;
 grant select on public.monitoring_debt_performance_daily to authenticated;
 
+create or replace function public.debt_performance_is_known_biller(p_petugas text)
+returns boolean
+language sql
+immutable
+set search_path = public, pg_temp
+as $$
+  select upper(trim(coalesce(p_petugas, ''))) = any (array[
+    'ADRI', 'ANANG RIDWAN', 'CECEP HIDAYAT', 'DEDI YANTO',
+    'M. ROBY MASHRUR', 'MUHAMMAD TOHIR', 'SUWARDI', 'TRI WIBOWO',
+    'ILVAN HALMAHERA', 'AMRIZAL', 'ARBAIN', 'BUNJAMIN', 'DWI WIBOWO',
+    'EKO DARWANTO', 'HASIM', 'RAHUL FARISTA R', 'NICO DIAN HADINATA'
+  ]);
+$$;
+
+revoke all on function public.debt_performance_is_known_biller(text) from public, anon, authenticated;
+
 create or replace function public.refresh_debt_performance_month_from_daily(
   p_month date,
   p_user uuid
@@ -57,6 +73,7 @@ begin
     from public.monitoring_debt_performance_daily d
     where d.snapshot_date >= normalized_month
       and d.snapshot_date < (normalized_month + interval '1 month')::date
+      and public.debt_performance_is_known_biller(d.petugas)
   )
   select normalized_month,
     upper(petugas),
@@ -72,6 +89,39 @@ end;
 $$;
 
 revoke all on function public.refresh_debt_performance_month_from_daily(date, uuid) from public, anon, authenticated;
+
+-- Remove category rows accidentally read as biller names by the first dashboard upload.
+-- This migration is safe to rerun: it rebuilds only monthly rows backed by daily snapshots.
+do $$
+declare
+  affected_month date;
+  refresh_user uuid;
+begin
+  for affected_month in
+    select distinct date_trunc('month', snapshot_date)::date
+    from public.monitoring_debt_performance_daily
+    where not public.debt_performance_is_known_biller(petugas)
+  loop
+    delete from public.monitoring_debt_performance_monthly where month = affected_month;
+  end loop;
+
+  delete from public.monitoring_debt_performance_daily
+  where not public.debt_performance_is_known_biller(petugas);
+
+  for affected_month in
+    select distinct date_trunc('month', snapshot_date)::date
+    from public.monitoring_debt_performance_daily
+  loop
+    select uploaded_by into refresh_user
+    from public.monitoring_debt_performance_daily
+    where snapshot_date >= affected_month
+      and snapshot_date < (affected_month + interval '1 month')::date
+    order by uploaded_at desc
+    limit 1;
+    perform public.refresh_debt_performance_month_from_daily(affected_month, refresh_user);
+  end loop;
+end;
+$$;
 
 create or replace function public.save_debt_performance_daily_snapshot(
   p_snapshot_date date,
@@ -109,6 +159,7 @@ begin
     where jsonb_typeof(item) <> 'object'
       or length(trim(coalesce(item->>'petugas', ''))) not between 1 and 100
       or trim(item->>'petugas') ~ '[[:cntrl:]]'
+      or not public.debt_performance_is_known_biller(item->>'petugas')
       or coalesce(item->>'saldo_id', '') !~ '^\d{1,12}$'
       or coalesce(item->>'saldo_rupiah', '') !~ '^\d{1,18}$'
   ) then

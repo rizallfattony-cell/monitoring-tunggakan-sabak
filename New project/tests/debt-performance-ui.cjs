@@ -117,13 +117,41 @@ fs.mkdirSync(qa, { recursive: true });
 
     const saveResult = await page.evaluate(async () => {
       const ok = await debtPerformanceController.saveSnapshot('2026-10-31', {
-        petugas: { ADRI: { akhirId: 12, akhirRupiah: 345000 } },
+        petugas: {
+          ADRI: { akhirId: 12, akhirRupiah: 345000 },
+          '<41500-6600': { akhirId: 1, akhirRupiah: 999999 },
+        },
       }, 'saldo-harian.xlsx');
       return { ok, call: window.__dailyRpcCalls.find((item) => item.name === 'save_debt_performance_daily_snapshot') };
     });
     assert.equal(saveResult.ok, true);
     assert.equal(saveResult.call.params.p_rows.length, 17, 'all canonical officers are stored, including zero balance');
     assert.deepEqual(saveResult.call.params.p_rows.find((row) => row.petugas === 'ADRI'), { petugas: 'ADRI', saldo_id: 12, saldo_rupiah: 345000 });
+    assert.equal(saveResult.call.params.p_rows.some((row) => row.petugas === '<41500-6600'), false, 'unknown categories cannot be saved as billers');
+
+    const mappedSnapshot = await page.evaluate(() => {
+      state.dil = [{ idpel: 'DIL-1', petugas: 'EKO DARWANTO', nama: 'Pelanggan DIL' }];
+      const row = (idpel, petugas, rupiah) => ({
+        idpel,
+        petugas,
+        rupiah,
+        lembar: 0,
+        nama: 'Pelanggan uji',
+        tarif: '',
+        daya: '',
+        alamat: '',
+        kolok: '',
+        koked: '',
+      });
+      return buildDailyPelunasanSnapshot([
+        row('DIL-1', '>41500', 200),
+        row('ADRI-1', '14390.adri01', 300),
+        row('OUT-1', '<41500-6600', 999999),
+      ]);
+    });
+    assert.deepEqual(Object.keys(mappedSnapshot.petugas).sort(), ['ADRI', 'EKO DARWANTO']);
+    assert.equal(mappedSnapshot.total.akhirRupiah, 500);
+    assert.equal(mappedSnapshot.ignoredRows, 1, 'category values outside the 17 billers are ignored');
 
     await page.locator('#debtPerformanceLeaderboardBody [data-performance-officer]').first().click();
     await page.waitForFunction(() => !document.getElementById('debtPerformanceOfficerComparison').hidden);

@@ -30,6 +30,24 @@ const LPB_PETUGAS = [
   { username: "14390.herman02", biller: "RAHUL FARISTA R", coordinator: "RIZAL FATONI" },
   { username: "14390.vera01", biller: "NICO DIAN HADINATA", coordinator: "RIZAL FATONI" },
 ];
+
+function petugasLookupKey(value) {
+  return cleanText(value).toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function resolvePerformancePetugas(value) {
+  const key = petugasLookupKey(value);
+  if (!key) return "";
+
+  for (const item of LPB_PETUGAS) {
+    const billerKey = petugasLookupKey(item.biller);
+    const usernameKey = petugasLookupKey(item.username);
+    const shortUsername = usernameKey.replace(/^14390/, "").replace(/\d+$/, "");
+    if (key === billerKey || key === usernameKey || key === shortUsername) return item.biller;
+    if (key.startsWith("14390") && usernameKey.startsWith(key)) return item.biller;
+  }
+  return "";
+}
 const WORK_MOTIVATION_QUOTES = [
   "Kerja yang rapi hari ini membuat masalah besok jauh lebih ringan.",
   "Disiplin kecil yang dilakukan konsisten akan mengalahkan semangat besar yang hanya sesekali.",
@@ -3399,16 +3417,21 @@ function groupSaldoByPetugas(rows, dilMap, label, options = {}) {
     seen.add(row.idpel);
 
     const dil = dilMap.byId.get(row.idpel);
-    const directPetugas = options.allowDirectPetugas ? cleanText(row.petugas).toUpperCase() : "";
-    if (!dil && !directPetugas) {
+    const dilPetugas = options.allowDirectPetugas ? resolvePerformancePetugas(dil?.petugas) : dil?.petugas;
+    const directPetugas = options.allowDirectPetugas ? resolvePerformancePetugas(row.petugas) : "";
+    if (!dilPetugas && !directPetugas) {
+      const sourcePetugas = cleanText(row.petugas);
       anomalies.push({
-        type: `IDPEL ${label} tidak ada di DIL`,
-        message: `IDPEL ${row.idpel} (${row.nama || "tanpa nama"}) tidak dihitung karena file tidak memuat petugas dan IDPEL tidak ada di DIL.`,
+        type: `IDPEL ${label} di luar 17 biller`,
+        ignored: true,
+        message: sourcePetugas
+          ? `IDPEL ${row.idpel} (${row.nama || "tanpa nama"}) diabaikan karena nilai "${sourcePetugas}" bukan nama salah satu dari 17 biller dan IDPEL tidak ada di DIL.`
+          : `IDPEL ${row.idpel} (${row.nama || "tanpa nama"}) diabaikan karena tidak ada di DIL.`,
       });
       continue;
     }
 
-    const petugas = dil?.petugas || directPetugas;
+    const petugas = dilPetugas || directPetugas;
     const current = grouped.get(petugas) || emptySide();
     current.ids.add(row.idpel);
     current.rupiah += row.rupiah;
@@ -5122,7 +5145,10 @@ async function handleDailySaldoUpload(event) {
     syncDailyUndoButton();
     updateProgress(84, "Menyimpan detail laporan harian...");
     await saveDailyPelunasanDraft();
-    finishProgress(`Saldo harian performa ${formatShortDate(date)} tersimpan: ${formatNumber(snapshot.total.akhirId)} IDPEL.`);
+    const ignoredNote = snapshot.ignoredRows
+      ? ` ${formatNumber(snapshot.ignoredRows)} baris di luar 17 biller diabaikan.`
+      : "";
+    finishProgress(`Saldo harian performa ${formatShortDate(date)} tersimpan: ${formatNumber(snapshot.total.akhirId)} IDPEL.${ignoredNote}`);
   } catch (error) {
     failProgress(`Gagal upload saldo harian: ${error.message}`);
     alert(`Gagal upload saldo harian: ${error.message}`);
@@ -5194,6 +5220,7 @@ function buildDailyPelunasanSnapshot(rows) {
     uploadedAt: new Date().toISOString(),
     petugas,
     total: { akhirId, akhirRupiah },
+    ignoredRows: grouped.anomalies.filter((item) => item.ignored).length,
   };
 }
 

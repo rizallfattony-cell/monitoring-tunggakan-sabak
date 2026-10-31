@@ -182,11 +182,13 @@
   }
 
   function buildLeaderboard(rows, month, officerNames = []) {
-    const normalized = normalizeDailyRows(rows);
-    const names = [...new Set([
-      ...officerNames,
-      ...normalized.map((row) => row.petugas),
-    ].map((name) => String(name || "").trim().toUpperCase()).filter(Boolean))];
+    const declaredNames = [...new Set(officerNames
+      .map((name) => String(name || "").trim().toUpperCase())
+      .filter(Boolean))];
+    const declaredSet = new Set(declaredNames);
+    const normalized = normalizeDailyRows(rows)
+      .filter((row) => !declaredSet.size || declaredSet.has(row.petugas));
+    const names = declaredNames.length ? declaredNames : [...new Set(normalized.map((row) => row.petugas))];
     return names.map((petugas) => {
       const series = buildMonthSeries(normalized, month, petugas);
       return {
@@ -232,7 +234,16 @@
     const magnitude = 10 ** Math.floor(Math.log10(maximumValue));
     const step = Math.max(1, magnitude / (maximumValue / magnitude < 2 ? 2 : 1));
     const maximum = Math.ceil(maximumValue / step) * step;
-    const x = (day) => margin.left + (innerWidth * (day - 1)) / 30;
+    const uploadedDays = [...new Set([
+      ...(primary?.available || []),
+      ...(comparison?.available || []),
+    ].map((row) => row.day))].sort((a, b) => a - b);
+    const x = (day) => {
+      const index = Math.max(0, uploadedDays.indexOf(day));
+      return uploadedDays.length === 1
+        ? margin.left + innerWidth / 2
+        : margin.left + (innerWidth * index) / (uploadedDays.length - 1);
+    };
     const y = (value) => margin.top + innerHeight - (Math.max(0, number(value)) / maximum) * innerHeight;
     const ticks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => maximum * ratio);
     const grid = ticks.map((tick) => {
@@ -254,12 +265,12 @@
       return `${lines}${points}`;
     }
 
-    const dayLabels = [1, 5, 10, 15, 20, 25, 31].map((day) => `<text x="${x(day)}" y="${height - 16}" fill="#607481" font-size="10" text-anchor="middle">${day}</text>`).join("");
+    const dayLabels = uploadedDays.map((day) => `<text x="${x(day)}" y="${height - 16}" fill="#607481" font-size="10" text-anchor="middle">${day}</text>`).join("");
     return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
       ${grid}
       <line x1="${margin.left}" y1="${margin.top + innerHeight}" x2="${width - margin.right}" y2="${margin.top + innerHeight}" stroke="#aebdc6" stroke-width="1" />
       ${seriesSvg(comparison, "#d99100")}${seriesSvg(primary, "#087e8b")}${dayLabels}
-      <text x="${width / 2}" y="${height - 1}" fill="#7a8d99" font-size="10" text-anchor="middle">Tanggal</text>
+      <text x="${width / 2}" y="${height - 1}" fill="#7a8d99" font-size="10" text-anchor="middle">Tanggal upload</text>
     </svg>`;
   }
 
@@ -588,9 +599,12 @@
         elements.chart.innerHTML = `<div class="performance-empty">${escapeHtml(message)}</div>`;
         return null;
       }
-      const primaryRows = normalizeDailyRows(primaryResponse?.data);
-      const compareRows = normalizeDailyRows(compareResponse?.data);
-      populateOfficers([...primaryRows, ...compareRows].map((row) => row.petugas));
+      populateOfficers();
+      const allowedOfficers = new Set(officerNames);
+      const primaryRows = normalizeDailyRows(primaryResponse?.data)
+        .filter((row) => !allowedOfficers.size || allowedOfficers.has(row.petugas));
+      const compareRows = normalizeDailyRows(compareResponse?.data)
+        .filter((row) => !allowedOfficers.size || allowedOfficers.has(row.petugas));
       const effectiveScope = selectedScope(context);
       const primary = buildMonthSeries(primaryRows, primaryMonth, effectiveScope);
       const comparison = buildMonthSeries(compareRows, compareMonth, effectiveScope);
@@ -625,10 +639,12 @@
       if (!context.client || !context.user || !context.isAdmin) return false;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ""))) return false;
       const snapshotRows = snapshot?.petugas && typeof snapshot.petugas === "object" ? snapshot.petugas : {};
-      const names = [...new Set([
-        ...getOfficerNames(),
-        ...Object.keys(snapshotRows),
-      ].map((name) => String(name || "").trim().toUpperCase()).filter(Boolean))];
+      const configuredNames = [...new Set(getOfficerNames()
+        .map((name) => String(name || "").trim().toUpperCase())
+        .filter(Boolean))];
+      const names = configuredNames.length
+        ? configuredNames
+        : [...new Set(Object.keys(snapshotRows).map((name) => String(name || "").trim().toUpperCase()).filter(Boolean))];
       if (!names.length) return false;
       const rows = names.map((petugas) => ({
         petugas,

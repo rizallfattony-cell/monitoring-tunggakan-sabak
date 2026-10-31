@@ -37,7 +37,7 @@ if (-not (Test-Path -LiteralPath $repo) -and (Test-Path -LiteralPath (Join-Path 
     $repo = Split-Path -Parent $source
 }
 $apk = Join-Path $source "SIMONTOK-v$ReleaseVersion.apk"
-$webMarker = if ($ReleaseVersion -eq '1.7.5') { '20261031-daily-performance-v2' } else { '20261025-receipt-history-v174' }
+$webMarker = if ($ReleaseVersion -eq '1.7.5') { '20261031-daily-performance-v3' } else { '20261025-receipt-history-v174' }
 $temporaryApk = Join-Path ([IO.Path]::GetTempPath()) ('simontok-174-' + [guid]::NewGuid().ToString() + '.apk')
 if (-not (Test-Path -LiteralPath $apk)) { throw "APK $ReleaseVersion belum tersedia." }
 if (-not $ConnectionsFile) {

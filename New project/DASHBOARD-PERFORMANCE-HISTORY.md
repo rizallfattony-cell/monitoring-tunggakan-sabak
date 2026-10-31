@@ -12,10 +12,12 @@ enam, atau dua belas bulan.
 
 - Admin memilih tanggal data sebelum mengunggah file tunggakan harian.
 - Upload ulang pada tanggal yang sama mengganti snapshot tanggal itu, bukan menggandakan data.
+- Snapshot hanya menerima 17 biller resmi. Kolom `PETUGAS`/`BILLER` dipakai bila cocok dengan biller atau username resmi; selain itu sistem memakai DIL. Kategori Excel seperti `<41500-6600` tidak akan menjadi petugas.
 - Saldo awal bulan memakai tanggal upload paling awal; saldo terbaru memakai tanggal upload terakhir.
 - Ringkasan bulanan diperbarui otomatis dari snapshot harian paling awal dan terakhir.
 - Pencapaian keseluruhan dihitung dari total rupiah, bukan rata-rata persentase 17 petugas.
 - Tanggal atau bulan yang belum diunggah ditampilkan sebagai data kosong, bukan nol.
+- Grafik menampilkan label pada setiap tanggal yang benar-benar diunggah, sehingga tidak membuat tanggal tanpa upload seolah-olah ada data.
 - Admin dapat melihat seluruh petugas. Akun petugas hanya dapat membaca namanya sendiri.
 - Tabel dashboard menyimpan agregat IDPEL dan rupiah per petugas, bukan daftar pelanggan.
 - Rupiah tunggakan mengikuti parser laporan, yaitu `RPTAG + RPBK`.

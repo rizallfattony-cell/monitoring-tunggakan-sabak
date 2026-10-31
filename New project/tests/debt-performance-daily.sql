@@ -40,6 +40,10 @@ begin
     perform public.save_debt_performance_daily_snapshot(first_date, 'duplicate.xlsx', '[{"petugas":"ADRI","saldo_id":1,"saldo_rupiah":1},{"petugas":"adri","saldo_id":1,"saldo_rupiah":1}]'::jsonb);
     raise exception 'FAIL: duplicate officer accepted';
   exception when raise_exception then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  begin
+    perform public.save_debt_performance_daily_snapshot(first_date, 'kategori.xlsx', '[{"petugas":"<41500-6600","saldo_id":1,"saldo_rupiah":1}]'::jsonb);
+    raise exception 'FAIL: non-biller category accepted';
+  exception when raise_exception then if sqlerrm like 'FAIL:%' then raise; end if; end;
 end $$;
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
