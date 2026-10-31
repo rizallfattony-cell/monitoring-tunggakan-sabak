@@ -11,3 +11,4 @@ do $$ begin
 end $$;
 \ir supabase-schema-step-22-premium-device-activation.sql
 \ir supabase-schema-step-23-debt-performance-history.sql
+\ir supabase-schema-step-24-daily-debt-performance.sql

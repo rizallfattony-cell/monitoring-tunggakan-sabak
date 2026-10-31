@@ -1,22 +1,29 @@
-# Riwayat Performa Tunggakan Dashboard
+# Dashboard Performa Tunggakan Harian
 
-Dashboard menyimpan agregat Saldo Awal dan Saldo Akhir per petugas untuk setiap bulan.
-Riwayat dapat dilihat untuk keseluruhan petugas atau satu petugas dengan rentang satu,
-tiga, empat, enam, atau dua belas bulan.
+Dashboard mengambil data dari menu **Upload Saldo Harian**. File Excel tunggakan yang
+diunggah pada menu ini hanya memperbarui dashboard performa dan tidak mempublikasikan
+data tunggakan ke aplikasi petugas.
+
+Dashboard menyediakan tampilan keseluruhan unit dan detail per petugas, perbandingan
+dua bulan, grafik saldo harian, leaderboard 17 petugas, serta riwayat satu, tiga, empat,
+enam, atau dua belas bulan.
 
 ## Aturan Data
 
-- Snapshot bulan ditentukan dari waktu upload Saldo Akhir dalam zona Asia/Jakarta.
-- Upload ulang pada bulan yang sama memperbarui snapshot bulan itu, bukan menggandakan data.
+- Admin memilih tanggal data sebelum mengunggah file tunggakan harian.
+- Upload ulang pada tanggal yang sama mengganti snapshot tanggal itu, bukan menggandakan data.
+- Saldo awal bulan memakai tanggal upload paling awal; saldo terbaru memakai tanggal upload terakhir.
+- Ringkasan bulanan diperbarui otomatis dari snapshot harian paling awal dan terakhir.
 - Pencapaian keseluruhan dihitung dari total rupiah, bukan rata-rata persentase 17 petugas.
-- Bulan yang belum pernah dipublikasikan ditampilkan sebagai `Belum ada snapshot`, bukan nol.
+- Tanggal atau bulan yang belum diunggah ditampilkan sebagai data kosong, bukan nol.
 - Admin dapat melihat seluruh petugas. Akun petugas hanya dapat membaca namanya sendiri.
-- Tabel menyimpan agregat bulanan, bukan daftar pelanggan, sehingga tidak menggandakan database tunggakan.
+- Tabel dashboard menyimpan agregat IDPEL dan rupiah per petugas, bukan daftar pelanggan.
+- Rupiah tunggakan mengikuti parser laporan, yaitu `RPTAG + RPBK`.
 
 ## Aktivasi
 
-Migrasi berada di `supabase-schema-step-23-debt-performance-history.sql` dan sudah dimasukkan
-ke persiapan rilis 1.7.5. Jalankan dari folder workspace:
+Migrasi harian berada di `supabase-schema-step-24-daily-debt-performance.sql` dan sudah
+dimasukkan ke persiapan rilis 1.7.5. Jalankan dari folder workspace:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
@@ -24,11 +31,12 @@ Set-ExecutionPolicy -Scope Process Bypass
 ```
 
 Script meminta password database secara tersembunyi, menerapkan migrasi, mengunggah web dan APK,
-memastikan marker web serta hash APK benar, lalu mengaktifkan rilis. Sesudah aktif, upload Saldo Akhir
-atau klik Simpan ke Online untuk merekam snapshot bulan berjalan.
+memastikan marker web serta hash APK benar, lalu mengaktifkan rilis. Sesudah aktif, buka menu
+**Tunggakan > Upload Saldo Harian**, pilih tanggal, kemudian upload file Excel tunggakan.
 
 ## Verifikasi
 
-- PostgreSQL: upsert bulanan, agregasi tertimbang, rentang, bulan kosong, RLS dan pembatasan role.
-- JavaScript: normalisasi data, ringkasan, grafik, dan penentuan bulan WIB.
-- Chrome headless: 17 pilihan petugas, rentang 1/3/4/6/12 bulan, desktop dan mobile tanpa overflow halaman.
+- PostgreSQL: replace per tanggal, pembaruan ringkasan bulanan, penghapusan, RLS dan pembatasan role.
+- JavaScript: agregasi unit, persentase tertimbang, leaderboard, grafik harian dan bulan WIB.
+- Chrome headless: mode unit/petugas, dua bulan pembanding, 17 petugas, riwayat 1/3/4/6/12 bulan,
+  desktop dan mobile tanpa overflow halaman.

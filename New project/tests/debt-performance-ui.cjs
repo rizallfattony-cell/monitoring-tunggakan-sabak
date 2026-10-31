@@ -5,31 +5,9 @@ const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 
 const root = path.resolve(__dirname, '..');
-const qa = path.resolve(process.env.DEBT_PERFORMANCE_QA || path.join(root, '..', '..', 'qa-debt-performance-history'));
+const qa = path.resolve(process.env.DEBT_PERFORMANCE_QA || path.join(root, '..', '..', 'qa-debt-performance-daily'));
 const assets = path.resolve(root, '..', '..', 'qa-receipt-history-1.7.4');
 fs.mkdirSync(qa, { recursive: true });
-
-function historyRows(months, scope) {
-  const source = [
-    ['2025-11-01', 51], ['2025-12-01', 55], ['2026-01-01', 57], ['2026-02-01', 60],
-    ['2026-03-01', 62], ['2026-04-01', 65], ['2026-05-01', 67], ['2026-06-01', 71],
-    ['2026-07-01', 73], ['2026-08-01', 76], ['2026-09-01', 80], ['2026-10-01', 84],
-  ];
-  return source.slice(-months).map(([month, percent], index) => ({
-    month,
-    available: !(months === 12 && index === 2),
-    officer_count: scope ? 1 : 17,
-    awal_id: scope ? 500 : 18592,
-    awal_rupiah: scope ? 120000000 : 5715012524,
-    akhir_id: scope ? Math.round(500 * (1 - percent / 100)) : Math.round(18592 * (1 - percent / 100)),
-    akhir_rupiah: scope ? Math.round(120000000 * (1 - percent / 100)) : Math.round(5715012524 * (1 - percent / 100)),
-    pelunasan_id: scope ? Math.round(500 * percent / 100) : Math.round(18592 * percent / 100),
-    pelunasan_rupiah: scope ? Math.round(120000000 * percent / 100) : Math.round(5715012524 * percent / 100),
-    persen_id: percent,
-    persen_tagihan: percent,
-    captured_at: '2026-10-31T07:30:00Z',
-  }));
-}
 
 (async () => {
   const server = http.createServer((req, res) => {
@@ -45,7 +23,7 @@ function historyRows(months, scope) {
   let browser;
   try {
     browser = await chromium.launch({ channel: 'chrome', headless: true });
-    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.route('**/*', async (route) => {
@@ -65,52 +43,107 @@ function historyRows(months, scope) {
     await page.goto(`http://127.0.0.1:${server.address().port}`);
     await page.waitForFunction(() => window.__dashboardReady);
     await page.evaluate(() => {
+      const officers = LPB_PETUGAS.map((item) => item.biller);
+      const daily = [];
+      const makeMonth = (month, lastDay, multiplier) => {
+        [1, 10, 20, lastDay].forEach((day, dateIndex) => officers.forEach((petugas, officerIndex) => {
+          const opening = 120000000 - (officerIndex * 2100000);
+          const balance = Math.max(0, opening - (opening * (0.12 + dateIndex * 0.18) * multiplier));
+          daily.push({
+            snapshot_date: `${month}-${String(day).padStart(2, '0')}`,
+            petugas,
+            saldo_id: Math.max(0, 520 - officerIndex * 12 - dateIndex * 70),
+            saldo_rupiah: Math.round(balance),
+            source_file: `saldo-${month}-${day}.xlsx`,
+            uploaded_at: `${month}-${String(day).padStart(2, '0')}T02:00:00Z`,
+          });
+        }));
+      };
+      makeMonth('2026-10', 31, 1);
+      makeMonth('2026-09', 30, 0.82);
+      window.__dailyRpcCalls = [];
+
       state.user = { id: 'admin-test' };
       state.profile = { role: 'admin', petugas: 'ADMIN' };
-      state.report = LPB_PETUGAS.map((item) => ({ petugas: item.biller }));
-      state.supabaseClient = { rpc: async (name, params) => {
-        if (name !== 'get_debt_performance_history') return { data: {}, error: null };
-        const rows = window.__historyRows(params.p_months, params.p_petugas);
-        return { data: {
-          scope: params.p_petugas || 'ALL', is_admin: true, end_month: params.p_end_month,
-          months: params.p_months, officers: LPB_PETUGAS.map((item) => item.biller), rows,
-        }, error: null };
-      }};
+      state.report = officers.map((petugas) => ({ petugas }));
+      state.supabaseClient = {
+        from: () => {
+          let start = '';
+          let end = '';
+          const query = {
+            select: () => query,
+            gte: (_column, value) => { start = value; return query; },
+            lte: (_column, value) => { end = value; return query; },
+            order: async () => ({ data: daily.filter((row) => row.snapshot_date >= start && row.snapshot_date <= end), error: null }),
+          };
+          return query;
+        },
+        rpc: async (name, params) => {
+          if (name === 'save_debt_performance_daily_snapshot' || name === 'delete_debt_performance_daily_snapshot') {
+            window.__dailyRpcCalls.push({ name, params });
+            return { data: { ok: true }, error: null };
+          }
+          if (name !== 'get_debt_performance_history') return { data: {}, error: null };
+          const end = params.p_end_month.slice(0, 7);
+          const rows = Array.from({ length: params.p_months }, (_, index) => {
+            const date = new Date(`${end}-01T00:00:00Z`);
+            date.setUTCMonth(date.getUTCMonth() - (params.p_months - index - 1));
+            const month = date.toISOString().slice(0, 7);
+            const available = index > 0 || params.p_months < 12;
+            const percent = 48 + index * 4;
+            return { month: `${month}-01`, available, awal_rupiah: 1600000000, akhir_rupiah: Math.round(1600000000 * (1 - percent / 100)), akhir_id: 4525, pelunasan_rupiah: Math.round(1600000000 * percent / 100), persen_tagihan: percent };
+          });
+          return { data: { scope: params.p_petugas || 'ALL', rows }, error: null };
+        },
+      };
+      document.getElementById('debtPerformancePrimaryMonth').value = '2026-10';
+      document.getElementById('debtPerformanceCompareMonth').value = '2026-09';
       document.getElementById('authGate').hidden = true;
       document.getElementById('appShell').hidden = false;
+      debtPerformanceController.syncContext();
+      debtPerformanceController.load();
     });
-    await page.exposeFunction('__historyRowsNode', historyRows);
-    await page.evaluate(() => { window.__historyRows = (months, scope) => {
-      const source = [
-        ['2025-11-01',51],['2025-12-01',55],['2026-01-01',57],['2026-02-01',60],['2026-03-01',62],['2026-04-01',65],
-        ['2026-05-01',67],['2026-06-01',71],['2026-07-01',73],['2026-08-01',76],['2026-09-01',80],['2026-10-01',84],
-      ];
-      return source.slice(-months).map(([month, percent], index) => ({ month, available: !(months === 12 && index === 2), officer_count: scope ? 1 : 17,
-        awal_id: scope ? 500 : 18592, awal_rupiah: scope ? 120000000 : 5715012524,
-        akhir_id: Math.round((scope ? 500 : 18592) * (1-percent/100)), akhir_rupiah: Math.round((scope ? 120000000 : 5715012524) * (1-percent/100)),
-        pelunasan_id: Math.round((scope ? 500 : 18592) * percent/100), pelunasan_rupiah: Math.round((scope ? 120000000 : 5715012524) * percent/100),
-        persen_id: percent, persen_tagihan: percent, captured_at: '2026-10-31T07:30:00Z' }));
-    }; debtPerformanceController.syncContext(); debtPerformanceController.load(); });
-    await page.waitForFunction(() => document.querySelectorAll('#debtPerformanceTableBody tr').length === 6);
-    assert.equal(await page.locator('#debtPerformanceScope option').count(), 18);
-    assert.equal(await page.locator('#debtPerformanceLatest').innerText(), '84%');
+
+    await page.waitForFunction(() => document.querySelectorAll('#debtPerformanceLeaderboardBody tr').length === 17);
+    assert.equal(await page.locator('#debtPerformanceScope option').count(), 17);
+    assert.equal(await page.locator('#debtPerformanceScopeWrap').isHidden(), true);
     assert.equal(await page.locator('#debtPerformanceChart svg').count(), 1);
-    assert.ok(await page.locator('#debtPerformanceChart circle').count() >= 5);
-    assert.equal(await page.locator('#debtPerformanceChart').evaluate((node) => node.getBoundingClientRect().height > 250), true);
+    assert.equal(await page.locator('#debtPerformanceChart polyline').count(), 2);
+    assert.ok(await page.locator('#debtPerformanceChart circle').count() >= 8);
+    assert.match(await page.locator('#debtPerformanceStatus').innerText(), /4 tanggal/);
+    assert.match(await page.locator('#debtPerformanceOpening').innerText(), /Rp/);
+    assert.equal(await page.locator('#debtPerformanceLeaderboardBody tr').count(), 17);
+    assert.equal(await page.locator('button[data-tab="pelunasan-harian"]', { hasText: 'Upload Saldo Harian' }).count(), 1);
+
+    const saveResult = await page.evaluate(async () => {
+      const ok = await debtPerformanceController.saveSnapshot('2026-10-31', {
+        petugas: { ADRI: { akhirId: 12, akhirRupiah: 345000 } },
+      }, 'saldo-harian.xlsx');
+      return { ok, call: window.__dailyRpcCalls.find((item) => item.name === 'save_debt_performance_daily_snapshot') };
+    });
+    assert.equal(saveResult.ok, true);
+    assert.equal(saveResult.call.params.p_rows.length, 17, 'all canonical officers are stored, including zero balance');
+    assert.deepEqual(saveResult.call.params.p_rows.find((row) => row.petugas === 'ADRI'), { petugas: 'ADRI', saldo_id: 12, saldo_rupiah: 345000 });
+
+    await page.locator('#debtPerformanceLeaderboardBody [data-performance-officer]').first().click();
+    await page.waitForFunction(() => !document.getElementById('debtPerformanceOfficerComparison').hidden);
+    assert.equal(await page.locator('#debtPerformanceOfficerBody tr').count(), 2);
+    assert.match(await page.locator('#debtPerformanceChartTitle').innerText(), /Tren Saldo Harian/);
+
     await page.locator('[data-debt-months="12"]').click();
-    await page.waitForFunction(() => document.querySelectorAll('#debtPerformanceTableBody tr').length === 12);
-    assert.match(await page.locator('#debtPerformanceStatus').innerText(), /11 dari 12 bulan/);
-    await page.locator('#debtPerformanceScope').selectOption('ADRI');
-    await page.waitForFunction(() => document.querySelector('#debtPerformanceScopeLabel').textContent === 'ADRI');
+    await page.waitForFunction(() => document.querySelectorAll('#debtPerformanceHistoryBody tr').length === 12);
+    assert.equal(await page.locator('#debtPerformanceHistoryChart svg').count(), 1);
+
+    await page.locator('[data-performance-view="unit"]').click();
     await page.locator('#debtPerformancePanel').scrollIntoViewIfNeeded();
-    await page.screenshot({ path: path.join(qa, 'dashboard-history-desktop.png'), fullPage: true });
+    await page.screenshot({ path: path.join(qa, 'dashboard-performance-desktop.png'), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.evaluate(() => initializeMainMenu());
     await page.locator('#debtPerformancePanel').scrollIntoViewIfNeeded();
-    await page.screenshot({ path: path.join(qa, 'dashboard-history-mobile.png'), fullPage: true });
+    await page.screenshot({ path: path.join(qa, 'dashboard-performance-mobile.png'), fullPage: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'No full-page horizontal overflow on mobile');
     assert.deepEqual(errors, []);
-    console.log('PASS dashboard history UI: ranges, 17 officers, chart, missing month, desktop and mobile layout');
+    console.log('PASS daily performance dashboard UI: unit, officer, comparison, history and responsive layout');
   } finally {
     if (browser) await browser.close();
     await new Promise((resolve) => server.close(resolve));

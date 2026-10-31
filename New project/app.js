@@ -286,10 +286,7 @@ const els = {
 const receiptHistoryController = window.SimontokReceiptHistory.create({ getState: () => state });
 const debtPerformanceController = window.SimontokDebtPerformance.create({
   getState: () => state,
-  getOfficerNames: () => [
-    ...LPB_PETUGAS.map((row) => row.biller),
-    ...state.report.map((row) => row.petugas),
-  ],
+  getOfficerNames: () => LPB_PETUGAS.map((row) => row.biller),
 });
 boot();
 
@@ -563,7 +560,7 @@ function tabTitle(tabName) {
     overview: "Dashboard",
     upload: "Upload Data",
     laporan: "Laporan",
-    "pelunasan-harian": "Pelunasan Harian",
+    "pelunasan-harian": "Upload Saldo Harian",
     comparison: "Perbandingan Saldo Dengan Bulan Lalu",
     lpb: "Monitoring LPB",
     "saldo-rata": "Saldo Akhir Rata Rata",
@@ -1968,10 +1965,6 @@ async function saveCloudData(options = {}) {
     await publishReceiptMeters();
   }
 
-  if (!options.skipPublish) {
-    await debtPerformanceController.capture({ silent: true });
-  }
-
   const savedMessage = stateSaveError
     ? `Data aplikasi berhasil dipublish, tapi ringkasan online gagal: ${describeSupabaseError(stateSaveError)}`
     : `Data online tersimpan: ${formatDateTime(new Date().toISOString())}.`;
@@ -2723,6 +2716,7 @@ function normalizeSaldo(rows) {
         lembar: parseCurrency(getValue(row, ["LEMBAR", "LBR", "JML LEMBAR"], ["LEMBAR"])),
         kolok: cleanText(getValue(row, ["KOLOK", "KOL OK", "KODE LOKASI"])),
         koked: cleanText(getValue(row, ["KOKED", "KO KED", "KODE KEDUDUKAN"])),
+        petugas: cleanText(getValue(row, ["PETUGAS", "BILLER", "NAMA PETUGAS"], ["PETUGAS", "BILLER"])).toUpperCase(),
         rptag,
         rpbk,
         rupiah: rptag + rpbk,
@@ -3394,7 +3388,7 @@ function buildDilMap(rows) {
   return { byId, petugasNames, anomalies };
 }
 
-function groupSaldoByPetugas(rows, dilMap, label) {
+function groupSaldoByPetugas(rows, dilMap, label, options = {}) {
   const grouped = new Map();
   const seen = new Set();
   const duplicates = new Set();
@@ -3405,15 +3399,16 @@ function groupSaldoByPetugas(rows, dilMap, label) {
     seen.add(row.idpel);
 
     const dil = dilMap.byId.get(row.idpel);
-    if (!dil) {
+    const directPetugas = options.allowDirectPetugas ? cleanText(row.petugas).toUpperCase() : "";
+    if (!dil && !directPetugas) {
       anomalies.push({
         type: `IDPEL ${label} tidak ada di DIL`,
-        message: `IDPEL ${row.idpel} (${row.nama || "tanpa nama"}) tidak dihitung di tabel karena tidak ada di DIL.`,
+        message: `IDPEL ${row.idpel} (${row.nama || "tanpa nama"}) tidak dihitung karena file tidak memuat petugas dan IDPEL tidak ada di DIL.`,
       });
       continue;
     }
 
-    const petugas = dil.petugas;
+    const petugas = dil?.petugas || directPetugas;
     const current = grouped.get(petugas) || emptySide();
     current.ids.add(row.idpel);
     current.rupiah += row.rupiah;
@@ -3425,13 +3420,13 @@ function groupSaldoByPetugas(rows, dilMap, label) {
     } else {
       current.rowMap.set(row.idpel, {
         idpel: row.idpel,
-        nama: row.nama || dil.nama,
+        nama: row.nama || dil?.nama || "",
         tarif: row.tarif,
         daya: row.daya,
         alamat: row.alamat,
         lembar: row.lembar,
-        kolok: dil.kolok,
-        koked: dil.koked,
+        kolok: dil?.kolok || row.kolok || "",
+        koked: dil?.koked || row.koked || "",
         rptag: row.rupiah,
         petugas,
       });
@@ -5105,19 +5100,29 @@ async function handleDailySaldoUpload(event) {
     const rows = await readWorkbook(file, (percent) => {
       updateProgress(percent * 0.35, `Membaca file ${file.name}...`);
     });
-    updateProgress(44, "Memproses saldo akhir harian...");
+    updateProgress(44, "Memproses file tunggakan harian...");
     await yieldUi();
     const normalizedRows = normalizeSaldo(rows);
+    if (!normalizedRows.length) {
+      throw new Error("File tidak berisi kolom IDPEL dan RPTAG yang dapat dibaca.");
+    }
     const snapshot = buildDailyPelunasanSnapshot(normalizedRows);
+    if (!Object.keys(snapshot.petugas).length) {
+      throw new Error("Petugas tidak dapat dipetakan. Upload DIL terlebih dahulu atau gunakan file yang memiliki kolom PETUGAS/BILLER.");
+    }
+    updateProgress(62, "Menyiapkan snapshot saldo harian...");
+    updateProgress(72, "Menyimpan saldo harian khusus dashboard...");
+    const dashboardSaved = await debtPerformanceController.saveSnapshot(date, snapshot, file.name);
+    if (!dashboardSaved) {
+      throw new Error("Database dashboard belum berhasil diperbarui. Pastikan migrasi saldo harian sudah diterapkan lalu upload ulang tanggal ini.");
+    }
     state.dailyPelunasan.snapshots[date] = snapshot;
-    updateProgress(68, "Menyimpan snapshot harian...");
-    await saveStoredData();
     renderDailyDateOptions();
     renderDailyPelunasanTable();
     syncDailyUndoButton();
-    updateProgress(78, "Sinkronisasi online otomatis...");
+    updateProgress(84, "Menyimpan detail laporan harian...");
     await saveDailyPelunasanDraft();
-    finishProgress(`Saldo akhir harian ${formatShortDate(date)} tersimpan: ${formatNumber(snapshot.total.akhirId)} IDPEL.`);
+    finishProgress(`Saldo harian performa ${formatShortDate(date)} tersimpan: ${formatNumber(snapshot.total.akhirId)} IDPEL.`);
   } catch (error) {
     failProgress(`Gagal upload saldo harian: ${error.message}`);
     alert(`Gagal upload saldo harian: ${error.message}`);
@@ -5135,6 +5140,12 @@ async function undoDailyPelunasanUpload() {
   if (!confirmed) return;
 
   startProgress("Undo Upload Harian", `Menghapus data tanggal ${label}...`);
+  updateProgress(30, "Menghapus snapshot dashboard...");
+  const dashboardDeleted = await debtPerformanceController.deleteSnapshot(date);
+  if (!dashboardDeleted) {
+    failProgress("Snapshot dashboard gagal dihapus. Data lokal tidak diubah.");
+    return;
+  }
   delete state.dailyPelunasan.snapshots[date];
   updateProgress(50, "Menyimpan hasil undo...");
   await saveStoredData();
@@ -5160,7 +5171,7 @@ function syncDailyUndoButton() {
 
 function buildDailyPelunasanSnapshot(rows) {
   const dilMap = buildDilMap(state.dil);
-  const grouped = groupSaldoByPetugas(rows, dilMap, "saldo akhir harian");
+  const grouped = groupSaldoByPetugas(rows, dilMap, "saldo harian performa", { allowDirectPetugas: true });
   const petugas = {};
   let akhirId = 0;
   let akhirRupiah = 0;
@@ -5216,8 +5227,8 @@ function renderDailyPelunasanTable() {
 
   const rows = calculateDailyPelunasanRows(days);
   if (!rows.length) {
-    els.dailyTableBody.innerHTML = `<tr><td class="empty-state" colspan="${4 + (days.length * 2)}">Belum ada data. Upload DIL dan Saldo Awal terlebih dahulu.</td></tr>`;
-    setDailyStatus("Upload DIL dan Saldo Awal untuk menampilkan baseline pelunasan harian.");
+    els.dailyTableBody.innerHTML = `<tr><td class="empty-state" colspan="${4 + (days.length * 2)}">Belum ada data. Upload file tunggakan harian pertama.</td></tr>`;
+    setDailyStatus("Upload file tunggakan harian pertama untuk membuat baseline bulan ini.");
     return;
   }
 
@@ -5239,8 +5250,8 @@ function renderDailyPelunasanTable() {
     </tr>
   `;
   setDailyStatus(uploadedDates.length
-    ? `Snapshot tersimpan: ${uploadedDates.map((date) => Number(date.slice(-2))).join(", ")}. Upload ulang tanggal yang sama akan menimpa data lama.`
-    : "Pilih tanggal lalu upload saldo akhir harian. Upload ulang tanggal yang sama akan menimpa data sebelumnya.");
+    ? `Snapshot dashboard tersimpan pada tanggal: ${uploadedDates.map((date) => Number(date.slice(-2))).join(", ")}. Upload ulang tanggal yang sama akan mengganti data lama.`
+    : "Pilih tanggal lalu upload file tunggakan harian. Upload ulang tanggal yang sama akan mengganti snapshot dashboard.");
 }
 
 function calculateDailyPelunasanTotals(rows, days) {
@@ -5303,18 +5314,17 @@ function calculateDailyPelunasanRows(days) {
 }
 
 function buildDailyPelunasanBaseline() {
-  const dilMap = buildDilMap(state.dil);
-  const grouped = groupSaldoByPetugas(state.awal, dilMap, "saldo awal");
   const baseline = new Map();
-  for (const [petugas, group] of grouped.entries()) {
+  const month = normalizeMonthKey(state.dailyPelunasan.selectedMonth);
+  const firstDate = Object.keys(state.dailyPelunasan.snapshots || {})
+    .filter((date) => date.startsWith(`${month}-`))
+    .sort()[0];
+  const firstSnapshot = firstDate ? state.dailyPelunasan.snapshots[firstDate] : null;
+  for (const [petugas, group] of Object.entries(firstSnapshot?.petugas || {})) {
     baseline.set(petugas, {
-      akhirId: group.count,
-      akhirRupiah: group.rupiah,
-      customers: Object.fromEntries([...group.rowMap.entries()].map(([idpel, row]) => [idpel, {
-        idpel,
-        nama: row.nama || "",
-        rptag: row.rptag || 0,
-      }])),
+      akhirId: Number(group.akhirId || 0),
+      akhirRupiah: Number(group.akhirRupiah || 0),
+      customers: group.customers || {},
     });
   }
   return baseline;

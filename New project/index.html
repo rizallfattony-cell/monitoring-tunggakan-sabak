@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="./invoice.css?v=20261024-invoice-tractor-v7" />
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
     <link rel="stylesheet" href="./receipt-history.css?v=174" />
-    <link rel="stylesheet" href="./debt-performance.css?v=20261031-history-v1" />
+    <link rel="stylesheet" href="./debt-performance.css?v=20261031-daily-performance-v2" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -93,7 +93,7 @@
                 <button class="tree-child" type="button" data-tab="laporan">Monitoring Saldo Tunggakan</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="comparison">Perbandingan Saldo Dengan Bulan Lalu</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="saldo-rata">Laporan Saldo Akhir Rata-rata</button>
-                <button class="tree-child admin-only-menu" type="button" data-tab="pelunasan-harian">Pelunasan Harian</button>
+                <button class="tree-child admin-only-menu" type="button" data-tab="pelunasan-harian">Upload Saldo Harian</button>
               </div>
             </section>
 
@@ -212,59 +212,112 @@
                   </aside>
                 </div>
 
-                <section class="overview-history" id="debtPerformancePanel" aria-labelledby="debtPerformanceTitle">
-                  <header class="overview-history-head">
+                <section class="performance-dashboard" id="debtPerformancePanel" aria-labelledby="debtPerformanceTitle">
+                  <header class="performance-head">
                     <div>
-                      <span class="overview-eyebrow">Riwayat Bulanan</span>
-                      <h2 id="debtPerformanceTitle">Performa Tunggakan</h2>
-                      <p id="debtPerformanceStatus">Memuat riwayat performa...</p>
+                      <span class="overview-eyebrow">Evaluasi Lapangan</span>
+                      <h2 id="debtPerformanceTitle">Kinerja &amp; Performa Tunggakan</h2>
+                      <p id="debtPerformanceStatus">Memuat saldo harian performa...</p>
                     </div>
-                    <div class="overview-history-controls">
-                      <label id="debtPerformanceScopeWrap">
-                        <span>Petugas</span>
-                        <select id="debtPerformanceScope">
-                          <option value="">Keseluruhan</option>
-                        </select>
+                    <div class="performance-view-tabs" role="tablist" aria-label="Tampilan performa">
+                      <button class="is-active" type="button" data-performance-view="unit" role="tab" aria-selected="true">
+                        <i data-lucide="building-2" aria-hidden="true"></i><span>Performa Unit</span>
+                      </button>
+                      <button type="button" data-performance-view="officer" role="tab" aria-selected="false">
+                        <i data-lucide="user-round" aria-hidden="true"></i><span>Per Petugas</span>
+                      </button>
+                    </div>
+                  </header>
+
+                  <div class="performance-filters">
+                    <label>
+                      <span>Bulan utama</span>
+                      <input id="debtPerformancePrimaryMonth" type="month" />
+                    </label>
+                    <label>
+                      <span>Bulan pembanding</span>
+                      <input id="debtPerformanceCompareMonth" type="month" />
+                    </label>
+                    <label id="debtPerformanceScopeWrap" hidden>
+                      <span>Petugas</span>
+                      <select id="debtPerformanceScope"><option value="">Pilih petugas</option></select>
+                    </label>
+                    <button class="icon-button performance-refresh" id="debtPerformanceRefresh" type="button" title="Muat ulang performa" aria-label="Muat ulang performa">
+                      <i data-lucide="refresh-cw" aria-hidden="true"></i>
+                    </button>
+                  </div>
+
+                  <div class="performance-metrics" aria-label="Ringkasan performa bulan utama">
+                    <article class="is-opening"><span>Saldo awal periode</span><strong id="debtPerformanceOpening">-</strong><small id="debtPerformanceOpeningNote">Belum ada data</small></article>
+                    <article class="is-closing"><span>Saldo terbaru</span><strong id="debtPerformanceClosing">-</strong><small id="debtPerformanceClosingNote">Belum ada data</small></article>
+                    <article class="is-reduction"><span>Total penurunan</span><strong id="debtPerformanceReduction">-</strong><small id="debtPerformanceReductionNote">Belum ada data</small></article>
+                    <article class="is-rate"><span>Efektivitas penagihan</span><strong id="debtPerformanceRate">-</strong><small id="debtPerformanceRateNote">Berdasarkan rupiah tunggakan</small></article>
+                  </div>
+
+                  <section class="performance-chart-section" aria-labelledby="debtPerformanceChartTitle">
+                    <div class="performance-section-head">
+                      <div>
+                        <h3 id="debtPerformanceChartTitle">Tren Saldo Harian Unit</h3>
+                        <p id="debtPerformanceScopeLabel">Akumulasi saldo harian seluruh petugas.</p>
+                      </div>
+                      <div class="performance-chart-legend" aria-label="Legenda grafik">
+                        <span class="is-primary"><i aria-hidden="true"></i><b id="debtPerformancePrimaryLegend">Bulan utama</b></span>
+                        <span class="is-compare"><i aria-hidden="true"></i><b id="debtPerformanceCompareLegend">Pembanding</b></span>
+                      </div>
+                    </div>
+                    <div class="performance-chart" id="debtPerformanceChart" role="img" aria-label="Grafik perbandingan saldo harian"></div>
+                  </section>
+
+                  <section class="performance-leaderboard" id="debtPerformanceLeaderboard">
+                    <div class="performance-section-head">
+                      <div>
+                        <h3>Leaderboard 17 Petugas</h3>
+                        <p>Peringkat berdasarkan penurunan rupiah tunggakan pada <span id="debtPerformanceLeaderboardMonth">bulan utama</span>.</p>
+                      </div>
+                      <label class="performance-search">
+                        <i data-lucide="search" aria-hidden="true"></i>
+                        <input id="debtPerformanceSearch" type="search" placeholder="Cari petugas" autocomplete="off" />
                       </label>
-                      <label>
-                        <span>Bulan akhir</span>
-                        <input id="debtPerformanceMonth" type="month" />
-                      </label>
-                      <div class="overview-history-range" role="group" aria-label="Rentang riwayat">
-                        <button type="button" data-debt-months="1">Per bulan</button>
+                    </div>
+                    <div class="performance-table-wrap">
+                      <table class="performance-table">
+                        <thead><tr><th>#</th><th>Petugas</th><th>Saldo awal</th><th>Saldo terbaru</th><th>Penurunan</th><th>Pencapaian</th><th>Status</th><th></th></tr></thead>
+                        <tbody id="debtPerformanceLeaderboardBody"><tr><td colspan="8">Memuat data...</td></tr></tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  <section class="performance-officer-comparison" id="debtPerformanceOfficerComparison" hidden>
+                    <div class="performance-section-head">
+                      <div><h3>Perbandingan Petugas</h3><p>Ringkasan bulan utama dan bulan pembanding.</p></div>
+                    </div>
+                    <div class="performance-table-wrap">
+                      <table class="performance-table">
+                        <thead><tr><th>Periode</th><th>Tanggal awal</th><th>Tanggal terbaru</th><th>Saldo awal</th><th>Saldo terbaru</th><th>Penurunan</th><th>Pencapaian</th></tr></thead>
+                        <tbody id="debtPerformanceOfficerBody"><tr><td colspan="7">Pilih petugas.</td></tr></tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  <section class="performance-history-section">
+                    <div class="performance-section-head">
+                      <div><h3>Riwayat Performa Bulanan</h3><p>Ringkasan tersimpan otomatis dari upload saldo harian.</p></div>
+                      <div class="performance-history-range" role="group" aria-label="Rentang riwayat bulanan">
+                        <button type="button" data-debt-months="1">1 bulan</button>
                         <button type="button" data-debt-months="3">3 bulan</button>
                         <button type="button" data-debt-months="4">4 bulan</button>
                         <button class="is-active" type="button" data-debt-months="6">6 bulan</button>
                         <button type="button" data-debt-months="12">1 tahun</button>
                       </div>
-                      <button class="icon-button overview-history-refresh" id="debtPerformanceRefresh" type="button" title="Muat ulang riwayat" aria-label="Muat ulang riwayat">
-                        <i data-lucide="refresh-cw" aria-hidden="true"></i>
-                      </button>
                     </div>
-                  </header>
-
-                  <div class="overview-history-metrics" aria-label="Ringkasan riwayat performa">
-                    <div><span>Pencapaian terbaru</span><strong id="debtPerformanceLatest">-</strong></div>
-                    <div><span>Perubahan periode</span><strong id="debtPerformanceChange">-</strong></div>
-                    <div><span>Total pelunasan</span><strong id="debtPerformancePaid">-</strong></div>
-                    <div><span>Saldo akhir terbaru</span><strong id="debtPerformanceBalance">-</strong></div>
-                  </div>
-
-                  <div class="overview-history-body">
-                    <div class="overview-history-chart-block">
-                      <div class="overview-history-chart-title">
-                        <div><strong>Pencapaian tagihan</strong><span id="debtPerformanceScopeLabel">Keseluruhan petugas</span></div>
-                        <span class="overview-history-legend"><i aria-hidden="true"></i>Pencapaian</span>
-                      </div>
-                      <div class="overview-history-chart" id="debtPerformanceChart" role="img" aria-label="Grafik riwayat pencapaian tagihan"></div>
-                    </div>
-                    <div class="overview-history-table-wrap">
-                      <table class="overview-history-table">
+                    <div class="performance-history-chart" id="debtPerformanceHistoryChart" role="img" aria-label="Grafik riwayat performa bulanan"></div>
+                    <div class="performance-table-wrap">
+                      <table class="performance-table performance-history-table">
                         <thead><tr><th>Bulan</th><th>Saldo awal</th><th>Saldo akhir</th><th>Pelunasan</th><th>IDPEL tersisa</th><th>Pencapaian</th></tr></thead>
-                        <tbody id="debtPerformanceTableBody"><tr><td colspan="6">Memuat data...</td></tr></tbody>
+                        <tbody id="debtPerformanceHistoryBody"><tr><td colspan="6">Memuat data...</td></tr></tbody>
                       </table>
                     </div>
-                  </div>
+                  </section>
                 </section>
               </div>
             </section>
@@ -531,8 +584,8 @@
       <section class="tab-panel" data-tab-panel="pelunasan-harian" hidden>
         <div class="section-head">
           <div>
-            <h2>Pelunasan Harian</h2>
-            <p>Upload saldo akhir per tanggal untuk menghitung pelunasan harian setiap petugas.</p>
+            <h2>Upload Saldo Harian</h2>
+            <p>Data tunggakan harian khusus dashboard performa. Upload ini tidak memperbarui data tunggakan pada aplikasi petugas.</p>
           </div>
         </div>
 
@@ -543,22 +596,22 @@
               <input id="dailyMonthInput" type="month" />
             </label>
             <label class="field" for="dailyDateSelect">
-              <span>Tanggal Upload Saldo Akhir</span>
+              <span>Tanggal Data Tunggakan</span>
               <select id="dailyDateSelect"></select>
             </label>
             <label class="file-button daily-upload-button">
-              Upload Saldo Akhir Harian
+              Upload File Tunggakan Harian
               <input id="dailySaldoInput" type="file" accept=".xlsx,.xls,.csv" />
             </label>
             <button class="button secondary" id="undoDailyUploadButton" type="button" disabled>Undo Tanggal Dipilih</button>
           </div>
-          <p class="auto-note" id="dailyStatus">Pilih tanggal lalu upload saldo akhir harian. Upload ulang tanggal yang sama akan menimpa data sebelumnya.</p>
+          <p class="auto-note" id="dailyStatus">Pilih tanggal lalu upload file Excel tunggakan. Upload ulang tanggal yang sama akan mengganti snapshot dashboard.</p>
         </section>
 
         <section class="table-section daily-table-section">
           <div class="report-heading">
             <div>
-              <h2>Monitoring Pelunasan Harian</h2>
+              <h2>Rekap Saldo Harian Performa</h2>
               <p id="dailyTableDate">-</p>
             </div>
             <div class="daily-report-actions">
@@ -571,7 +624,7 @@
               <thead id="dailyTableHead"></thead>
               <tbody id="dailyTableBody">
                 <tr>
-                  <td class="empty-state" colspan="4">Belum ada data. Upload DIL dan Saldo Awal terlebih dahulu.</td>
+                  <td class="empty-state" colspan="4">Belum ada data. Upload file tunggakan harian pertama.</td>
                 </tr>
               </tbody>
             </table>
@@ -1172,7 +1225,7 @@
       <pre id="receiptHistoryPreviewText"></pre>
     </dialog>
     <script src="./receipt-history.js?v=174"></script>
-    <script src="./debt-performance.js?v=20261031-history-v1"></script>
-    <script src="./app.js?v=20261031-dashboard-history-v1"></script>
+    <script src="./debt-performance.js?v=20261031-daily-performance-v2"></script>
+    <script src="./app.js?v=20261031-daily-performance-v2"></script>
   </body>
 </html>
