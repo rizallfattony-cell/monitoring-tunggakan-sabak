@@ -225,6 +225,7 @@ const els = {
   dailyMonthInput: document.querySelector("#dailyMonthInput"),
   dailyDateSelect: document.querySelector("#dailyDateSelect"),
   dailySaldoInput: document.querySelector("#dailySaldoInput"),
+  seedDailyOpeningButton: document.querySelector("#seedDailyOpeningButton"),
   dailyStatus: document.querySelector("#dailyStatus"),
   dailyTableDate: document.querySelector("#dailyTableDate"),
   dailyTableHead: document.querySelector("#dailyTableHead"),
@@ -411,6 +412,7 @@ function attachEvents() {
   els.dailyMonthInput?.addEventListener("change", handleDailyMonthChange);
   els.dailyDateSelect?.addEventListener("change", handleDailyDateChange);
   els.dailySaldoInput?.addEventListener("change", handleDailySaldoUpload);
+  els.seedDailyOpeningButton?.addEventListener("click", seedDailyOpeningFromMonitoring);
   els.undoDailyUploadButton?.addEventListener("click", undoDailyPelunasanUpload);
   els.exportDailyExcelTopButton?.addEventListener("click", exportDailyPelunasanExcel);
   els.exportDailyJpgTopButton?.addEventListener("click", exportDailyPelunasanJpg);
@@ -5163,6 +5165,67 @@ async function handleDailySaldoUpload(event) {
     alert(`Gagal upload saldo harian: ${error.message}`);
   } finally {
     event.target.value = "";
+  }
+}
+
+function buildDailyOpeningSnapshotFromMonitoring() {
+  const petugas = {};
+  let akhirId = 0;
+  let akhirRupiah = 0;
+
+  for (const row of state.report || []) {
+    const name = resolvePerformancePetugas(row.petugas);
+    if (!name) continue;
+    const value = petugas[name] || { akhirId: 0, akhirRupiah: 0, customers: {} };
+    value.akhirId += Math.max(0, Number(row.awalId || 0));
+    value.akhirRupiah += Math.max(0, Number(row.awalRupiah || 0));
+    petugas[name] = value;
+  }
+
+  for (const value of Object.values(petugas)) {
+    akhirId += value.akhirId;
+    akhirRupiah += value.akhirRupiah;
+  }
+
+  return {
+    uploadedAt: new Date().toISOString(),
+    petugas,
+    total: { akhirId, akhirRupiah },
+    ignoredRows: 0,
+  };
+}
+
+async function seedDailyOpeningFromMonitoring() {
+  const month = normalizeMonthKey(state.dailyPelunasan.selectedMonth);
+  const date = `${month}-01`;
+  const snapshot = buildDailyOpeningSnapshotFromMonitoring();
+  if (!Object.keys(snapshot.petugas).length || snapshot.total.akhirId <= 0) {
+    alert("Saldo Awal Monitoring belum tersedia. Upload DIL dan Saldo Awal terlebih dahulu.");
+    return;
+  }
+
+  const hasExistingBaseline = Boolean(state.dailyPelunasan.snapshots?.[date]);
+  const confirmed = confirm(
+    `${hasExistingBaseline ? "Ganti" : "Simpan"} saldo awal Monitoring sebagai baseline ${formatShortDate(date)}? Data tunggakan aplikasi tidak akan diubah.`
+  );
+  if (!confirmed) return;
+
+  startProgress("Saldo Awal Dashboard", `Menyiapkan baseline ${formatShortDate(date)} dari Monitoring Tunggakan...`);
+  try {
+    updateProgress(45, "Menyimpan baseline saldo awal ke dashboard...");
+    const saved = await debtPerformanceController.saveSnapshot(date, snapshot, `Saldo Awal Monitoring ${month}`);
+    if (!saved) throw new Error("Database dashboard belum berhasil diperbarui.");
+
+    state.dailyPelunasan.snapshots[date] = snapshot;
+    renderDailyDateOptions();
+    renderDailyPelunasanTable();
+    syncDailyUndoButton();
+    updateProgress(82, "Menyimpan baseline di browser...");
+    await saveDailyPelunasanDraft();
+    finishProgress(`Saldo awal Monitoring ${formatShortDate(date)} tersimpan sebagai baseline dashboard.`);
+  } catch (error) {
+    failProgress(`Gagal menyimpan saldo awal dashboard: ${error.message}`);
+    alert(`Gagal menyimpan saldo awal dashboard: ${error.message}`);
   }
 }
 

@@ -157,6 +157,18 @@ fs.mkdirSync(qa, { recursive: true });
     assert.equal(mappedSnapshot.petugas['TRI RIBOWO'].akhirRupiah, 400, 'old TRI WIBOWO spelling maps to TRI RIBOWO');
     assert.equal(mappedSnapshot.petugas['>41500'].akhirRupiah, 600, 'agreed saldo groups override the DIL fallback');
 
+    const openingSnapshot = await page.evaluate(() => {
+      state.report = [
+        { petugas: 'TRI WIBOWO', awalId: 1136, awalRupiah: 230218638 },
+        { petugas: '>41500', awalId: 32, awalRupiah: 101295449 },
+        { petugas: '<41500-6600', awalId: 262, awalRupiah: 1025966382 },
+      ];
+      return buildDailyOpeningSnapshotFromMonitoring();
+    });
+    assert.equal(openingSnapshot.petugas['TRI RIBOWO'].akhirRupiah, 230218638);
+    assert.equal(openingSnapshot.petugas['>41500'].akhirId, 32);
+    assert.equal(openingSnapshot.petugas['<41500-6600'].akhirRupiah, 1025966382);
+
     await page.locator('#debtPerformanceLeaderboardBody [data-performance-officer]').first().click();
     await page.waitForFunction(() => !document.getElementById('debtPerformanceOfficerComparison').hidden);
     assert.equal(await page.locator('#debtPerformanceOfficerBody tr').count(), 2);

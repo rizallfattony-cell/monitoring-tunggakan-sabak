@@ -15,6 +15,7 @@ enam, atau dua belas bulan.
 - Snapshot menerima 17 biller resmi, kelompok saldo `>41500`, dan `<41500-6600`. Kolom `PETUGAS`/`BILLER` yang valid diprioritaskan; DIL dipakai sebagai cadangan bila kolom tersebut kosong atau tidak dikenal.
 - Nama resmi biller adalah `TRI RIBOWO`. Ejaan lama `TRI WIBOWO` dari file terdahulu tetap dipetakan otomatis ke nama resmi tersebut.
 - Saldo awal bulan memakai tanggal upload paling awal; saldo terbaru memakai tanggal upload terakhir.
+- Tombol **Ambil Saldo Awal Monitoring** menyimpan saldo awal dari Monitoring Tunggakan sebagai baseline tanggal 1. Gunakan sekali tiap bulan saat snapshot harian pertama belum memuat seluruh peserta.
 - Ringkasan bulanan diperbarui otomatis dari snapshot harian paling awal dan terakhir.
 - Pencapaian keseluruhan dihitung dari total rupiah, bukan rata-rata persentase 17 petugas.
 - Tanggal atau bulan yang belum diunggah ditampilkan sebagai data kosong, bukan nol.
