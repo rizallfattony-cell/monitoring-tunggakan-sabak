@@ -104,13 +104,36 @@ fs.mkdirSync(qa, { recursive: true });
     });
     assert.equal(save.ok, true);
     assert.deepEqual(save.call.params.p_rows, [{ kogol_key: 'KOGOL_4', saldo_id: 3, saldo_rupiah: 30000 }]);
-    assert.equal(await page.locator('button[data-tab="kogol"]', { hasText: 'Dashboard Kogol' }).count(), 1);
+    assert.equal(await page.locator('[data-tab-panel="upload"] [data-upload-panel="database"].upload-panel').count(), 7);
+    assert.deepEqual(await page.locator('[data-tab-panel="upload"] [data-upload-panel="database"].upload-panel h2').allTextContents(), [
+      'DIL', 'Saldo Awal Kogol 0', 'Saldo Awal Kogol 3', 'Saldo Awal Kogol 4',
+      'Saldo Akhir Kogol 0', 'Saldo Akhir Kogol 3', 'Saldo Akhir Kogol 4',
+    ]);
+    assert.equal(await page.locator('#kogol3AwalInput').count(), 1);
+    assert.equal(await page.locator('#kogol4AwalInput').count(), 1);
+    assert.equal(await page.locator('#kogolDashboardPanel button[data-tab="upload"]').count(), 1);
+    const kogol0 = await page.evaluate(() => ({
+      zero: isKogolZero({ kogol: 0 }),
+      three: isKogolZero({ kogol: 3 }),
+      four: isKogolZero({ kogol: 4 }),
+      uploaded: normalizeSaldo([
+        { IDPEL: '001', KOGOL: '0', RPTAG: '1000' },
+        { IDPEL: '002', KOGOL: '3', RPTAG: '2000' },
+        { IDPEL: '003', KOGOL: '4', RPTAG: '3000' },
+      ]).filter(isKogolZero).map((row) => row.idpel),
+    }));
+    assert.deepEqual(kogol0, { zero: true, three: false, four: false, uploaded: ['001'] });
 
     await page.locator('#kogolDashboardPanel').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(qa, 'kogol-dashboard-desktop.png'), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('#kogolDashboardPanel').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(qa, 'kogol-dashboard-mobile.png'), fullPage: true });
+    await page.evaluate(() => switchTab('upload'));
+    await page.evaluate(() => document.querySelector('.workspace-layout').classList.add('is-menu-collapsed'));
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: path.join(qa, 'kogol-upload-mobile.png'), fullPage: true });
+    assert.equal(await page.locator('[data-tab-panel="upload"] .upload-panel:visible').count(), 7);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'No full-page horizontal overflow on mobile');
     assert.deepEqual(errors, []);
     console.log('PASS Kogol dashboard UI: four charts, classification, save RPC and responsive layout');

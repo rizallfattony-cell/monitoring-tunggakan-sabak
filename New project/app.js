@@ -35,12 +35,6 @@ const PERFORMANCE_PARTICIPANTS = [
   ...LPB_PETUGAS.map((item) => item.biller),
   ...PERFORMANCE_SALDO_GROUPS,
 ];
-const KOGOL_DEBT_GROUPS = [
-  "KOGOL_0",
-  "KOGOL_3_PERKANTORAN",
-  "KOGOL_3_LPJU",
-  "KOGOL_4",
-];
 
 function petugasLookupKey(value) {
   return cleanText(value).toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -243,10 +237,10 @@ const els = {
   exportDailyJpgTopButton: document.querySelector("#exportDailyJpgTopButton"),
   kogolMonthInput: document.querySelector("#kogolMonthInput"),
   kogolDateInput: document.querySelector("#kogolDateInput"),
+  kogol3AwalInput: document.querySelector("#kogol3AwalInput"),
   kogol3Input: document.querySelector("#kogol3Input"),
+  kogol4AwalInput: document.querySelector("#kogol4AwalInput"),
   kogol4Input: document.querySelector("#kogol4Input"),
-  kogol0OpeningButton: document.querySelector("#kogol0OpeningButton"),
-  kogol0EndingButton: document.querySelector("#kogol0EndingButton"),
   kogolUploadStatus: document.querySelector("#kogolUploadStatus"),
   comparisonMonthInput: document.querySelector("#comparisonMonthInput"),
   comparisonDailyAwalDateSelect: document.querySelector("#comparisonDailyAwalDateSelect"),
@@ -439,10 +433,10 @@ function attachEvents() {
   els.exportDailyJpgTopButton?.addEventListener("click", exportDailyPelunasanJpg);
   els.kogolMonthInput?.addEventListener("change", handleKogolMonthChange);
   els.kogolDateInput?.addEventListener("change", handleKogolDateChange);
-  els.kogol3Input?.addEventListener("change", (event) => handleKogolUpload(event, "kogol3"));
-  els.kogol4Input?.addEventListener("change", (event) => handleKogolUpload(event, "kogol4"));
-  els.kogol0OpeningButton?.addEventListener("click", () => saveKogol0Snapshot("opening"));
-  els.kogol0EndingButton?.addEventListener("click", () => saveKogol0Snapshot("ending"));
+  els.kogol3AwalInput?.addEventListener("change", (event) => handleKogolUpload(event, "kogol3", "awal"));
+  els.kogol3Input?.addEventListener("change", (event) => handleKogolUpload(event, "kogol3", "akhir"));
+  els.kogol4AwalInput?.addEventListener("change", (event) => handleKogolUpload(event, "kogol4", "awal"));
+  els.kogol4Input?.addEventListener("change", (event) => handleKogolUpload(event, "kogol4", "akhir"));
   els.comparisonMonthInput?.addEventListener("change", handleComparisonMonthChange);
   els.comparisonDailyAwalDateSelect?.addEventListener("change", (event) => handleComparisonDateChange(event, "selectedDailyAwalDate"));
   els.comparisonDailyAkhirDateSelect?.addEventListener("change", (event) => handleComparisonDateChange(event, "selectedDailyAkhirDate"));
@@ -556,6 +550,7 @@ function updateMaximizeButton(section, active) {
 }
 
 function switchTab(tabName) {
+  if (tabName === "kogol") tabName = "upload";
   if (!tabName) return;
   state.activeTab = tabName;
   els.tabButtons.forEach((button) => {
@@ -586,7 +581,7 @@ function switchTab(tabName) {
     debtPerformanceController.load({ silent: true });
     kogolDashboardController.load({ silent: true });
   }
-  if (tabName === "kogol") {
+  if (tabName === "upload") {
     renderKogolDashboardControls();
     kogolDashboardController.load({ silent: true });
   }
@@ -2218,9 +2213,12 @@ function base64ToBytes(base64) {
 
 async function publishRemainingCustomers() {
   if (!state.supabaseClient || !state.user || state.profile?.role !== "admin") return null;
+  if (state.akhir.length && !state.akhir.some(isKogolZero)) {
+    throw new Error("Saldo Akhir belum memiliki data Kogol 0. Upload ulang file Kogol 0 sebelum mempublikasikan ke APK.");
+  }
 
   const uploadedAt = new Date().toISOString();
-  const rows = [...state.remainingByPetugas.values()].flat().map((row) => ({
+  const rows = [...state.remainingByPetugas.values()].flat().filter(isKogolZero).map((row) => ({
     report_id: CLOUD_STATE_ID,
     petugas: row.petugas,
     idpel: row.idpel,
@@ -2654,15 +2652,24 @@ async function handleUpload(event, kind) {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  const label = kind === "dil" ? "DIL" : kind === "awal" ? "Saldo Awal" : "Saldo Akhir";
+  const label = kind === "dil" ? "DIL" : kind === "awal" ? "Saldo Awal Kogol 0" : "Saldo Akhir Kogol 0";
   startProgress(`Upload ${label}`, `Membaca file ${file.name}...`);
   try {
+    if (kind === "akhir" && state.kogolDashboard.selectedDate.endsWith("-01")) {
+      throw new Error("Tanggal saldo akhir harus setelah tanggal 1 agar baseline dashboard tidak tertimpa.");
+    }
     const rows = await readWorkbook(file, (percent) => {
       updateProgress(percent * 0.35, `Membaca file ${file.name}...`);
     });
     updateProgress(42, `Memproses ${formatNumber(rows.length)} baris ${label}...`);
     await yieldUi();
-    state[kind] = kind === "dil" ? normalizeDil(rows) : normalizeSaldo(rows);
+    const normalized = kind === "dil" ? normalizeDil(rows) : normalizeSaldo(rows);
+    if (kind !== "dil" && !normalized.some((row) => row.kogol !== "")) {
+      throw new Error("Kolom KOGOL tidak ditemukan. File Saldo Kogol 0 wajib memiliki kolom KOGOL agar data Kogol 3/4 tidak masuk APK.");
+    }
+    const nextRows = kind === "dil" ? normalized : normalized.filter(isKogolZero);
+    if (!nextRows.length) throw new Error(`Tidak ada baris ${label} yang dapat dibaca.`);
+    state[kind] = nextRows;
     state.uploadMeta[kind] = { uploadedAt: new Date().toISOString(), fileName: file.name };
     updateProgress(58, "Menyimpan data lokal...");
     await saveStoredData();
@@ -2675,8 +2682,13 @@ async function handleUpload(event, kind) {
       notifyDebtUpdate: kind === "akhir",
       publishReceiptMeters: false,
     });
+    let dashboardSaved = true;
+    if (kind !== "dil") {
+      const date = kind === "awal" ? `${state.kogolDashboard.selectedMonth}-01` : state.kogolDashboard.selectedDate;
+      dashboardSaved = await saveKogolSnapshot(date, [{ kogolKey: "KOGOL_0", ...summarizeKogolRows(state[kind]) }], file.name, `kogol0${kind}`);
+    }
     if (kind === "akhir") switchTab("laporan");
-    finishProgress(`${label} selesai diproses: ${formatNumber(state[kind].length)} baris.${onlineSaved ? " Data online sudah otomatis tersimpan." : ""}`);
+    finishProgress(`${label} selesai diproses: ${formatNumber(state[kind].length)} baris.${onlineSaved ? " Data online sudah otomatis tersimpan." : ""}${dashboardSaved ? "" : " Snapshot dashboard belum tersimpan; unggah ulang setelah koneksi pulih."}`);
   } catch (error) {
     failProgress(`Gagal membaca file ${file.name}: ${error.message}`);
     alert(`Gagal membaca file ${file.name}: ${error.message}`);
@@ -3510,6 +3522,7 @@ function groupSaldoByPetugas(rows, dilMap, label, options = {}) {
         kolok: dil?.kolok || row.kolok || "",
         koked: dil?.koked || row.koked || "",
         rptag: row.rupiah,
+        kogol: row.kogol,
         petugas,
       });
     }
@@ -5136,7 +5149,7 @@ function emptyKogolDashboardState() {
   const selectedMonth = getCurrentMonthKey();
   return {
     selectedMonth,
-    selectedDate: `${selectedMonth}-01`,
+    selectedDate: formatLocalIsoDate(new Date()),
     uploads: {},
   };
 }
@@ -5151,8 +5164,8 @@ function normalizeKogolDashboardState(value) {
     : `${selectedMonth}-01`;
   const uploads = {};
   Object.entries(source.uploads || {}).forEach(([key, item]) => {
-    if (!KOGOL_DEBT_GROUPS.includes(key) || !item?.uploadedAt) return;
-    uploads[key] = { uploadedAt: item.uploadedAt, fileName: item.fileName || "" };
+    if (!/^(kogol[034](awal|akhir))$/.test(key) || !item?.uploadedAt) return;
+    uploads[key] = { uploadedAt: item.uploadedAt, fileName: item.fileName || "", month: item.month || "" };
   });
   return { selectedMonth, selectedDate, uploads };
 }
@@ -5168,13 +5181,15 @@ function renderKogolDashboardControls() {
   const selectedDate = /^\d{4}-\d{2}-\d{2}$/.test(state.kogolDashboard.selectedDate)
     && state.kogolDashboard.selectedDate.startsWith(`${month}-`)
     ? state.kogolDashboard.selectedDate
-    : `${month}-01`;
+    : (month === getCurrentMonthKey() ? formatLocalIsoDate(new Date()) : `${month}-01`);
   state.kogolDashboard.selectedMonth = month;
   state.kogolDashboard.selectedDate = selectedDate;
   els.kogolMonthInput.value = month;
   els.kogolDateInput.value = selectedDate;
   els.kogolDateInput.min = `${month}-01`;
-  els.kogolDateInput.max = getDaysInSelectedMonth(month).at(-1);
+  els.kogolDateInput.max = month === getCurrentMonthKey()
+    ? formatLocalIsoDate(new Date())
+    : getDaysInSelectedMonth(month).at(-1);
   setKogolUploadStatus();
 }
 
@@ -5182,7 +5197,9 @@ function syncKogolDashboardMonth(month) {
   const normalized = normalizeMonthKey(month);
   if (state.kogolDashboard.selectedMonth === normalized) return;
   state.kogolDashboard.selectedMonth = normalized;
-  state.kogolDashboard.selectedDate = `${normalized}-01`;
+  state.kogolDashboard.selectedDate = normalized === getCurrentMonthKey()
+    ? formatLocalIsoDate(new Date())
+    : `${normalized}-01`;
   renderKogolDashboardControls();
   scheduleKogolDashboardSave();
 }
@@ -5190,7 +5207,9 @@ function syncKogolDashboardMonth(month) {
 function handleKogolMonthChange(event) {
   const month = normalizeMonthKey(event.target.value);
   state.kogolDashboard.selectedMonth = month;
-  state.kogolDashboard.selectedDate = `${month}-01`;
+  state.kogolDashboard.selectedDate = month === getCurrentMonthKey()
+    ? formatLocalIsoDate(new Date())
+    : `${month}-01`;
   renderKogolDashboardControls();
   kogolDashboardController.setMonth(month);
   scheduleKogolDashboardSave();
@@ -5202,6 +5221,15 @@ function handleKogolDateChange(event) {
   state.kogolDashboard.selectedDate = date.startsWith(`${month}-`) ? date : `${month}-01`;
   renderKogolDashboardControls();
   scheduleKogolDashboardSave();
+}
+
+async function saveKogolSnapshot(date, snapshots, fileName, uploadKey) {
+  const saved = await kogolDashboardController.saveSnapshots(date, snapshots, fileName);
+  if (!saved) return false;
+  state.kogolDashboard.uploads[uploadKey] = { uploadedAt: new Date().toISOString(), fileName, month: date.slice(0, 7) };
+  await saveKogolDashboardDraft();
+  renderKogolDashboardControls();
+  return true;
 }
 
 function isKogolZero(row) {
@@ -5259,16 +5287,19 @@ function parseKogolUploadRows(rows, kind) {
   });
 }
 
-async function handleKogolUpload(event, kind) {
+async function handleKogolUpload(event, kind, mode) {
   const file = event.target.files?.[0];
   if (!file) return;
   if (!ensureAdmin()) {
     event.target.value = "";
     return;
   }
-  const selectedDate = state.kogolDashboard.selectedDate;
-  const title = kind === "kogol3" ? "Upload Kogol 3" : "Upload Kogol 4";
+  const selectedDate = mode === "awal" ? `${state.kogolDashboard.selectedMonth}-01` : state.kogolDashboard.selectedDate;
+  const title = `Upload Saldo ${mode === "awal" ? "Awal" : "Akhir"} ${kind === "kogol3" ? "Kogol 3" : "Kogol 4"}`;
   try {
+    if (mode === "akhir" && selectedDate.endsWith("-01")) {
+      throw new Error("Tanggal saldo akhir harus setelah tanggal 1 agar baseline tidak tertimpa.");
+    }
     startProgress(title, `Membaca file ${file.name} untuk ${formatShortDate(selectedDate)}...`);
     const rows = await readWorkbook(file, (percent) => updateProgress(percent * 0.45, `Membaca file ${file.name}...`));
     updateProgress(52, "Memisahkan saldo per kelompok Kogol...");
@@ -5278,14 +5309,8 @@ async function handleKogolUpload(event, kind) {
       throw new Error("Tidak ada IDPEL yang dapat dibaca pada file ini.");
     }
     updateProgress(75, "Menyimpan snapshot dashboard Kogol...");
-    const saved = await kogolDashboardController.saveSnapshots(selectedDate, snapshots, file.name);
+    const saved = await saveKogolSnapshot(selectedDate, snapshots, file.name, `${kind}${mode}`);
     if (!saved) throw new Error("Snapshot Kogol belum tersimpan. Pastikan migrasi dashboard Kogol sudah diterapkan.");
-
-    snapshots.forEach((snapshot) => {
-      state.kogolDashboard.uploads[snapshot.kogolKey] = { uploadedAt: new Date().toISOString(), fileName: file.name };
-    });
-    updateProgress(88, "Menyimpan status unggahan di browser...");
-    await saveKogolDashboardDraft();
     const total = snapshots.reduce((sum, snapshot) => sum + snapshot.saldoId, 0);
     finishProgress(`${title} tersimpan: ${formatNumber(total)} IDPEL pada ${formatShortDate(selectedDate)}.`);
   } catch (error) {
@@ -5296,34 +5321,6 @@ async function handleKogolUpload(event, kind) {
   }
 }
 
-async function saveKogol0Snapshot(mode) {
-  if (!ensureAdmin()) return;
-  const isOpening = mode === "opening";
-  const rows = isOpening ? state.awal : state.akhir;
-  const snapshotDate = isOpening
-    ? `${normalizeMonthKey(state.kogolDashboard.selectedMonth)}-01`
-    : state.kogolDashboard.selectedDate;
-  const snapshot = summarizeKogolRows(rows.filter(isKogolZero));
-  if (!snapshot.saldoId) {
-    alert("Data Kogol 0 belum ditemukan. Upload ulang Saldo Awal atau Saldo Akhir Monitoring yang memiliki kolom KOGOL terlebih dahulu.");
-    return;
-  }
-  const action = isOpening ? "Saldo Awal" : "Saldo Terbaru";
-  if (!confirm(`Simpan ${action} Kogol 0 untuk ${formatShortDate(snapshotDate)}? Data tunggakan aplikasi tidak akan diubah.`)) return;
-  try {
-    startProgress(`Kogol 0 ${action}`, "Menyiapkan snapshot dari Monitoring Tunggakan...");
-    updateProgress(60, "Menyimpan snapshot dashboard Kogol...");
-    const saved = await kogolDashboardController.saveSnapshots(snapshotDate, [{ kogolKey: "KOGOL_0", ...snapshot }], `Monitoring Kogol 0 ${action}`);
-    if (!saved) throw new Error("Snapshot Kogol belum tersimpan. Pastikan migrasi dashboard Kogol sudah diterapkan.");
-    state.kogolDashboard.uploads.KOGOL_0 = { uploadedAt: new Date().toISOString(), fileName: `Monitoring Kogol 0 ${action}` };
-    await saveKogolDashboardDraft();
-    finishProgress(`${action} Kogol 0 tersimpan: ${formatNumber(snapshot.saldoId)} IDPEL.`);
-  } catch (error) {
-    failProgress(`Gagal menyimpan Kogol 0: ${error.message}`);
-    alert(`Gagal menyimpan Kogol 0: ${error.message}`);
-  }
-}
-
 function setKogolUploadStatus(message = "") {
   if (!els.kogolUploadStatus) return;
   if (message) {
@@ -5331,12 +5328,19 @@ function setKogolUploadStatus(message = "") {
     return;
   }
   const uploads = state.kogolDashboard.uploads || {};
-  const labels = KOGOL_DEBT_GROUPS
-    .filter((key) => uploads[key]?.uploadedAt)
-    .map((key) => `${key.replaceAll("_", " ")}: ${formatUploadTimestamp(uploads[key].uploadedAt)}`);
+  const currentMonth = state.kogolDashboard.selectedMonth;
+  const labels = ["kogol0awal", "kogol0akhir", "kogol3awal", "kogol3akhir", "kogol4awal", "kogol4akhir"]
+    .filter((key) => uploads[key]?.uploadedAt && uploads[key]?.month === currentMonth)
+    .map((key) => `${key.replace("kogol", "Kogol ").replace("awal", " awal").replace("akhir", " akhir")}: ${formatUploadTimestamp(uploads[key].uploadedAt)}`);
   els.kogolUploadStatus.textContent = labels.length
     ? `Unggahan terakhir - ${labels.join(" | ")}`
-    : "Unggah awal bulan sebagai baseline, lalu unggah kembali ketika saldo berubah.";
+    : "Unggah saldo awal dan akhir untuk setiap Kogol. Saldo awal menjadi baseline tanggal 1 bulan terpilih.";
+  for (const key of ["kogol3awal", "kogol3akhir", "kogol4awal", "kogol4akhir"]) {
+    const status = document.querySelector(`#${key}Status`);
+    if (status) status.textContent = uploads[key]?.month === currentMonth
+      ? `Terakhir upload: ${formatUploadTimestamp(uploads[key].uploadedAt)}`
+      : "Belum ada file.";
+  }
 }
 
 function scheduleKogolDashboardSave() {

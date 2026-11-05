@@ -93,7 +93,7 @@
       const snapshots = normalized
         .filter((row) => row.kogolKey === group.key)
         .sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate) || String(a.uploadedAt || "").localeCompare(String(b.uploadedAt || "")));
-      const opening = snapshots[0] || null;
+      const opening = snapshots.find((row) => row.snapshotDate === `${selectedMonth}-01`) || null;
       const closing = snapshots[snapshots.length - 1] || null;
       const totalId = opening?.saldoId ?? 0;
       const totalRupiah = opening?.saldoRupiah ?? 0;
@@ -101,10 +101,10 @@
       const unpaidRupiah = closing?.saldoRupiah ?? 0;
       const paidId = Math.max(0, totalId - unpaidId);
       const paidRupiah = Math.max(0, totalRupiah - unpaidRupiah);
-      const rate = opening && totalId > 0 ? (paidId * 100) / totalId : null;
+      const rate = opening && snapshots.length > 1 && totalId > 0 ? (paidId * 100) / totalId : null;
       return {
         ...group,
-        available: Boolean(opening),
+        available: Boolean(closing),
         opening,
         closing,
         totalId,
@@ -124,7 +124,7 @@
       return '<div class="kogol-empty">Belum ada data</div>';
     }
     const total = Math.max(1, summary.totalId);
-    const paidRatio = Math.max(0, Math.min(1, summary.paidId / total));
+    const paidRatio = summary.rate === null ? 0 : Math.max(0, Math.min(1, summary.paidId / total));
     const circumference = 2 * Math.PI * 42;
     const paidDash = Math.round(circumference * paidRatio * 10) / 10;
     const remainingDash = Math.max(0, circumference - paidDash);
@@ -147,12 +147,14 @@
         <div class="kogol-card-body">
           ${buildDonut(summary)}
           <div class="kogol-legend">
-            <div><i class="is-paid" style="--kogol-color:${summary.color}"></i><span>Lunas</span><strong>${formatNumber(summary.paidId)} IDPEL</strong><small>${formatRupiah(summary.paidRupiah)}</small></div>
+            <div><i class="is-paid" style="--kogol-color:${summary.color}"></i><span>Lunas</span><strong>${summary.rate === null ? "-" : formatNumber(summary.paidId)} IDPEL</strong><small>${summary.rate === null ? "-" : formatRupiah(summary.paidRupiah)}</small></div>
             <div><i class="is-unpaid"></i><span>Belum lunas</span><strong>${formatNumber(summary.unpaidId)} IDPEL</strong><small>${formatRupiah(summary.unpaidRupiah)}</small></div>
           </div>
         </div>
         <footer>${summary.available
-          ? `Saldo awal ${formatDate(summary.opening?.snapshotDate)} - data terakhir ${formatDate(summary.closing?.snapshotDate)}`
+          ? (!summary.opening ? "Saldo awal belum diunggah. Data akhir belum dapat dihitung sebagai realisasi."
+            : summary.snapshotCount < 2 ? "Saldo awal tersedia; menunggu upload saldo akhir."
+              : `Saldo awal ${formatDate(summary.opening?.snapshotDate)} - data terakhir ${formatDate(summary.closing?.snapshotDate)}`)
           : "Upload saldo awal dan saldo terbaru untuk melihat pencapaian."}</footer>
       </article>
     `).join("");

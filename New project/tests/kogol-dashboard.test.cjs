@@ -33,6 +33,19 @@ assert.equal(lpju.rate, 75);
 const kogol4 = summaries.find((item) => item.key === 'KOGOL_4');
 assert.equal(kogol4.paidId, 0, 'one baseline snapshot does not invent paid customers');
 assert.equal(kogol4.unpaidId, 4);
+assert.equal(kogol4.rate, null, 'opening alone does not show a settlement percentage');
+const closingFirst = buildSummary([
+  { snapshot_date: '2026-11-05', kogol_key: 'KOGOL_4', saldo_id: 6, saldo_rupiah: 60000 },
+], '2026-11').find((item) => item.key === 'KOGOL_4');
+assert.equal(closingFirst.opening, null, 'a closing snapshot must not become the opening balance');
+assert.equal(closingFirst.unpaidId, 6);
+assert.equal(closingFirst.rate, null);
+const openingAddedLater = buildSummary([
+  { snapshot_date: '2026-11-05', kogol_key: 'KOGOL_4', saldo_id: 6, saldo_rupiah: 60000 },
+  { snapshot_date: '2026-11-01', kogol_key: 'KOGOL_4', saldo_id: 10, saldo_rupiah: 100000 },
+], '2026-11').find((item) => item.key === 'KOGOL_4');
+assert.equal(openingAddedLater.paidId, 4);
+assert.equal(openingAddedLater.rate, 40);
 assert.match(buildDonut(kogol0), /<svg/);
 assert.match(buildDonut(kogol0), /75%/);
 assert.match(buildDonut({ available: false }), /Belum ada data/);

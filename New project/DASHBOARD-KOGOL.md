@@ -14,15 +14,20 @@ ke aplikasi Android.
 
 ## Cara kerja
 
-1. Pilih bulan dan tanggal pada menu `Tunggakan > Dashboard Kogol`.
-2. Untuk Kogol 0, tekan `Ambil Saldo Awal Kogol 0` pada awal bulan. Pada hari
-   berikutnya gunakan `Simpan Saldo Kogol 0` setelah Saldo Akhir Monitoring
-   dimuat.
-3. Upload file Kogol 3 atau Kogol 4 sesuai tanggal data. Upload pertama dalam
-   bulan menjadi baseline. Upload terakhir menjadi saldo belum lunas.
-4. Upload ulang jenis Kogol yang sama pada tanggal sama mengganti snapshot itu
-   saja; kelompok lain pada tanggal yang sama tidak dihapus.
+1. Pada menu `Database > Upload Data`, pilih bulan laporan dan tanggal saldo
+   akhir. Ada tujuh unggahan: DIL, saldo awal/akhir Kogol 0, saldo awal/akhir
+   Kogol 3, dan saldo awal/akhir Kogol 4.
+2. Upload Saldo Awal Kogol 0 dan Saldo Akhir Kogol 0 seperti file EIS biasa.
+   Hanya baris `KOGOL=0` yang masuk laporan Monitoring dan APK Android. File
+   wajib memiliki kolom KOGOL agar kelompok lain tidak tercampur.
+3. Upload satu file Kogol 3 untuk saldo awal dan satu file untuk saldo akhir.
+   Baris LPJU dipisah dengan `SATKER_MIV`; seluruh baris lainnya Perkantoran.
+   Lakukan hal yang sama untuk Kogol 4. Kogol 3/4 tidak masuk APK.
+4. Saldo awal disimpan sebagai baseline tanggal 1 bulan terpilih, meskipun
+   diunggah belakangan. Saldo akhir disimpan pada tanggal data yang dipilih.
+   Unggah ulang kelompok dan tanggal yang sama mengganti snapshot itu saja.
 
 Diagram memakai jumlah IDPEL. Nilai rupiah lunas dan belum lunas tetap
-ditampilkan di setiap kartu. Dashboard menghitung `Lunas = saldo awal - saldo
-terbaru`; jadi angka tidak akan berubah hanya karena dashboard dibuka ulang.
+ditampilkan di setiap kartu. Tanpa baseline tanggal 1, realisasi belum
+ditampilkan. Setelah awal dan akhir tersedia, `Lunas = saldo awal - saldo
+terbaru`; angka tidak berubah hanya karena dashboard dibuka ulang.
