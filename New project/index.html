@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
     <link rel="stylesheet" href="./receipt-history.css?v=174" />
     <link rel="stylesheet" href="./debt-performance.css?v=20261031-daily-performance-v5" />
+    <link rel="stylesheet" href="./kogol-dashboard.css?v=20261105-kogol-v1" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -94,6 +95,7 @@
                 <button class="tree-child admin-only-menu" type="button" data-tab="comparison">Perbandingan Saldo Dengan Bulan Lalu</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="saldo-rata">Laporan Saldo Akhir Rata-rata</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="pelunasan-harian">Upload Saldo Harian</button>
+                <button class="tree-child admin-only-menu" type="button" data-tab="kogol">Dashboard Kogol</button>
               </div>
             </section>
 
@@ -171,6 +173,27 @@
                     <strong id="overviewPencapaian">0%</strong>
                     <div class="overview-progress" aria-hidden="true"><i id="overviewPencapaianBar"></i></div>
                   </article>
+                </section>
+
+                <section class="kogol-dashboard" id="kogolDashboardPanel" aria-labelledby="kogolDashboardTitle">
+                  <header class="kogol-dashboard-head">
+                    <div>
+                      <span class="overview-eyebrow">Kolektibilitas</span>
+                      <h2 id="kogolDashboardTitle">Dashboard Tunggakan per Kogol</h2>
+                      <p id="kogolDashboardStatus">Memuat snapshot Kogol...</p>
+                    </div>
+                    <div class="kogol-dashboard-actions">
+                      <label class="field compact-field" for="kogolDashboardMonth">
+                        <span>Bulan</span>
+                        <input id="kogolDashboardMonth" type="month" />
+                      </label>
+                      <button class="icon-button" id="kogolDashboardRefresh" type="button" aria-label="Muat ulang dashboard Kogol" title="Muat ulang dashboard Kogol"><i data-lucide="refresh-cw" aria-hidden="true"></i></button>
+                      <button class="button secondary" type="button" data-tab="kogol">Kelola unggahan</button>
+                    </div>
+                  </header>
+                  <div class="kogol-dashboard-cards" id="kogolDashboardCards">
+                    <div class="kogol-dashboard-empty">Memuat dashboard Kogol...</div>
+                  </div>
                 </section>
 
                 <div class="overview-dashboard-grid">
@@ -630,6 +653,64 @@
               </tbody>
             </table>
           </div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-tab-panel="kogol" hidden>
+        <div class="section-head">
+          <div>
+            <h2>Dashboard Kogol</h2>
+            <p>Unggahan Kogol hanya dipakai untuk dashboard kolektibilitas dan tidak memperbarui data tunggakan aplikasi petugas.</p>
+          </div>
+        </div>
+
+        <section class="kogol-upload-panel">
+          <div class="kogol-upload-controls">
+            <label class="field" for="kogolMonthInput">
+              <span>Bulan laporan</span>
+              <input id="kogolMonthInput" type="month" />
+            </label>
+            <label class="field" for="kogolDateInput">
+              <span>Tanggal data</span>
+              <input id="kogolDateInput" type="date" />
+            </label>
+            <button class="button secondary" id="kogol0OpeningButton" type="button">Ambil Saldo Awal Kogol 0</button>
+            <button class="button secondary" id="kogol0EndingButton" type="button">Simpan Saldo Kogol 0</button>
+          </div>
+          <p class="auto-note" id="kogolUploadStatus">Unggah awal bulan sebagai baseline, lalu unggah kembali ketika saldo berubah.</p>
+        </section>
+
+        <section class="kogol-upload-grid" aria-label="Unggah file Kogol">
+          <article class="kogol-upload-card">
+            <span class="step-badge">1</span>
+            <div>
+              <span class="upload-label">KOGOL 3</span>
+              <h2>Kogol 3: Perkantoran dan LPJU</h2>
+              <p>Unggah satu file Excel. Baris <strong>SATKER_MIV</strong> berisi <strong>14032800 - LPJU MUARA SABAK</strong> masuk LPJU; sisanya Perkantoran.</p>
+            </div>
+            <label class="file-button">
+              Upload File Kogol 3
+              <input id="kogol3Input" type="file" accept=".xlsx,.xls,.csv" />
+            </label>
+          </article>
+          <article class="kogol-upload-card">
+            <span class="step-badge">2</span>
+            <div>
+              <span class="upload-label">KOGOL 4</span>
+              <h2>Kogol 4</h2>
+              <p>Upload file Excel Kogol 4 pada tanggal yang dipilih. Kolom yang dibaca: <strong>IDPEL</strong> dan <strong>RPTAG</strong>.</p>
+            </div>
+            <label class="file-button">
+              Upload File Kogol 4
+              <input id="kogol4Input" type="file" accept=".xlsx,.xls,.csv" />
+            </label>
+          </article>
+        </section>
+
+        <section class="kogol-guidance" aria-label="Aturan dashboard Kogol">
+          <div><strong>Baseline</strong><span>Snapshot pertama pada bulan terpilih dipakai sebagai saldo awal.</span></div>
+          <div><strong>Perhitungan</strong><span>Lunas adalah pengurangan dari saldo awal; belum lunas adalah saldo pada snapshot terakhir.</span></div>
+          <div><strong>Perbaikan</strong><span>Upload ulang pada tanggal yang sama mengganti snapshot tanggal tersebut saja.</span></div>
         </section>
       </section>
 
@@ -1227,6 +1308,7 @@
     </dialog>
     <script src="./receipt-history.js?v=174"></script>
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
-    <script src="./app.js?v=20261031-daily-performance-v5"></script>
+    <script src="./kogol-dashboard.js?v=20261105-kogol-v1"></script>
+    <script src="./app.js?v=20261105-kogol-v1"></script>
   </body>
 </html>

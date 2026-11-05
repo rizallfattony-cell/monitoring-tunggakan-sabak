@@ -1,0 +1,346 @@
+.kogol-dashboard {
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid #d7e1e8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.kogol-dashboard-head {
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 17px 20px;
+  border-bottom: 1px solid #dce5ea;
+}
+
+.kogol-dashboard-head h2,
+.kogol-upload-card h2 {
+  margin: 3px 0 0;
+  color: #172b43;
+  letter-spacing: 0;
+}
+
+.kogol-dashboard-head h2 { font-size: 20px; }
+
+.kogol-dashboard-head p {
+  margin: 4px 0 0;
+  color: #6b7e8c;
+  font-size: 11px;
+}
+
+.kogol-dashboard-actions,
+.kogol-upload-controls {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+}
+
+.kogol-dashboard-actions .field {
+  min-width: 150px;
+  display: grid;
+  gap: 5px;
+}
+
+.kogol-dashboard-actions .field span,
+.kogol-upload-controls .field span {
+  color: #5c7080;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.kogol-dashboard-actions input,
+.kogol-upload-controls input {
+  min-height: 38px;
+  border: 1px solid #c6d3dc;
+  border-radius: 6px;
+  background: #fff;
+  color: #1c3348;
+  padding: 0 10px;
+  font: inherit;
+}
+
+.kogol-dashboard-actions .icon-button {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+}
+
+.kogol-dashboard-actions .icon-button svg { width: 16px; height: 16px; }
+
+.kogol-dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  padding: 16px;
+  background: #f3f7f9;
+}
+
+.kogol-card {
+  min-width: 0;
+  min-height: 278px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  border: 1px solid #d6e1e7;
+  border-top: 3px solid var(--kogol-card-color, #087e8b);
+  border-radius: 7px;
+  background: #fff;
+}
+
+.kogol-card[data-kogol-key="KOGOL_0"] { --kogol-card-color: #087e8b; }
+.kogol-card[data-kogol-key="KOGOL_3_PERKANTORAN"] { --kogol-card-color: #245580; }
+.kogol-card[data-kogol-key="KOGOL_3_LPJU"] { --kogol-card-color: #d99100; }
+.kogol-card[data-kogol-key="KOGOL_4"] { --kogol-card-color: #9a4f27; }
+
+.kogol-card-head {
+  min-height: 55px;
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 13px 14px 8px;
+}
+
+.kogol-eyebrow {
+  color: #6d8190;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.kogol-card h3 {
+  margin: 3px 0 0;
+  color: #172b43;
+  font-size: 13px;
+  line-height: 1.15;
+}
+
+.kogol-snapshot-count {
+  max-width: 74px;
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: #edf3f6;
+  color: #527082;
+  font-size: 9px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.kogol-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 2px 12px 13px;
+}
+
+.kogol-donut {
+  width: min(47%, 132px);
+  min-width: 104px;
+  height: auto;
+  overflow: visible;
+}
+
+.kogol-donut-track,
+.kogol-donut-paid {
+  fill: none;
+  stroke-width: 15;
+}
+
+.kogol-donut-track { stroke: #e5ebee; }
+.kogol-donut-paid { stroke-linecap: butt; }
+
+.kogol-donut-rate {
+  fill: #172b43;
+  font-size: 17px;
+  font-weight: 850;
+}
+
+.kogol-donut-caption {
+  fill: #718493;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.kogol-legend {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.kogol-legend div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: center;
+}
+
+.kogol-legend i {
+  width: 7px;
+  height: 7px;
+  grid-row: span 3;
+  border-radius: 50%;
+  background: #e5ebee;
+}
+
+.kogol-legend i.is-paid { background: var(--kogol-color); }
+.kogol-legend span {
+  overflow: hidden;
+  color: #647989;
+  font-size: 9px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kogol-legend strong {
+  overflow: hidden;
+  color: #223c53;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kogol-legend small {
+  overflow: hidden;
+  color: #728695;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kogol-card footer {
+  min-height: 42px;
+  padding: 9px 13px;
+  border-top: 1px solid #e3ebef;
+  color: #718493;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.kogol-empty,
+.kogol-dashboard-empty {
+  min-height: 126px;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  color: #7d8e99;
+  font-size: 11px;
+  text-align: center;
+}
+
+.kogol-dashboard-empty {
+  grid-column: 1 / -1;
+  min-height: 186px;
+  border: 1px dashed #cad9e1;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.kogol-upload-panel,
+.kogol-upload-grid,
+.kogol-guidance {
+  margin-top: 18px;
+}
+
+.kogol-upload-panel {
+  padding: 18px;
+  border: 1px solid #d5e0e7;
+  border-radius: 7px;
+  background: #f6fafb;
+}
+
+.kogol-upload-controls {
+  flex-wrap: wrap;
+}
+
+.kogol-upload-controls .field {
+  min-width: 180px;
+  display: grid;
+  gap: 5px;
+}
+
+.kogol-upload-panel .auto-note { margin: 13px 0 0; }
+
+.kogol-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.kogol-upload-card {
+  min-height: 210px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid #d4e0e7;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.kogol-upload-card .step-badge { position: absolute; right: 16px; top: 16px; }
+.kogol-upload-card h2 { font-size: 16px; }
+.kogol-upload-card p {
+  max-width: 540px;
+  margin: 6px 32px 0 0;
+  color: #637988;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.kogol-upload-card .file-button { margin-top: auto; }
+
+.kogol-guidance {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid #d5e1e8;
+  border-radius: 7px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.kogol-guidance div {
+  min-height: 80px;
+  padding: 15px;
+  border-right: 1px solid #dce6eb;
+}
+.kogol-guidance div:last-child { border-right: 0; }
+.kogol-guidance strong,
+.kogol-guidance span { display: block; }
+.kogol-guidance strong { color: #203d57; font-size: 11px; }
+.kogol-guidance span { margin-top: 5px; color: #6d8190; font-size: 10px; line-height: 1.45; }
+
+@media (max-width: 1260px) {
+  .kogol-dashboard-head { align-items: start; flex-direction: column; }
+  .kogol-dashboard-actions { width: 100%; }
+  .kogol-dashboard-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .kogol-dashboard-head,
+  .kogol-dashboard-cards,
+  .kogol-upload-panel,
+  .kogol-upload-card { padding: 14px; }
+  .kogol-dashboard-actions,
+  .kogol-upload-controls { width: 100%; align-items: stretch; }
+  .kogol-dashboard-actions .field,
+  .kogol-upload-controls .field { min-width: 0; flex: 1 1 150px; }
+  .kogol-dashboard-actions .button { flex: 1 1 150px; }
+  .kogol-dashboard-cards,
+  .kogol-upload-grid,
+  .kogol-guidance { grid-template-columns: 1fr; }
+  .kogol-guidance div { border-right: 0; border-bottom: 1px solid #dce6eb; }
+  .kogol-guidance div:last-child { border-bottom: 0; }
+}

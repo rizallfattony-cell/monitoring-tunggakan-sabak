@@ -10,5 +10,8 @@ psql -h /tmp -U postgres -v ON_ERROR_STOP=1 \
  -f /project/supabase-schema-step-23-debt-performance-history.sql \
  -f /project/supabase-schema-step-24-daily-debt-performance.sql \
  -f /project/supabase-schema-step-24-daily-debt-performance.sql \
+  -f /project/supabase-schema-step-25-kogol-dashboard.sql \
+  -f /project/supabase-schema-step-25-kogol-dashboard.sql \
  -f /project/tests/debt-performance-history.sql \
- -f /project/tests/debt-performance-daily.sql
+  -f /project/tests/debt-performance-daily.sql \
+  -f /project/tests/kogol-dashboard.sql
