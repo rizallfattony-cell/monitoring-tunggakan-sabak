@@ -26,6 +26,21 @@ function Resolve-SimontokGitExecutable {
     throw 'Git tidak ditemukan. Jalankan script dengan -GitPath yang menunjuk ke git.exe.'
 }
 
+# Avoid Get-FileHash because some locked-down PowerShell sessions cannot autoload
+# the Microsoft.PowerShell.Utility module even when .NET itself is available.
+function Get-SimontokSha256 {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $stream = $null
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [System.IO.File]::OpenRead($Path)
+        return ([System.BitConverter]::ToString($sha256.ComputeHash($stream))).Replace('-', '')
+    } finally {
+        if ($stream) { $stream.Dispose() }
+        $sha256.Dispose()
+    }
+}
+
 $gitExecutable = Resolve-SimontokGitExecutable -ExplicitPath $GitPath
 & $gitExecutable --version | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Git ditemukan tetapi tidak dapat dijalankan.' }
@@ -55,7 +70,7 @@ $dirty = & $gitExecutable -C $repo status --porcelain
 if ($LASTEXITCODE -ne 0 -or $dirty) { throw 'Repositori rilis harus bersih dan sudah di-commit sebelum publikasi.' }
 $branch = & $gitExecutable -C $repo branch --show-current
 if ($branch -ne 'main') { throw 'Repositori rilis harus berada di main.' }
-$expectedHash = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash
+$expectedHash = Get-SimontokSha256 -Path $apk
 $secure = Read-Host 'Masukkan password DATABASE BARU' -AsSecureString
 $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
 try {
@@ -74,7 +89,7 @@ try {
         try {
             Invoke-WebRequest -Uri "https://simontok-superweb.vercel.app/SIMONTOK-v$ReleaseVersion.apk" -OutFile $temporaryApk -UseBasicParsing -TimeoutSec 30
             $page = Invoke-WebRequest -Uri 'https://simontok-superweb.vercel.app/' -UseBasicParsing -TimeoutSec 30
-            if ((Get-FileHash -LiteralPath $temporaryApk -Algorithm SHA256).Hash -eq $expectedHash -and $page.Content.Contains($webMarker)) { $ready = $true; break }
+            if ((Get-SimontokSha256 -Path $temporaryApk) -eq $expectedHash -and $page.Content.Contains($webMarker)) { $ready = $true; break }
         } catch { }
         Start-Sleep -Seconds 5
     }
