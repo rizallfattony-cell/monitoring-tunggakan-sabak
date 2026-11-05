@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
     <link rel="stylesheet" href="./receipt-history.css?v=174" />
     <link rel="stylesheet" href="./debt-performance.css?v=20261031-daily-performance-v5" />
-    <link rel="stylesheet" href="./kogol-dashboard.css?v=20261105-kogol-v2" />
+    <link rel="stylesheet" href="./kogol-dashboard.css?v=20261105-kogol-v3" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -353,76 +353,42 @@
           <button class="button secondary" id="resetButton" type="button">Reset Lokal</button>
         </div>
 
-        <div class="kogol-upload-controls database-period-controls" data-upload-panel="database">
-          <label class="field" for="kogolMonthInput"><span>Bulan laporan</span><input id="kogolMonthInput" type="month" /></label>
-          <label class="field" for="kogolDateInput"><span>Tanggal saldo akhir</span><input id="kogolDateInput" type="date" /></label>
-          <span class="auto-note" id="kogolUploadStatus">Pilih bulan dan tanggal data sebelum mengunggah.</span>
-        </div>
-
-        <section class="upload-grid">
-          <article class="upload-panel" data-upload-panel="database">
-            <span class="step-badge">1</span>
-            <div>
-              <span class="upload-label">DIL</span>
-              <h2>DIL</h2>
-              <p>Format : IDPEL,NAMA,RBM,KOLOK,KOKED,PETUGAS.</p>
-            </div>
-            <label class="file-button">
-              Upload DIL
-              <input id="dilInput" type="file" accept=".xlsx,.xls,.csv" />
-            </label>
+        <section class="database-upload-layout" data-upload-panel="database">
+          <article class="database-master-upload upload-panel">
+            <div><span class="upload-label">Data master</span><h3>DIL</h3><p>IDPEL, NAMA, RBM, KOLOK, KOKED, PETUGAS</p></div>
             <span class="file-status" id="dilStatus">Belum ada file.</span>
+            <label class="file-button">Upload DIL<input id="dilInput" type="file" accept=".xlsx,.xls,.csv" /></label>
           </article>
+          <div class="kogol-upload-controls database-period-controls">
+            <label class="field" for="kogolMonthInput"><span>Bulan saldo awal</span><input id="kogolMonthInput" type="month" /></label>
+            <span class="auto-note" id="kogolUploadStatus">Tanggal saldo akhir otomatis mengikuti waktu upload (WIB).</span>
+          </div>
+          <div class="kogol-pair-list">
+            <section class="kogol-pair" aria-labelledby="uploadKogol0Title">
+              <header><h3 id="uploadKogol0Title">Kogol 0</h3><span>Monitoring &amp; APK</span></header>
+              <div class="kogol-pair-body">
+                <article class="upload-panel"><div><span class="upload-label">Saldo awal</span><h4>Saldo Awal Kogol 0</h4><p>File EIS dengan kolom KOGOL; hanya baris Kogol 0.</p></div><span class="file-status" id="awalStatus">Belum ada file.</span><label class="file-button">Upload Saldo Awal Kogol 0<input id="awalInput" type="file" accept=".xlsx,.xls,.csv" /></label></article>
+                <article class="upload-panel"><div><span class="upload-label">Saldo akhir</span><h4>Saldo Akhir Kogol 0</h4><p>Hanya Kogol 0 dikirim ke APK. Tanggal otomatis saat upload.</p></div><span class="file-status" id="akhirStatus">Belum ada file.</span><label class="file-button">Upload Saldo Akhir Kogol 0<input id="akhirInput" type="file" accept=".xlsx,.xls,.csv" /></label></article>
+              </div>
+            </section>
+            <section class="kogol-pair" aria-labelledby="uploadKogol3Title">
+              <header><h3 id="uploadKogol3Title">Kogol 3</h3><span>Khusus dashboard</span></header>
+              <div class="kogol-pair-body">
+                <article class="upload-panel"><div><span class="upload-label">Saldo awal</span><h4>Saldo Awal Kogol 3</h4><p>SATKER_MIV 14032800 - LPJU MUARA SABAK dipisah dari Perkantoran.</p></div><span class="file-status" id="kogol3AwalStatus">Belum ada file.</span><label class="file-button">Upload Saldo Awal Kogol 3<input id="kogol3AwalInput" type="file" accept=".xlsx,.xls,.csv" /></label></article>
+                <article class="upload-panel"><div><span class="upload-label">Saldo akhir</span><h4>Saldo Akhir Kogol 3</h4><p>Tanggal otomatis saat upload. Tidak dikirim ke APK.</p></div><span class="file-status" id="kogol3Status">Belum ada file.</span><label class="file-button">Upload Saldo Akhir Kogol 3<input id="kogol3Input" type="file" accept=".xlsx,.xls,.csv" /></label></article>
+              </div>
+            </section>
+            <section class="kogol-pair" aria-labelledby="uploadKogol4Title">
+              <header><h3 id="uploadKogol4Title">Kogol 4</h3><span>Khusus dashboard</span></header>
+              <div class="kogol-pair-body">
+                <article class="upload-panel"><div><span class="upload-label">Saldo awal</span><h4>Saldo Awal Kogol 4</h4><p>Baseline untuk bulan saldo awal yang dipilih.</p></div><span class="file-status" id="kogol4AwalStatus">Belum ada file.</span><label class="file-button">Upload Saldo Awal Kogol 4<input id="kogol4AwalInput" type="file" accept=".xlsx,.xls,.csv" /></label></article>
+                <article class="upload-panel"><div><span class="upload-label">Saldo akhir</span><h4>Saldo Akhir Kogol 4</h4><p>Tanggal otomatis saat upload. Tidak dikirim ke APK.</p></div><span class="file-status" id="kogol4Status">Belum ada file.</span><label class="file-button">Upload Saldo Akhir Kogol 4<input id="kogol4Input" type="file" accept=".xlsx,.xls,.csv" /></label></article>
+              </div>
+            </section>
+          </div>
+        </section>
 
-          <article class="upload-panel" data-upload-panel="database">
-            <span class="step-badge">2</span>
-            <div>
-              <span class="upload-label">KOGOL 0</span>
-              <h2>Saldo Awal Kogol 0</h2>
-              <p>File EIS dengan kolom KOGOL. Hanya baris Kogol 0 dipakai untuk monitoring dan APK.</p>
-            </div>
-            <label class="file-button">
-              Upload Saldo Awal Kogol 0
-              <input id="awalInput" type="file" accept=".xlsx,.xls,.csv" />
-            </label>
-            <span class="file-status" id="awalStatus">Belum ada file.</span>
-          </article>
-
-          <article class="upload-panel" data-upload-panel="database">
-            <span class="step-badge">3</span>
-            <div><span class="upload-label">KOGOL 3</span><h2>Saldo Awal Kogol 3</h2><p>Satu file; SATKER_MIV 14032800 - LPJU MUARA SABAK dipisah dari Perkantoran. Khusus dashboard.</p></div>
-            <label class="file-button">Upload Saldo Awal Kogol 3<input id="kogol3AwalInput" type="file" accept=".xlsx,.xls,.csv" /></label>
-            <span class="file-status" id="kogol3AwalStatus">Belum ada file.</span>
-          </article>
-          <article class="upload-panel" data-upload-panel="database">
-            <span class="step-badge">4</span>
-            <div><span class="upload-label">KOGOL 4</span><h2>Saldo Awal Kogol 4</h2><p>Baseline Kogol 4 untuk bulan yang dipilih. Khusus dashboard.</p></div>
-            <label class="file-button">Upload Saldo Awal Kogol 4<input id="kogol4AwalInput" type="file" accept=".xlsx,.xls,.csv" /></label>
-            <span class="file-status" id="kogol4AwalStatus">Belum ada file.</span>
-          </article>
-          <article class="upload-panel" data-upload-panel="database">
-            <span class="step-badge">5</span>
-            <div>
-              <span class="upload-label">KOGOL 0</span>
-              <h2>Saldo Akhir Kogol 0</h2>
-              <p>File EIS dengan kolom KOGOL. Hanya baris Kogol 0 dikirim ke APK.</p>
-            </div>
-            <label class="file-button">Upload Saldo Akhir Kogol 0<input id="akhirInput" type="file" accept=".xlsx,.xls,.csv" /></label>
-            <span class="file-status" id="akhirStatus">Belum ada file.</span>
-          </article>
-          <article class="upload-panel" data-upload-panel="database">
-            <span class="step-badge">6</span>
-            <div><span class="upload-label">KOGOL 3</span><h2>Saldo Akhir Kogol 3</h2><p>File Kogol 3 pada tanggal yang dipilih. Khusus dashboard, tidak dikirim ke APK.</p></div>
-            <label class="file-button">Upload Saldo Akhir Kogol 3<input id="kogol3Input" type="file" accept=".xlsx,.xls,.csv" /></label>
-            <span class="file-status" id="kogol3Status">Belum ada file.</span>
-          </article>
-          <article class="upload-panel" data-upload-panel="database">
-            <span class="step-badge">7</span>
-            <div><span class="upload-label">KOGOL 4</span><h2>Saldo Akhir Kogol 4</h2><p>File Kogol 4 pada tanggal yang dipilih. Khusus dashboard, tidak dikirim ke APK.</p></div>
-            <label class="file-button">Upload Saldo Akhir Kogol 4<input id="kogol4Input" type="file" accept=".xlsx,.xls,.csv" /></label>
-            <span class="file-status" id="kogol4Status">Belum ada file.</span>
-          </article>
-
+        <section class="upload-grid stand-upload-grid">
           <article class="upload-panel" data-upload-panel="stand-meter" hidden>
             <span class="step-badge">4</span>
             <div>
@@ -1276,7 +1242,7 @@
     </dialog>
     <script src="./receipt-history.js?v=174"></script>
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
-    <script src="./kogol-dashboard.js?v=20261105-kogol-v2"></script>
-    <script src="./app.js?v=20261105-kogol-v2"></script>
+    <script src="./kogol-dashboard.js?v=20261105-kogol-v3"></script>
+    <script src="./app.js?v=20261105-kogol-v3"></script>
   </body>
 </html>

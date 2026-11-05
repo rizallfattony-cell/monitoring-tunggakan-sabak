@@ -5,6 +5,7 @@ const {
   buildDonut,
   validMonth,
   formatMonth,
+  wibDate,
 } = require('../kogol-dashboard.js');
 
 const rows = normalizeRows([
@@ -51,5 +52,8 @@ assert.match(buildDonut(kogol0), /75%/);
 assert.match(buildDonut({ available: false }), /Belum ada data/);
 assert.equal(validMonth('2026-11'), '2026-11');
 assert.match(formatMonth('2026-11'), /November 2026/);
+assert.equal(wibDate(new Date('2026-11-04T17:30:00Z')), '2026-11-05');
+assert.equal(wibDate(new Date('2026-11-05T16:59:59Z')), '2026-11-05');
+assert.equal(wibDate(new Date('2026-11-05T17:00:00Z')), '2026-11-06');
 
 console.log('PASS Kogol dashboard JS: snapshots, paid balances, donut and empty state');

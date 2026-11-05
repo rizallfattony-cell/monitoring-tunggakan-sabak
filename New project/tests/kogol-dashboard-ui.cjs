@@ -104,11 +104,31 @@ fs.mkdirSync(qa, { recursive: true });
     });
     assert.equal(save.ok, true);
     assert.deepEqual(save.call.params.p_rows, [{ kogol_key: 'KOGOL_4', saldo_id: 3, saldo_rupiah: 30000 }]);
-    assert.equal(await page.locator('[data-tab-panel="upload"] [data-upload-panel="database"].upload-panel').count(), 7);
-    assert.deepEqual(await page.locator('[data-tab-panel="upload"] [data-upload-panel="database"].upload-panel h2').allTextContents(), [
-      'DIL', 'Saldo Awal Kogol 0', 'Saldo Awal Kogol 3', 'Saldo Awal Kogol 4',
-      'Saldo Akhir Kogol 0', 'Saldo Akhir Kogol 3', 'Saldo Akhir Kogol 4',
+    assert.equal(await page.locator('[data-tab-panel="upload"] [data-upload-panel="database"] .upload-panel').count(), 7);
+    assert.deepEqual(await page.locator('[data-tab-panel="upload"] [data-upload-panel="database"] h4').allTextContents(), [
+      'Saldo Awal Kogol 0', 'Saldo Akhir Kogol 0', 'Saldo Awal Kogol 3',
+      'Saldo Akhir Kogol 3', 'Saldo Awal Kogol 4', 'Saldo Akhir Kogol 4',
     ]);
+    assert.equal(await page.locator('#kogolDateInput').count(), 0);
+    const automaticDate = await page.evaluate(async () => {
+      const originalRead = readWorkbook;
+      const originalSave = saveKogolSnapshot;
+      const originalDate = window.SimontokKogolDashboard.wibDate;
+      const calls = [];
+      readWorkbook = async () => [{ IDPEL: '001', RPTAG: '1000', SATKER_MIV: '14032800 - LPJU MUARA SABAK' }];
+      saveKogolSnapshot = async (date, rows) => { calls.push({ date, rows }); return true; };
+      window.SimontokKogolDashboard.wibDate = () => '2026-11-05';
+      state.kogolDashboard.selectedMonth = '2026-10';
+      try {
+        await handleKogolUpload({ target: { files: [new File([''], 'saldo3.xlsx')], value: '' } }, 'kogol3', 'akhir');
+        return calls;
+      } finally {
+        readWorkbook = originalRead;
+        saveKogolSnapshot = originalSave;
+        window.SimontokKogolDashboard.wibDate = originalDate;
+      }
+    });
+    assert.equal(automaticDate[0].date, '2026-11-05', 'Closing upload uses WIB upload date, not selected opening month');
     assert.equal(await page.locator('#kogol3AwalInput').count(), 1);
     assert.equal(await page.locator('#kogol4AwalInput').count(), 1);
     assert.equal(await page.locator('#kogolDashboardPanel button[data-tab="upload"]').count(), 1);
@@ -132,6 +152,9 @@ fs.mkdirSync(qa, { recursive: true });
     await page.evaluate(() => switchTab('upload'));
     await page.evaluate(() => document.querySelector('.workspace-layout').classList.add('is-menu-collapsed'));
     await page.waitForTimeout(200);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: path.join(qa, 'kogol-upload-compact-desktop.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: path.join(qa, 'kogol-upload-mobile.png'), fullPage: true });
     assert.equal(await page.locator('[data-tab-panel="upload"] .upload-panel:visible').count(), 7);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'No full-page horizontal overflow on mobile');

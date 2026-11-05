@@ -14,8 +14,8 @@ ke aplikasi Android.
 
 ## Cara kerja
 
-1. Pada menu `Database > Upload Data`, pilih bulan laporan dan tanggal saldo
-   akhir. Ada tujuh unggahan: DIL, saldo awal/akhir Kogol 0, saldo awal/akhir
+1. Pada menu `Database > Upload Data`, pilih bulan saldo awal. Ada tujuh unggahan:
+   DIL, saldo awal/akhir Kogol 0, saldo awal/akhir
    Kogol 3, dan saldo awal/akhir Kogol 4.
 2. Upload Saldo Awal Kogol 0 dan Saldo Akhir Kogol 0 seperti file EIS biasa.
    Hanya baris `KOGOL=0` yang masuk laporan Monitoring dan APK Android. File
@@ -24,8 +24,10 @@ ke aplikasi Android.
    Baris LPJU dipisah dengan `SATKER_MIV`; seluruh baris lainnya Perkantoran.
    Lakukan hal yang sama untuk Kogol 4. Kogol 3/4 tidak masuk APK.
 4. Saldo awal disimpan sebagai baseline tanggal 1 bulan terpilih, meskipun
-   diunggah belakangan. Saldo akhir disimpan pada tanggal data yang dipilih.
-   Unggah ulang kelompok dan tanggal yang sama mengganti snapshot itu saja.
+   diunggah belakangan. Saldo akhir otomatis memakai tanggal saat unggah dalam
+   zona Asia/Jakarta; tidak perlu memilih tanggal. Unggah ulang kelompok pada
+   hari yang sama mengganti snapshot hari itu saja. Pada tanggal 1, saldo akhir
+   belum dapat disimpan karena menggunakan tanggal baseline yang sama.
 
 Diagram memakai jumlah IDPEL. Nilai rupiah lunas dan belum lunas tetap
 ditampilkan di setiap kartu. Tanpa baseline tanggal 1, realisasi belum
