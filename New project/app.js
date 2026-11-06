@@ -218,7 +218,7 @@ const els = {
   metricAkhir: document.querySelector("#metricAkhir"),
   metricPelunasan: document.querySelector("#metricPelunasan"),
   metricPersen: document.querySelector("#metricPersen"),
-  uploadGrid: document.querySelector(".upload-grid"),
+  standUploadPanel: document.querySelector(".stand-upload-layout"),
   summaryGrid: document.querySelector(".summary-grid"),
   toolbar: document.querySelector(".toolbar"),
   anomalySection: document.querySelector(".anomaly-section"),
@@ -505,7 +505,7 @@ function attachEvents() {
   els.tabButtons.forEach((button) => {
     if (button.hasAttribute("data-tree-toggle")) return;
     button.addEventListener("click", () => {
-      if (button.dataset.uploadView) setUploadView(button.dataset.uploadView);
+      if (button.dataset.tab === "upload") setUploadView(button.dataset.uploadView);
       switchTab(button.dataset.tab);
     });
   });
@@ -575,7 +575,8 @@ function switchTab(tabName) {
   if (!tabName) return;
   state.activeTab = tabName;
   els.tabButtons.forEach((button) => {
-    const active = button.dataset.tab === tabName;
+    const active = button.dataset.tab === tabName
+      && (!button.dataset.uploadView || button.dataset.uploadView === state.uploadView);
     const isRepeatedSubMenu = button.classList.contains("tree-child");
     const isOverviewCard = button.classList.contains("overview-card");
     const shouldHighlight = active && !isOverviewCard && (!isRepeatedSubMenu || document.activeElement === button);
@@ -621,9 +622,8 @@ function setUploadView(viewName) {
 function renderUploadView() {
   const standView = state.uploadView === "stand-meter";
   els.uploadPanels.forEach((panel) => {
-    panel.hidden = standView
-      ? panel.dataset.uploadPanel !== "stand-meter"
-      : panel.dataset.uploadPanel !== "database";
+    panel.hidden = panel.dataset.uploadPanel !== state.uploadView
+      || (panel === els.standUploadPanel && state.profile?.role === "petugas");
   });
   if (els.uploadPanelTitle) {
     els.uploadPanelTitle.textContent = standView ? "UPLOAD STAND" : "UPLOAD DATABASE";
@@ -639,7 +639,7 @@ function tabTitle(tabName) {
   const titles = {
     overview: "Dashboard",
     "kogol0-detail": "Rincian Kogol 0",
-    upload: "Upload Data",
+    upload: state.uploadView === "stand-meter" ? "Upload Stand" : "Upload Data",
     laporan: "Laporan",
     "pelunasan-harian": "Upload Saldo Harian",
     kogol: "Dashboard Kogol",
@@ -2494,7 +2494,7 @@ function applyRoleView() {
   if (kogolPanel && petugasMode) kogolPanel.hidden = true;
   if (els.lpbOverviewPanel) els.lpbOverviewPanel.hidden = petugasMode;
   if (petugasMode && ["saldo-rata", "pelunasan-harian", "comparison", "kogol", "premium", "sync-status", "receipt-history"].includes(state.activeTab)) switchTab("laporan");
-  if (els.uploadGrid) els.uploadGrid.hidden = petugasMode;
+  if (els.standUploadPanel) els.standUploadPanel.hidden = petugasMode || state.uploadView !== "stand-meter";
   if (els.summaryGrid) els.summaryGrid.hidden = petugasMode;
   if (els.toolbar) els.toolbar.hidden = false;
   if (els.anomalySection) els.anomalySection.hidden = petugasMode;

@@ -645,7 +645,7 @@ h1 {
   display: none !important;
 }
 
-.stand-upload-grid[hidden] {
+[data-upload-view="stand-meter"][hidden] {
   display: none !important;
 }
 

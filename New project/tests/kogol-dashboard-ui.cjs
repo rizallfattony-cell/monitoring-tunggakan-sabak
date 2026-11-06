@@ -292,18 +292,69 @@ fs.mkdirSync(qa, { recursive: true });
     await page.screenshot({ path: path.join(qa, 'kogol-upload-compact-desktop.png'), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: path.join(qa, 'kogol-upload-mobile.png'), fullPage: true });
-    assert.equal(await page.locator('[data-tab-panel="upload"] .upload-panel:visible').count(), 9);
-    assert.equal(await page.locator('.tree-menu [data-upload-view="stand-meter"]').count(), 0, 'Upload Stand is no longer a separate sidebar menu');
+    assert.equal(await page.locator('[data-tab-panel="upload"] .upload-panel:visible').count(), 7);
     assert.equal(await page.locator('#standAwalInput').count(), 1);
     assert.equal(await page.locator('#standAkhirInput').count(), 1);
-    assert.equal(await page.getByText('Upload Stand Awal', { exact: true }).isVisible(), true, 'Opening stand upload is available in Database Upload Data');
-    assert.equal(await page.getByText('Upload Stand Akhir', { exact: true }).isVisible(), true, 'Closing stand upload is available in Database Upload Data');
+    assert.equal(await page.getByText('Upload Stand Awal', { exact: true }).isVisible(), false, 'Upload Data does not include stand uploads');
+    assert.equal(await page.getByText('Upload Stand Akhir', { exact: true }).isVisible(), false);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'No full-page horizontal overflow on mobile');
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.evaluate(() => document.querySelector('.workspace-layout').classList.remove('is-menu-collapsed'));
+    const databaseGroup = page.locator('[data-tree-toggle="database"]').locator('..');
+    if (!await databaseGroup.evaluate((group) => group.classList.contains('is-open'))) {
+      await page.locator('[data-tree-toggle="database"]').click();
+    }
+    const standMenu = databaseGroup.getByRole('button', { name: 'Upload Stand', exact: true });
+    const dataMenu = databaseGroup.getByRole('button', { name: 'Upload Data', exact: true });
+    assert.equal(await page.locator('[data-tree-toggle="simontok-app"]').locator('..').getByRole('button', { name: 'Upload Stand', exact: true }).count(), 0);
+    await standMenu.click();
+    assert.equal(await page.locator('#workspaceTabTitle').textContent(), 'Upload Stand');
+    assert.equal(await standMenu.getAttribute('aria-selected'), 'true');
+    assert.equal(await dataMenu.getAttribute('aria-selected'), 'false');
+    assert.equal(await page.locator('[data-tab-panel="upload"] .upload-panel:visible').count(), 2);
+    assert.equal(await page.getByText('Upload Stand Awal', { exact: true }).isVisible(), true);
+    assert.equal(await page.getByText('Upload Stand Akhir', { exact: true }).isVisible(), true);
+    await page.evaluate(() => {
+      state.struk = [{ idpel: '001', standAwal: '123', standAkhir: '456' }];
+      state.uploadMeta.standAwal = { uploadedAt: '2026-11-06T02:00:00Z' };
+      state.uploadMeta.standAkhir = { uploadedAt: '2026-11-06T02:05:00Z' };
+      updateFileStatuses();
+    });
+    assert.match(await page.locator('#standAwalStatus').innerText(), /1 IDPEL tersimpan/i);
+    assert.match(await page.locator('#standAkhirStatus').innerText(), /Terakhir upload/i);
+    const standCards = await page.locator('.stand-upload-layout .upload-panel').evaluateAll((cards) => cards.map((card) => {
+      const rect = card.getBoundingClientRect();
+      const text = card.querySelector('div').getBoundingClientRect();
+      const button = card.querySelector('.file-button').getBoundingClientRect();
+      const status = card.querySelector('.file-status').getBoundingClientRect();
+      return { top: rect.top, width: rect.width, height: rect.height, buttonRightOfText: button.left >= text.right, statusBelowButton: status.top >= button.bottom };
+    }));
+    assert.equal(standCards[0].top, standCards[1].top, 'Desktop stand cards are side by side');
+    assert.equal(standCards[0].width, standCards[1].width);
+    assert.equal(standCards.every((card) => card.height < 200 && card.buttonRightOfText && card.statusBelowButton), true, 'Stand uploads use the compact Kogol card layout');
+    await page.locator('#uploadPanelTitle').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(qa, 'stand-upload-desktop.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(() => document.querySelector('.workspace-layout').classList.add('is-menu-collapsed'));
+    await page.screenshot({ path: path.join(qa, 'stand-upload-mobile.png'), fullPage: true });
+    assert.equal(await page.locator('[data-tab-panel="upload"] .upload-panel:visible').count(), 2);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'Stand upload fits the mobile viewport');
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.evaluate(() => document.querySelector('.workspace-layout').classList.remove('is-menu-collapsed'));
+    await dataMenu.click();
+    assert.equal(await page.locator('#workspaceTabTitle').textContent(), 'Upload Data');
+    assert.equal(await dataMenu.getAttribute('aria-selected'), 'true');
+    assert.equal(await standMenu.getAttribute('aria-selected'), 'false');
+    assert.equal(await page.locator('[data-tab-panel="upload"] .upload-panel:visible').count(), 7);
+    await standMenu.click();
     await page.evaluate(() => {
       state.profile.role = 'petugas';
       applyRoleView();
       switchTab('upload');
     });
+    assert.equal(await standMenu.isVisible(), false, 'Stand submenu stays hidden for officers');
     assert.equal(await page.getByText('Upload Stand Awal', { exact: true }).isVisible(), false, 'Opening stand upload stays hidden for officers');
     assert.equal(await page.getByText('Upload Stand Akhir', { exact: true }).isVisible(), false, 'Closing stand upload stays hidden for officers');
     assert.deepEqual(errors, []);
