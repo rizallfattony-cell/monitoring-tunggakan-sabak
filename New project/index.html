@@ -13,7 +13,8 @@
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
     <link rel="stylesheet" href="./receipt-history.css?v=174" />
     <link rel="stylesheet" href="./debt-performance.css?v=20261031-daily-performance-v5" />
-    <link rel="stylesheet" href="./kogol-dashboard.css?v=20261106-kogol-v4" />
+    <link rel="stylesheet" href="./kogol-dashboard.css?v=20261106-kogol-v5" />
+    <link rel="stylesheet" href="./kogol0-detail.css?v=20261106-kogol-v5" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -343,6 +344,26 @@
                 </section>
               </div>
             </section>
+
+      <section class="tab-panel" data-tab-panel="kogol0-detail" hidden>
+        <section class="kogol0-detail" id="kogol0DetailPanel" aria-labelledby="kogol0DetailHeading">
+          <header class="kogol0-detail-header">
+            <div>
+              <span class="overview-eyebrow">Kolektibilitas / Kogol 0</span>
+              <h1 id="kogol0DetailHeading">Rincian Kogol 0 per Petugas</h1>
+              <p id="kogol0DetailStatus">Pilih Kogol 0 di dashboard untuk melihat rincian.</p>
+            </div>
+            <button class="button secondary" type="button" data-tab="overview"><i data-lucide="arrow-left" aria-hidden="true"></i> Dashboard</button>
+          </header>
+          <div class="kogol0-detail-toolbar">
+            <button class="icon-button" id="kogol0DetailBack" type="button" title="Kembali ke daftar petugas" aria-label="Kembali ke daftar petugas" hidden><i data-lucide="arrow-left" aria-hidden="true"></i></button>
+            <label class="kogol0-detail-search"><i data-lucide="search" aria-hidden="true"></i><input id="kogol0DetailSearch" type="search" placeholder="Cari petugas" autocomplete="off" aria-label="Cari petugas atau pelanggan" /></label>
+          </div>
+          <div class="kogol0-detail-summary" id="kogol0DetailSummary"></div>
+          <div class="kogol0-detail-table" id="kogol0DetailTable"><div class="kogol0-detail-empty">Pilih Kogol 0 di dashboard untuk melihat rincian.</div></div>
+          <div class="kogol0-detail-more-wrap"><button class="button secondary" id="kogol0DetailMore" type="button" hidden>Tampilkan lagi</button></div>
+        </section>
+      </section>
 
       <section class="tab-panel" data-tab-panel="upload" hidden>
         <div class="section-head">
@@ -1242,7 +1263,8 @@
     </dialog>
     <script src="./receipt-history.js?v=174"></script>
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
-    <script src="./kogol-dashboard.js?v=20261106-kogol-v4"></script>
-    <script src="./app.js?v=20261106-kogol-v4"></script>
+    <script src="./kogol-dashboard.js?v=20261106-kogol-v5"></script>
+    <script src="./kogol0-detail.js?v=20261106-kogol-v5"></script>
+    <script src="./app.js?v=20261106-kogol-v5"></script>
   </body>
 </html>

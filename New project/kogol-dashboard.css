@@ -96,6 +96,12 @@
 .kogol-card[data-kogol-key="KOGOL_3_LPJU"] { --kogol-card-color: #d99100; }
 .kogol-card[data-kogol-key="KOGOL_4"] { --kogol-card-color: #9a4f27; }
 
+.kogol-card-openable { cursor: pointer; transition: border-color 150ms ease, box-shadow 150ms ease; }
+.kogol-card-openable:hover { border-color: #087e8b; box-shadow: 0 3px 12px #0b46601a; }
+.kogol-card-openable:focus-visible { outline: 3px solid #087e8b; outline-offset: 2px; }
+.kogol-card-drill { display: block; margin-top: 5px; color: #08717e; font-size: 11px; font-weight: 750; }
+.kogol-card-drill i { margin-left: 2px; font-style: normal; }
+
 .kogol-card-head {
   min-height: 55px;
   display: flex;

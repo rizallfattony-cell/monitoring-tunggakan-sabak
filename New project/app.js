@@ -324,10 +324,19 @@ const debtPerformanceController = window.SimontokDebtPerformance.create({
   getState: () => state,
   getOfficerNames: () => PERFORMANCE_PARTICIPANTS,
 });
+const kogol0DetailController = window.SimontokKogol0Detail.create({
+  getState: () => state,
+  getOfficerNames: () => PERFORMANCE_PARTICIPANTS,
+});
 let kogolSnapshotCache = { month: "", rows: [], loaded: false };
 const kogolDashboardController = window.SimontokKogolDashboard.create({
   getState: () => state,
   onMonthChange: syncKogolDashboardMonth,
+  onOpenGroup: (summary) => {
+    if (state.profile?.role !== "admin") return;
+    switchTab("kogol0-detail");
+    kogol0DetailController.open(summary);
+  },
   onRecordsChange: (rows, month, loaded) => {
     kogolSnapshotCache = { month, rows, loaded };
     setKogolUploadStatus();
@@ -619,6 +628,7 @@ function renderUploadView() {
 function tabTitle(tabName) {
   const titles = {
     overview: "Dashboard",
+    "kogol0-detail": "Rincian Kogol 0",
     upload: "Upload Data",
     laporan: "Laporan",
     "pelunasan-harian": "Upload Saldo Harian",
@@ -1228,6 +1238,7 @@ async function logoutOnline() {
   receiptHistoryController.reset();
   debtPerformanceController.reset();
   kogolDashboardController.reset();
+  kogol0DetailController.reset();
   state.premiumUsers = [];
   updateOnlineUi();
   renderPremiumUsers();

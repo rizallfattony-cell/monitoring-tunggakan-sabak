@@ -77,6 +77,7 @@ fs.mkdirSync(qa, { recursive: true });
       };
       document.getElementById('authGate').hidden = true;
       document.getElementById('appShell').hidden = false;
+      attachEvents();
       state.kogolDashboard.selectedMonth = '2026-10';
       renderKogolDashboardControls();
       kogolDashboardController.syncContext();
@@ -110,6 +111,63 @@ fs.mkdirSync(qa, { recursive: true });
       kogol: document.querySelector('#kogolDashboardPanel').getBoundingClientRect().width,
     }));
     assert.ok(dashboardWidth.kogol >= dashboardWidth.panel * 0.95, 'Kogol dashboard fills the content width');
+
+    await page.evaluate(() => {
+      const rows = Array.from({ length: 30 }, (_, index) => ({
+        petugas: index < 15 ? 'ADRI' : 'AMRIZAL',
+        idpel: String(143900000000 + index), nama: `Pelanggan ${index}`,
+        alamat: `Alamat ${index}`, tarif: 'R1', daya: '900',
+        rptag: index === 0 ? 100000 : index === 15 ? 172000 : 1000,
+      }));
+      state.remainingByPetugas = new Map([
+        ['ADRI', rows.slice(0, 15)], ['AMRIZAL', rows.slice(15)],
+      ]);
+      state.uploadMeta.akhir = { uploadedAt: '2026-10-20T01:00:00Z' };
+    });
+    await page.locator('[data-kogol-key="KOGOL_0"]').click();
+    await page.waitForFunction(() => document.querySelector('[data-tab-panel="kogol0-detail"]').classList.contains('is-active'));
+    assert.match(await page.locator('#kogol0DetailStatus').innerText(), /30 pelanggan cocok/);
+    assert.equal(await page.locator('#kogol0DetailTable tbody tr').count(), 19);
+    assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('[data-officer]').first().innerText(), 'AMRIZAL');
+    await page.locator('#kogol0DetailTable [data-officer="AMRIZAL"]').first().click();
+    assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('.customer-name').innerText(), 'Pelanggan 15');
+    assert.match(await page.locator('#kogol0DetailTable tbody tr').first().innerText(), /Rp\s*172\.000/);
+    await page.locator('#kogol0DetailSearch').fill('Pelanggan 16');
+    assert.equal(await page.locator('#kogol0DetailTable tbody tr').count(), 1);
+    await page.locator('#kogol0DetailSearch').fill('');
+    await page.screenshot({ path: path.join(qa, 'kogol0-customers-desktop.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(() => document.querySelector('.workspace-layout').classList.add('is-menu-collapsed'));
+    await page.screenshot({ path: path.join(qa, 'kogol0-customers-mobile.png'), fullPage: true });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'Customer table scrolls within mobile viewport');
+    await page.locator('#kogol0DetailBack').click();
+    await page.screenshot({ path: path.join(qa, 'kogol0-officers-mobile.png'), fullPage: true });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'Kogol 0 detail fits mobile viewport');
+    await page.setViewportSize({ width: 1440, height: 1100 });
+    await page.locator('[data-tab-panel="kogol0-detail"] [data-tab="overview"]').click();
+    await page.evaluate(() => {
+      const rows = [...state.remainingByPetugas.values()].flat();
+      state.remainingByPetugas = new Map();
+      const originalFrom = state.supabaseClient.from;
+      state.supabaseClient.from = (table) => {
+        if (table !== 'monitoring_remaining_customers') return originalFrom(table);
+        const query = {
+          select: () => query, eq: () => query, order: () => query,
+          range: async (start, end) => ({ data: rows.slice(start, end + 1).map((row, index) => ({ ...row, id: start + index + 1, uploaded_at: '2026-10-20T01:00:00Z' })), error: null }),
+        };
+        return query;
+      };
+    });
+    await page.locator('[data-kogol-key="KOGOL_0"]').click();
+    await page.waitForFunction(() => document.querySelector('#kogol0DetailStatus').textContent.includes('30 pelanggan cocok'));
+    assert.equal(await page.locator('#kogol0DetailTable tbody tr').count(), 19, 'Online fallback loads officer detail');
+    await page.evaluate(async () => {
+      const summary = window.SimontokKogolDashboard.buildSummary(window.__kogolRows, '2026-10')[0];
+      summary.closing.snapshotDate = '2026-10-19';
+      await kogol0DetailController.open(summary);
+    });
+    assert.match(await page.locator('#kogol0DetailStatus').innerText(), /tanggal unggahan lain/i);
+    await page.evaluate(() => switchTab('overview'));
 
     const parsed = await page.evaluate(() => parseKogolUploadRows([
       { IDPEL: '001', RPTAG: '1000', SATKER_MIV: '14032800 - LPJU MUARA SABAK' },
@@ -167,6 +225,7 @@ fs.mkdirSync(qa, { recursive: true });
     }));
     assert.deepEqual(kogol0, { zero: true, three: false, four: false, uploaded: ['001'] });
 
+    await page.evaluate(() => switchTab('overview'));
     await page.locator('#kogolDashboardPanel').scrollIntoViewIfNeeded();
     await page.evaluate(() => { document.getElementById('progressPanel').hidden = true; });
     await page.screenshot({ path: path.join(qa, 'kogol-dashboard-desktop.png'), fullPage: true });
@@ -184,7 +243,7 @@ fs.mkdirSync(qa, { recursive: true });
     assert.equal(await page.locator('[data-tab-panel="upload"] .upload-panel:visible').count(), 7);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'No full-page horizontal overflow on mobile');
     assert.deepEqual(errors, []);
-    console.log('PASS Kogol dashboard UI: four charts, classification, save RPC and responsive layout');
+    console.log('PASS Kogol dashboard UI: four charts, Kogol 0 drilldown, classification, save RPC and responsive layout');
   } finally {
     if (browser) await browser.close();
     await new Promise((resolve) => server.close(resolve));

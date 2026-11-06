@@ -150,7 +150,7 @@
 
   function buildCards(summaries) {
     return summaries.map((summary) => `
-      <article class="kogol-card" data-kogol-key="${summary.key}">
+      <article class="kogol-card${summary.key === "KOGOL_0" ? " kogol-card-openable" : ""}" data-kogol-key="${summary.key}"${summary.key === "KOGOL_0" ? ' role="button" tabindex="0" aria-label="Lihat rincian Kogol 0 per petugas"' : ""}>
         <div class="kogol-card-head">
           <h3>${escapeHtml(summary.label)}</h3>
           <span class="kogol-snapshot-count">${summary.available ? `${summary.snapshotCount} snapshot` : "Belum upload"}</span>
@@ -166,7 +166,7 @@
           ? (!summary.opening ? "Saldo awal belum diunggah. Data akhir belum dapat dihitung sebagai realisasi."
             : summary.snapshotCount < 2 ? "Saldo awal tersedia; menunggu upload saldo akhir."
               : `Saldo awal ${formatDate(summary.opening?.snapshotDate)} - data terakhir ${formatDate(summary.closing?.snapshotDate)}`)
-          : "Upload saldo awal dan saldo terbaru untuk melihat pencapaian."}</footer>
+          : "Upload saldo awal dan saldo terbaru untuk melihat pencapaian."}${summary.key === "KOGOL_0" ? '<span class="kogol-card-drill">Rincian petugas <i aria-hidden="true">&rarr;</i></span>' : ""}</footer>
       </article>
     `).join("");
   }
@@ -183,6 +183,7 @@
     const getState = options.getState || (() => ({}));
     const onMonthChange = options.onMonthChange || (() => {});
     const onRecordsChange = options.onRecordsChange || (() => {});
+    const onOpenGroup = options.onOpenGroup || (() => {});
     const elements = {
       panel: document.querySelector("#kogolDashboardPanel"),
       month: document.querySelector("#kogolDashboardMonth"),
@@ -213,6 +214,17 @@
       load();
     });
     elements.refresh?.addEventListener("click", () => load({ force: true }));
+    elements.cards.addEventListener("click", (event) => {
+      if (event.target.closest('[data-kogol-key="KOGOL_0"]')) {
+        onOpenGroup(buildSummary(records, validMonth(elements.month.value))[0]);
+      }
+    });
+    elements.cards.addEventListener("keydown", (event) => {
+      if ((event.key === "Enter" || event.key === " ") && event.target.matches('[data-kogol-key="KOGOL_0"]')) {
+        event.preventDefault();
+        onOpenGroup(buildSummary(records, validMonth(elements.month.value))[0]);
+      }
+    });
 
     function syncContext() {
       const state = getState();
