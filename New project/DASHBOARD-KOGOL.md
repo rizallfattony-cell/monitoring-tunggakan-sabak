@@ -33,3 +33,7 @@ Diagram memakai jumlah IDPEL. Nilai rupiah lunas dan belum lunas tetap
 ditampilkan di setiap kartu. Tanpa baseline tanggal 1, realisasi belum
 ditampilkan. Setelah awal dan akhir tersedia, `Lunas = saldo awal - saldo
 terbaru`; angka tidak berubah hanya karena dashboard dibuka ulang.
+
+Status file Kogol 3/4 pada menu upload dibaca dari snapshot database untuk
+bulan yang dipilih, termasuk nama file dan waktu unggah. Karena itu status
+tetap tampil setelah halaman dimuat ulang atau dibuka di perangkat lain.

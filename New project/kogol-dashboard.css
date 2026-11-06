@@ -485,3 +485,152 @@
   .kogol-guidance div { border-right: 0; border-bottom: 1px solid #dce6eb; }
   .kogol-guidance div:last-child { border-bottom: 0; }
 }
+
+.overview-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 22px;
+}
+
+.overview-panel > .kogol-dashboard { order: 0; }
+.overview-panel > .overview-dashboard-grid { order: 1; }
+.overview-panel > .overview-heading { order: 2; }
+.overview-panel > .overview-kpi-grid { order: 3; }
+.overview-panel > .performance-dashboard { order: 4; }
+
+.overview-panel > .overview-heading,
+.overview-panel > .overview-kpi-grid,
+.overview-panel > .performance-dashboard { margin: 0; }
+
+.overview-heading h2 {
+  margin: 0 0 5px;
+  color: #172b43;
+  font-size: 20px;
+}
+
+.overview-panel > .overview-heading {
+  margin-top: 8px;
+}
+
+.kogol-dashboard {
+  margin: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+}
+
+.kogol-dashboard-head {
+  min-height: 0;
+  border: 0;
+  padding: 0 0 16px;
+}
+
+.kogol-dashboard-head h1 {
+  margin: 3px 0 0;
+  color: #172b43;
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.kogol-dashboard-head p {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.kogol-dashboard-actions .button.secondary {
+  border-color: #173d60;
+  background: #173d60;
+  color: #fff;
+}
+
+.kogol-dashboard-actions .button.secondary:hover {
+  border-color: #0e304d;
+  background: #0e304d;
+}
+
+.kogol-dashboard-cards {
+  gap: 14px;
+  padding: 0;
+  background: transparent;
+}
+
+.kogol-card {
+  min-height: 244px;
+  border-top-width: 4px;
+  box-shadow: none;
+}
+
+.kogol-card-head {
+  min-height: 0;
+  align-items: center;
+  padding: 15px 16px 8px;
+}
+
+.kogol-card h3 {
+  margin: 0;
+  color: var(--kogol-card-color);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.kogol-snapshot-count {
+  max-width: none;
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  font-size: 9px;
+}
+
+.kogol-card-body {
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 8px 15px 16px;
+}
+
+.kogol-donut {
+  width: 102px;
+  min-width: 102px;
+}
+
+.kogol-donut-track,
+.kogol-donut-paid { stroke-width: 13; }
+
+.kogol-legend { gap: 10px; }
+
+.kogol-legend div {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+
+.kogol-legend span,
+.kogol-legend strong,
+.kogol-legend small {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.kogol-legend span { font-size: 11px; }
+.kogol-legend strong { font-size: 14px; }
+.kogol-legend small { font-size: 11px; }
+
+.kogol-card footer {
+  min-height: 0;
+  padding: 11px 15px;
+  font-size: 10px;
+}
+
+@media (max-width: 1300px) {
+  .kogol-dashboard-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .kogol-dashboard-head { padding: 0 0 14px; }
+  .kogol-dashboard-head h1 { font-size: 22px; }
+  .kogol-dashboard-cards { grid-template-columns: 1fr; padding: 0; }
+  .kogol-card-body { padding-inline: 13px; }
+  .overview-panel { gap: 18px; }
+}

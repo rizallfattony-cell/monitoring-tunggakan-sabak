@@ -152,14 +152,14 @@
     return summaries.map((summary) => `
       <article class="kogol-card" data-kogol-key="${summary.key}">
         <div class="kogol-card-head">
-          <div><span class="kogol-eyebrow">${escapeHtml(summary.label)}</span><h3>${escapeHtml(summary.label)}</h3></div>
+          <h3>${escapeHtml(summary.label)}</h3>
           <span class="kogol-snapshot-count">${summary.available ? `${summary.snapshotCount} snapshot` : "Belum upload"}</span>
         </div>
         <div class="kogol-card-body">
           ${buildDonut(summary)}
           <div class="kogol-legend">
-            <div><i class="is-paid" style="--kogol-color:${summary.color}"></i><span>Lunas</span><strong>${summary.rate === null ? "-" : formatNumber(summary.paidId)} IDPEL</strong><small>${summary.rate === null ? "-" : formatRupiah(summary.paidRupiah)}</small></div>
-            <div><i class="is-unpaid"></i><span>Belum lunas</span><strong>${formatNumber(summary.unpaidId)} IDPEL</strong><small>${formatRupiah(summary.unpaidRupiah)}</small></div>
+            <div><span>Lunas</span><strong>${summary.rate === null ? "-" : formatNumber(summary.paidId)} IDPEL</strong><small>${summary.rate === null ? "-" : formatRupiah(summary.paidRupiah)}</small></div>
+            <div><span>Belum lunas</span><strong>${formatNumber(summary.unpaidId)} IDPEL</strong><small>${formatRupiah(summary.unpaidRupiah)}</small></div>
           </div>
         </div>
         <footer>${summary.available
@@ -182,6 +182,7 @@
   function create(options = {}) {
     const getState = options.getState || (() => ({}));
     const onMonthChange = options.onMonthChange || (() => {});
+    const onRecordsChange = options.onRecordsChange || (() => {});
     const elements = {
       panel: document.querySelector("#kogolDashboardPanel"),
       month: document.querySelector("#kogolDashboardMonth"),
@@ -219,6 +220,7 @@
       if (contextKey !== nextKey) {
         contextKey = nextKey;
         records = [];
+        onRecordsChange([], validMonth(elements.month.value), false);
       }
       return {
         client: state?.supabaseClient || null,
@@ -233,7 +235,7 @@
       elements.cards.innerHTML = buildCards(summaries);
       const available = summaries.filter((item) => item.available).length;
       elements.status.textContent = available
-        ? `${available} dari 4 kelompok memiliki snapshot pada ${formatMonth(month)}.`
+        ? `${available} dari 4 kelompok memiliki snapshot pada ${formatMonth(month)}. Data terakhir ${formatDate(summaries.map((item) => item.closing?.snapshotDate || "").sort().at(-1))}.`
         : `Belum ada snapshot Kogol pada ${formatMonth(month)}.`;
     }
 
@@ -242,6 +244,7 @@
       const month = validMonth(elements.month.value);
       if (!context.client || !context.user || !context.isAdmin) {
         records = [];
+        onRecordsChange([], month, false);
         elements.cards.innerHTML = '<div class="kogol-dashboard-empty">Login admin untuk memuat dashboard Kogol.</div>';
         elements.status.textContent = "Login admin diperlukan.";
         return null;
@@ -265,11 +268,13 @@
       if (request !== requestId) return null;
       if (result?.error) {
         records = [];
+        onRecordsChange([], month, false);
         elements.cards.innerHTML = `<div class="kogol-dashboard-empty">${escapeHtml(describeError(result.error))}</div>`;
         elements.status.textContent = describeError(result.error);
         return null;
       }
       records = normalizeRows(result?.data || []);
+      onRecordsChange(records, month, true);
       render();
       return records;
     }
@@ -306,6 +311,7 @@
     function setMonth(month) {
       const normalized = validMonth(month);
       elements.month.value = normalized;
+      onRecordsChange([], normalized, false);
       load({ silent: true });
     }
 
@@ -314,6 +320,7 @@
       contextKey = "";
       records = [];
       elements.month.value = wibMonth();
+      onRecordsChange([], validMonth(elements.month.value), false);
       elements.cards.innerHTML = '<div class="kogol-dashboard-empty">Dashboard belum tersedia.</div>';
       elements.status.textContent = "Login admin untuk memuat dashboard Kogol.";
     }

@@ -48,12 +48,13 @@ fs.mkdirSync(qa, { recursive: true });
       const kogolRows = [
         { snapshot_date: '2026-10-01', kogol_key: 'KOGOL_0', saldo_id: 100, saldo_rupiah: 1000000, uploaded_at: '2026-10-01T01:00:00Z' },
         { snapshot_date: '2026-10-20', kogol_key: 'KOGOL_0', saldo_id: 30, saldo_rupiah: 300000, uploaded_at: '2026-10-20T01:00:00Z' },
-        { snapshot_date: '2026-10-01', kogol_key: 'KOGOL_3_PERKANTORAN', saldo_id: 20, saldo_rupiah: 200000, uploaded_at: '2026-10-01T01:00:00Z' },
-        { snapshot_date: '2026-10-20', kogol_key: 'KOGOL_3_PERKANTORAN', saldo_id: 10, saldo_rupiah: 100000, uploaded_at: '2026-10-20T01:00:00Z' },
+        { snapshot_date: '2026-10-01', kogol_key: 'KOGOL_3_PERKANTORAN', saldo_id: 20, saldo_rupiah: 200000, source_file: 'kogol3-awal.xlsx', uploaded_at: '2026-10-01T01:00:00Z' },
+        { snapshot_date: '2026-10-20', kogol_key: 'KOGOL_3_PERKANTORAN', saldo_id: 10, saldo_rupiah: 100000, source_file: 'kogol3-akhir.xlsx', uploaded_at: '2026-10-20T01:00:00Z' },
         { snapshot_date: '2026-10-01', kogol_key: 'KOGOL_3_LPJU', saldo_id: 8, saldo_rupiah: 80000, uploaded_at: '2026-10-01T01:00:00Z' },
         { snapshot_date: '2026-10-20', kogol_key: 'KOGOL_3_LPJU', saldo_id: 2, saldo_rupiah: 20000, uploaded_at: '2026-10-20T01:00:00Z' },
         { snapshot_date: '2026-10-01', kogol_key: 'KOGOL_4', saldo_id: 4, saldo_rupiah: 40000, uploaded_at: '2026-10-01T01:00:00Z' },
       ];
+      window.__kogolRows = kogolRows;
       window.__kogolRpcCalls = [];
       state.user = { id: 'admin-test' };
       state.profile = { role: 'admin', petugas: 'ADMIN' };
@@ -76,6 +77,8 @@ fs.mkdirSync(qa, { recursive: true });
       };
       document.getElementById('authGate').hidden = true;
       document.getElementById('appShell').hidden = false;
+      state.kogolDashboard.selectedMonth = '2026-10';
+      renderKogolDashboardControls();
       kogolDashboardController.syncContext();
       kogolDashboardController.setMonth('2026-10');
       kogolDashboardController.load();
@@ -87,6 +90,26 @@ fs.mkdirSync(qa, { recursive: true });
     assert.match(await page.locator('[data-kogol-key="KOGOL_0"] .kogol-donut-rate').textContent(), /70%/);
     assert.match(await page.locator('[data-kogol-key="KOGOL_3_LPJU"] .kogol-donut-rate').textContent(), /75%/);
     assert.match(await page.locator('[data-kogol-key="KOGOL_4"]').innerText(), /Belum lunas/);
+    assert.match(await page.locator('#kogol3AwalStatus').innerText(), /File tersimpan/i);
+    assert.match(await page.locator('#kogol3Status').innerText(), /File tersimpan/i);
+    assert.match(await page.locator('#kogol3AwalStatus').innerText(), /kogol3-awal\.xlsx/i);
+    assert.match(await page.locator('#kogol3Status').innerText(), /kogol3-akhir\.xlsx/i);
+    assert.match(await page.locator('#kogol4AwalStatus').innerText(), /File tersimpan/i);
+    assert.match(await page.locator('#kogol4Status').innerText(), /Belum ada file/i);
+    await page.evaluate(async () => {
+      window.__kogolRows.push({
+        snapshot_date: '2026-10-20', kogol_key: 'KOGOL_4', saldo_id: 1,
+        saldo_rupiah: 10000, source_file: 'kogol4-akhir.xlsx', uploaded_at: '2026-10-20T01:00:00Z',
+      });
+      await kogolDashboardController.load({ force: true });
+    });
+    assert.match(await page.locator('#kogol4Status').innerText(), /kogol4-akhir\.xlsx/i);
+    assert.match(await page.locator('#kogolUploadStatus').innerText(), /4 dari 4 file/i);
+    const dashboardWidth = await page.evaluate(() => ({
+      panel: document.querySelector('.overview-panel').getBoundingClientRect().width,
+      kogol: document.querySelector('#kogolDashboardPanel').getBoundingClientRect().width,
+    }));
+    assert.ok(dashboardWidth.kogol >= dashboardWidth.panel * 0.95, 'Kogol dashboard fills the content width');
 
     const parsed = await page.evaluate(() => parseKogolUploadRows([
       { IDPEL: '001', RPTAG: '1000', SATKER_MIV: '14032800 - LPJU MUARA SABAK' },
@@ -145,8 +168,10 @@ fs.mkdirSync(qa, { recursive: true });
     assert.deepEqual(kogol0, { zero: true, three: false, four: false, uploaded: ['001'] });
 
     await page.locator('#kogolDashboardPanel').scrollIntoViewIfNeeded();
+    await page.evaluate(() => { document.getElementById('progressPanel').hidden = true; });
     await page.screenshot({ path: path.join(qa, 'kogol-dashboard-desktop.png'), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(() => document.querySelector('.workspace-layout').classList.add('is-menu-collapsed'));
     await page.locator('#kogolDashboardPanel').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(qa, 'kogol-dashboard-mobile.png'), fullPage: true });
     await page.evaluate(() => switchTab('upload'));

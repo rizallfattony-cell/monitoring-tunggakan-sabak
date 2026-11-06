@@ -324,9 +324,14 @@ const debtPerformanceController = window.SimontokDebtPerformance.create({
   getState: () => state,
   getOfficerNames: () => PERFORMANCE_PARTICIPANTS,
 });
+let kogolSnapshotCache = { month: "", rows: [], loaded: false };
 const kogolDashboardController = window.SimontokKogolDashboard.create({
   getState: () => state,
   onMonthChange: syncKogolDashboardMonth,
+  onRecordsChange: (rows, month, loaded) => {
+    kogolSnapshotCache = { month, rows, loaded };
+    setKogolUploadStatus();
+  },
 });
 boot();
 
@@ -581,7 +586,7 @@ function switchTab(tabName) {
   }
   if (tabName === "upload") {
     renderKogolDashboardControls();
-    kogolDashboardController.load({ silent: true });
+    kogolDashboardController.setMonth(state.kogolDashboard.selectedMonth);
   }
   if (tabName === "sync-status") {
     loadSyncStatus();
@@ -5304,18 +5309,35 @@ function setKogolUploadStatus(message = "") {
   }
   const uploads = state.kogolDashboard.uploads || {};
   const currentMonth = state.kogolDashboard.selectedMonth;
-  const labels = ["kogol0awal", "kogol0akhir", "kogol3awal", "kogol3akhir", "kogol4awal", "kogol4akhir"]
-    .filter((key) => uploads[key]?.uploadedAt && uploads[key]?.month === currentMonth)
-    .map((key) => `${key.replace("kogol", "Kogol ").replace("awal", " awal").replace("akhir", " akhir")}: ${formatUploadTimestamp(uploads[key].uploadedAt)}`);
-  els.kogolUploadStatus.textContent = labels.length
-    ? `Unggahan terakhir - ${labels.join(" | ")}`
-    : "Saldo awal mengikuti bulan pilihan; saldo akhir otomatis mengikuti tanggal upload (WIB).";
-  for (const key of ["kogol3awal", "kogol3akhir", "kogol4awal", "kogol4akhir"]) {
-    const status = document.querySelector(`#${key}Status`);
-    if (status) status.textContent = uploads[key]?.month === currentMonth
-      ? `Terakhir upload: ${formatUploadTimestamp(uploads[key].uploadedAt)}`
+  const serverReady = kogolSnapshotCache.loaded && kogolSnapshotCache.month === currentMonth;
+  const fileGroups = [
+    { key: "kogol3awal", id: "kogol3AwalStatus", groups: ["KOGOL_3_PERKANTORAN", "KOGOL_3_LPJU"], opening: true },
+    { key: "kogol3akhir", id: "kogol3Status", groups: ["KOGOL_3_PERKANTORAN", "KOGOL_3_LPJU"], opening: false },
+    { key: "kogol4awal", id: "kogol4AwalStatus", groups: ["KOGOL_4"], opening: true },
+    { key: "kogol4akhir", id: "kogol4Status", groups: ["KOGOL_4"], opening: false },
+  ];
+  let readyCount = 0;
+  for (const group of fileGroups) {
+    const status = document.getElementById(group.id);
+    if (!status) continue;
+    const snapshots = serverReady
+      ? kogolSnapshotCache.rows.filter((row) => group.groups.includes(row.kogolKey)
+        && (group.opening ? row.snapshotDate === `${currentMonth}-01` : row.snapshotDate !== `${currentMonth}-01`))
+      : [];
+    const latest = snapshots.sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate)
+      || String(a.uploadedAt || "").localeCompare(String(b.uploadedAt || ""))).at(-1);
+    const local = !serverReady && uploads[group.key]?.month === currentMonth ? uploads[group.key] : null;
+    const fileName = latest?.sourceFile
+      || snapshots.find((row) => row.snapshotDate === latest?.snapshotDate && row.sourceFile)?.sourceFile
+      || local?.fileName;
+    const present = Boolean(latest || local);
+    if (present) readyCount += 1;
+    status.closest(".upload-panel")?.classList.toggle("loaded", present);
+    status.innerHTML = present
+      ? `<strong>File tersimpan${fileName ? `: ${escapeHtml(fileName)}` : ""}</strong><span>Terakhir upload: ${escapeHtml(formatUploadTimestamp(latest?.uploadedAt || local?.uploadedAt))}</span>`
       : "Belum ada file.";
   }
+  els.kogolUploadStatus.textContent = `${readyCount} dari 4 file Kogol 3/4 tersimpan pada ${window.SimontokKogolDashboard.formatMonth(currentMonth)}. Saldo akhir mengikuti tanggal upload (WIB).`;
 }
 
 function scheduleKogolDashboardSave() {
