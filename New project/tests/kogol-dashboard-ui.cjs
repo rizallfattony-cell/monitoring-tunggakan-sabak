@@ -256,6 +256,22 @@ fs.mkdirSync(qa, { recursive: true });
     assert.deepEqual(kogol0, { zero: true, three: false, four: false, uploaded: ['001'] });
 
     await page.evaluate(() => switchTab('overview'));
+    await page.evaluate(async () => {
+      const balances = [
+        ['KOGOL_0', 6146332629, 5644198824],
+        ['KOGOL_3_PERKANTORAN', 448744879, 417708103],
+        ['KOGOL_3_LPJU', 227611647, 227611647],
+        ['KOGOL_4', 18114193, 7082359],
+      ];
+      for (const [key, opening, closing] of balances) {
+        window.__kogolRows.find((row) => row.kogol_key === key && row.snapshot_date === '2026-10-01').saldo_rupiah = opening;
+        window.__kogolRows.find((row) => row.kogol_key === key && row.snapshot_date === '2026-10-20').saldo_rupiah = closing;
+      }
+      await kogolDashboardController.load({ force: true });
+    });
+    assert.match(await page.locator('[data-kogol-key="KOGOL_0"] .kogol-card-figures strong').innerText(), /Rp\s*5\.644\.198\.824/);
+    assert.match(await page.locator('[data-kogol-key="KOGOL_0"] .kogol-card-figures').innerText(), /Rp\s*502\.133\.805/);
+    assert.match(await page.locator('[data-kogol-key="KOGOL_3_PERKANTORAN"] .kogol-card-figures strong').innerText(), /Rp\s*417\.708\.103/);
     await page.locator('#kogolDashboardPanel').scrollIntoViewIfNeeded();
     await page.evaluate(() => { document.getElementById('progressPanel').hidden = true; });
     await page.screenshot({ path: path.join(qa, 'kogol-dashboard-desktop.png'), fullPage: true });
@@ -263,6 +279,7 @@ fs.mkdirSync(qa, { recursive: true });
     await page.evaluate(() => document.querySelector('.workspace-layout').classList.add('is-menu-collapsed'));
     await page.locator('#kogolDashboardPanel').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(qa, 'kogol-dashboard-mobile.png'), fullPage: true });
+    assert.equal(await page.evaluate(() => [...document.querySelectorAll('.kogol-card')].some((card) => card.scrollWidth > card.clientWidth)), false, 'Exact rupiah values fit Kogol cards on mobile');
     await page.locator('.lpb-overview').scrollIntoViewIfNeeded();
     await page.locator('.lpb-overview').screenshot({ path: path.join(qa, 'lpb-dashboard-mobile.png') });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'LPB dashboard fits mobile viewport');

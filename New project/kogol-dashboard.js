@@ -81,14 +81,6 @@
     }).format(number(value));
   }
 
-  function formatCompactRupiah(value) {
-    const amount = number(value);
-    if (amount >= 1e9) return `Rp ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(amount / 1e9)} miliar`;
-    if (amount >= 1e8) return `Rp ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(amount / 1e6)} juta`;
-    if (amount >= 1e6) return `Rp ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(amount / 1e6)} juta`;
-    return formatRupiah(amount);
-  }
-
   function formatPercent(value) {
     if (!Number.isFinite(Number(value))) return "-";
     return `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(Number(value))}%`;
@@ -168,9 +160,9 @@
           ${buildDonut(summary)}
           <div class="kogol-card-figures">
             <span>Belum lunas</span>
-            <strong title="${escapeHtml(formatRupiah(summary.unpaidRupiah))}">${summary.available ? formatCompactRupiah(summary.unpaidRupiah) : "-"}</strong>
+            <strong>${summary.available ? formatRupiah(summary.unpaidRupiah) : "-"}</strong>
             <small>${summary.available ? `${formatNumber(summary.unpaidId)}${summary.opening ? ` dari ${formatNumber(summary.totalId)}` : ""} IDPEL` : "Belum ada saldo akhir"}</small>
-            <small>${summary.rate === null ? "Lunas belum dapat dihitung" : `Lunas ${formatNumber(summary.paidId)} IDPEL - ${formatCompactRupiah(summary.paidRupiah)}`}</small>
+            <small>${summary.rate === null ? "Lunas belum dapat dihitung" : `Lunas ${formatNumber(summary.paidId)} IDPEL - ${formatRupiah(summary.paidRupiah)}`}</small>
           </div>
         </div>
         <div class="kogol-share">
