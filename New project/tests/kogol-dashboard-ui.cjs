@@ -292,8 +292,20 @@ fs.mkdirSync(qa, { recursive: true });
     await page.screenshot({ path: path.join(qa, 'kogol-upload-compact-desktop.png'), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: path.join(qa, 'kogol-upload-mobile.png'), fullPage: true });
-    assert.equal(await page.locator('[data-tab-panel="upload"] .upload-panel:visible').count(), 7);
+    assert.equal(await page.locator('[data-tab-panel="upload"] .upload-panel:visible').count(), 9);
+    assert.equal(await page.locator('.tree-menu [data-upload-view="stand-meter"]').count(), 0, 'Upload Stand is no longer a separate sidebar menu');
+    assert.equal(await page.locator('#standAwalInput').count(), 1);
+    assert.equal(await page.locator('#standAkhirInput').count(), 1);
+    assert.equal(await page.getByText('Upload Stand Awal', { exact: true }).isVisible(), true, 'Opening stand upload is available in Database Upload Data');
+    assert.equal(await page.getByText('Upload Stand Akhir', { exact: true }).isVisible(), true, 'Closing stand upload is available in Database Upload Data');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'No full-page horizontal overflow on mobile');
+    await page.evaluate(() => {
+      state.profile.role = 'petugas';
+      applyRoleView();
+      switchTab('upload');
+    });
+    assert.equal(await page.getByText('Upload Stand Awal', { exact: true }).isVisible(), false, 'Opening stand upload stays hidden for officers');
+    assert.equal(await page.getByText('Upload Stand Akhir', { exact: true }).isVisible(), false, 'Closing stand upload stays hidden for officers');
     assert.deepEqual(errors, []);
     console.log('PASS Kogol dashboard UI: four charts, Kogol 0 drilldown, classification, save RPC and responsive layout');
   } finally {
