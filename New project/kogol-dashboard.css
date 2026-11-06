@@ -500,10 +500,11 @@
 }
 
 .overview-panel > .kogol-dashboard { order: 0; }
-.overview-panel > .overview-dashboard-grid { order: 1; }
-.overview-panel > .overview-heading { order: 2; }
-.overview-panel > .overview-kpi-grid { order: 3; }
-.overview-panel > .performance-dashboard { order: 4; }
+.overview-panel > .lpb-overview { order: 1; }
+.overview-panel > .overview-dashboard-grid { order: 2; }
+.overview-panel > .overview-heading { order: 3; }
+.overview-panel > .overview-kpi-grid { order: 4; }
+.overview-panel > .performance-dashboard { order: 5; }
 
 .overview-panel > .overview-heading,
 .overview-panel > .overview-kpi-grid,

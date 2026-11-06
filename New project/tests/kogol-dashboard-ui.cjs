@@ -113,6 +113,29 @@ fs.mkdirSync(qa, { recursive: true });
     assert.ok(dashboardWidth.kogol >= dashboardWidth.panel * 0.95, 'Kogol dashboard fills the content width');
 
     await page.evaluate(() => {
+      state.lpbMonitoring = normalizeLpbMonitoringState({
+        previousIds: ['143900000001'], targetPerBiller: 1,
+        startDate: '2026-10-01', endDate: '2026-10-19',
+        latestRows: [
+          { idpel: '143900000001', readDate: '2026-10-18', username: '14390.adri01' },
+          { idpel: '143900000002', readDate: '2026-10-20', username: '14390.adri01' },
+          { idpel: '143900000003', readDate: '2026-10-20', username: '14390.anang01' },
+          { idpel: '143900000004', readDate: '2026-10-20', username: 'not-mapped' },
+        ],
+      });
+      renderLpbOverview();
+    });
+    assert.equal(await page.locator('#lpbOverviewRealization').innerText(), '2');
+    assert.equal(await page.locator('#lpbOverviewTarget').innerText(), '17');
+    assert.equal(await page.locator('#lpbOverviewRemaining').innerText(), '15');
+    assert.match(await page.locator('#lpbOverviewChart').innerText(), /12%/);
+    assert.match(await page.locator('#lpbOverviewStatus').innerText(), /20 Oktober 2026/);
+    await page.evaluate(() => { state.kogolDashboard.selectedMonth = '2026-11'; renderLpbOverview(); });
+    assert.equal(await page.locator('#lpbOverviewRealization').innerText(), '-');
+    assert.match(await page.locator('#lpbOverviewStatus').innerText(), /Belum ada data LPB/);
+    await page.evaluate(() => { state.kogolDashboard.selectedMonth = '2026-10'; renderLpbOverview(); });
+
+    await page.evaluate(() => {
       const rows = Array.from({ length: 30 }, (_, index) => ({
         petugas: index < 15 ? 'ADRI' : 'AMRIZAL',
         idpel: String(143900000000 + index), nama: `Pelanggan ${index}`,
@@ -233,6 +256,11 @@ fs.mkdirSync(qa, { recursive: true });
     await page.evaluate(() => document.querySelector('.workspace-layout').classList.add('is-menu-collapsed'));
     await page.locator('#kogolDashboardPanel').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(qa, 'kogol-dashboard-mobile.png'), fullPage: true });
+    await page.locator('.lpb-overview').scrollIntoViewIfNeeded();
+    await page.locator('.lpb-overview').screenshot({ path: path.join(qa, 'lpb-dashboard-mobile.png') });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'LPB dashboard fits mobile viewport');
+    await page.locator('.lpb-overview [data-tab="lpb"]').click();
+    assert.equal(await page.evaluate(() => state.activeTab), 'lpb');
     await page.evaluate(() => switchTab('upload'));
     await page.evaluate(() => document.querySelector('.workspace-layout').classList.add('is-menu-collapsed'));
     await page.waitForTimeout(200);

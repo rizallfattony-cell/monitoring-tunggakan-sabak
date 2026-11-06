@@ -143,6 +143,12 @@ const els = {
   overviewDilStatus: document.querySelector("#overviewDilStatus"),
   overviewAwalStatus: document.querySelector("#overviewAwalStatus"),
   overviewAkhirStatus: document.querySelector("#overviewAkhirStatus"),
+  lpbOverviewPanel: document.querySelector("#lpbOverviewPanel"),
+  lpbOverviewStatus: document.querySelector("#lpbOverviewStatus"),
+  lpbOverviewChart: document.querySelector("#lpbOverviewChart"),
+  lpbOverviewRealization: document.querySelector("#lpbOverviewRealization"),
+  lpbOverviewTarget: document.querySelector("#lpbOverviewTarget"),
+  lpbOverviewRemaining: document.querySelector("#lpbOverviewRemaining"),
   searchInput: document.querySelector("#searchInput"),
   sortSelect: document.querySelector("#sortSelect"),
   exportButton: document.querySelector("#exportButton"),
@@ -590,6 +596,7 @@ function switchTab(tabName) {
   if (tabName === "premium") loadPremiumAdminData();
   if (tabName === "receipt-history") receiptHistoryController.load();
   if (tabName === "overview") {
+    renderLpbOverview();
     debtPerformanceController.load({ silent: true });
     kogolDashboardController.load({ silent: true });
   }
@@ -2482,6 +2489,7 @@ function applyRoleView() {
   if (comparisonPanel && petugasMode) comparisonPanel.hidden = true;
   if (kogolTab) kogolTab.hidden = petugasMode;
   if (kogolPanel && petugasMode) kogolPanel.hidden = true;
+  if (els.lpbOverviewPanel) els.lpbOverviewPanel.hidden = petugasMode;
   if (petugasMode && ["saldo-rata", "pelunasan-harian", "comparison", "kogol", "premium", "sync-status", "receipt-history"].includes(state.activeTab)) switchTab("laporan");
   if (els.uploadGrid) els.uploadGrid.hidden = petugasMode;
   if (els.summaryGrid) els.summaryGrid.hidden = petugasMode;
@@ -3059,7 +3067,7 @@ function handleLpbTargetChange() {
   scheduleLpbSave();
 }
 
-function getLpbReportData() {
+function getLpbReportData(startDate = state.lpbMonitoring.startDate, endDate = state.lpbMonitoring.endDate) {
   const previousIds = new Set(state.lpbMonitoring.previousIds || []);
   const latestById = new Map();
   (state.lpbMonitoring.latestRows || []).forEach((row) => {
@@ -3070,8 +3078,6 @@ function getLpbReportData() {
   const duplicateRows = uniqueLatest.filter((row) => previousIds.has(row.idpel));
   const mappedUsers = new Set(LPB_PETUGAS.map((item) => item.username.toLowerCase()));
   const eligibleRows = uniqueLatest.filter((row) => !previousIds.has(row.idpel) && mappedUsers.has(row.username));
-  const startDate = state.lpbMonitoring.startDate;
-  const endDate = state.lpbMonitoring.endDate;
   const dates = buildLpbDateRange(startDate, endDate);
   const visibleRows = eligibleRows.filter((row) => (!startDate || row.readDate >= startDate) && (!endDate || row.readDate <= endDate));
   const countMap = new Map();
@@ -3140,8 +3146,46 @@ function calculateLpbTotals(rows, dates) {
   return { daily, target, realization, percent: target ? realization / target : 0, remaining: target - realization };
 }
 
+function renderLpbOverview() {
+  if (!els.lpbOverviewChart) return;
+  const month = state.kogolDashboard.selectedMonth;
+  const latestDate = (state.lpbMonitoring.latestRows || [])
+    .map((row) => row.readDate).filter(isIsoDate).sort().at(-1) || "";
+  const sameMonth = latestDate.startsWith(`${month}-`);
+  const data = sameMonth ? getLpbReportData(`${month}-01`, latestDate) : null;
+  const target = data?.totals.target || 0;
+  const realization = data?.totals.realization || 0;
+  const available = Boolean(data && target);
+  const percent = available ? Math.round((realization / target) * 100) : 0;
+  const ring = Math.max(0, Math.min(100, percent));
+  const label = available ? `${percent}%` : "-";
+  els.lpbOverviewChart.innerHTML = `<svg viewBox="0 0 120 120" aria-hidden="true">
+    <circle class="lpb-overview-track" cx="60" cy="60" r="42"></circle>
+    <circle class="lpb-overview-done" cx="60" cy="60" r="42" pathLength="100" stroke-dasharray="${ring} ${100 - ring}" transform="rotate(-90 60 60)"></circle>
+    <text class="lpb-overview-rate" x="60" y="57" text-anchor="middle">${label}</text>
+    <text class="lpb-overview-caption" x="60" y="72" text-anchor="middle">realisasi</text>
+  </svg>`;
+  els.lpbOverviewChart.setAttribute("aria-label", available
+    ? `Realisasi LPB ${percent} persen, ${formatNumber(realization)} dari ${formatNumber(target)} IDPEL`
+    : "Realisasi LPB belum tersedia untuk bulan ini");
+  els.lpbOverviewRealization.textContent = available ? formatNumber(realization) : "-";
+  els.lpbOverviewTarget.textContent = available ? formatNumber(target) : "-";
+  els.lpbOverviewRemaining.textContent = available ? formatNumber(Math.max(0, target - realization)) : "-";
+  if (!latestDate) {
+    els.lpbOverviewStatus.textContent = "Upload LPB bulan terbaru untuk melihat realisasi.";
+  } else if (!sameMonth) {
+    els.lpbOverviewStatus.textContent = `Belum ada data LPB untuk ${window.SimontokKogolDashboard.formatMonth(month)}. File terbaru bertanggal ${formatShortDate(latestDate)}.`;
+  } else if (!target) {
+    els.lpbOverviewStatus.textContent = "Atur target bulanan per biller di Monitoring LPB.";
+  } else {
+    const warning = state.lpbMonitoring.previousIds.length ? "" : " LPB bulan sebelumnya belum diunggah; data hangus belum disaring.";
+    els.lpbOverviewStatus.textContent = `Realisasi bersih hingga ${formatShortDate(latestDate)} dari target ${LPB_PETUGAS.length} petugas.${warning}`;
+  }
+}
+
 function renderLpbMonitoring() {
   if (!els.lpbTableHead || !els.lpbTableBody) return;
+  renderLpbOverview();
   const data = getLpbReportData();
   syncLpbControls();
   if (els.lpbLatestCount) els.lpbLatestCount.textContent = formatNumber(data.latestCount);
@@ -5192,6 +5236,7 @@ function renderKogolDashboardControls() {
   state.kogolDashboard.selectedMonth = month;
   els.kogolMonthInput.value = month;
   setKogolUploadStatus();
+  renderLpbOverview();
 }
 
 function syncKogolDashboardMonth(month) {
