@@ -13,9 +13,9 @@
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
     <link rel="stylesheet" href="./receipt-history.css?v=174" />
     <link rel="stylesheet" href="./debt-performance.css?v=20261031-daily-performance-v5" />
-    <link rel="stylesheet" href="./kogol-dashboard.css?v=20261106-lpb-dashboard-v1" />
+    <link rel="stylesheet" href="./kogol-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <link rel="stylesheet" href="./kogol0-detail.css?v=20261106-kogol-v5" />
-    <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-lpb-dashboard-v1" />
+    <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -209,10 +209,14 @@
                   <div class="lpb-overview-body">
                     <div class="lpb-overview-chart" id="lpbOverviewChart" role="img" aria-label="Realisasi LPB belum tersedia"></div>
                     <div class="lpb-overview-facts">
-                      <div><span>Realisasi bersih</span><strong id="lpbOverviewRealization">-</strong><small>IDPEL selesai</small></div>
+                      <div><span>Realisasi bersih</span><strong id="lpbOverviewRealization">-</strong><small id="lpbOverviewRealizationDetail">IDPEL selesai</small></div>
                       <div><span>Target bulanan</span><strong id="lpbOverviewTarget">-</strong><small>17 petugas</small></div>
                       <div><span>Sisa target</span><strong id="lpbOverviewRemaining">-</strong><small>IDPEL menuju target</small></div>
                     </div>
+                  </div>
+                  <div class="lpb-overview-pace" id="lpbOverviewPace">
+                    <div><span>Progres bulan ini</span><strong id="lpbOverviewPaceStatus">Menunggu data LPB</strong></div>
+                    <small id="lpbOverviewPaceLegend">Penanda pada lingkaran: target ideal sesuai tanggal data terbaru.</small>
                   </div>
                 </section>
 
@@ -1283,8 +1287,8 @@
     </dialog>
     <script src="./receipt-history.js?v=174"></script>
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
-    <script src="./kogol-dashboard.js?v=20261106-kogol-v5"></script>
+    <script src="./kogol-dashboard.js?v=20261106-dashboard-usulan-v1"></script>
     <script src="./kogol0-detail.js?v=20261106-kogol-v5"></script>
-    <script src="./app.js?v=20261106-lpb-dashboard-v1"></script>
+    <script src="./app.js?v=20261106-dashboard-usulan-v1"></script>
   </body>
 </html>

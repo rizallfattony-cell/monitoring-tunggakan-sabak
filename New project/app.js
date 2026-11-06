@@ -147,8 +147,11 @@ const els = {
   lpbOverviewStatus: document.querySelector("#lpbOverviewStatus"),
   lpbOverviewChart: document.querySelector("#lpbOverviewChart"),
   lpbOverviewRealization: document.querySelector("#lpbOverviewRealization"),
+  lpbOverviewRealizationDetail: document.querySelector("#lpbOverviewRealizationDetail"),
   lpbOverviewTarget: document.querySelector("#lpbOverviewTarget"),
   lpbOverviewRemaining: document.querySelector("#lpbOverviewRemaining"),
+  lpbOverviewPaceStatus: document.querySelector("#lpbOverviewPaceStatus"),
+  lpbOverviewPaceLegend: document.querySelector("#lpbOverviewPaceLegend"),
   searchInput: document.querySelector("#searchInput"),
   sortSelect: document.querySelector("#sortSelect"),
   exportButton: document.querySelector("#exportButton"),
@@ -3156,21 +3159,36 @@ function renderLpbOverview() {
   const target = data?.totals.target || 0;
   const realization = data?.totals.realization || 0;
   const available = Boolean(data && target);
-  const percent = available ? Math.round((realization / target) * 100) : 0;
+  const percent = available ? (realization / target) * 100 : 0;
   const ring = Math.max(0, Math.min(100, percent));
-  const label = available ? `${percent}%` : "-";
+  const label = available ? `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(percent)}%` : "-";
+  const day = available ? Number(latestDate.slice(8, 10)) : 0;
+  const daysInMonth = available ? new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate() : 0;
+  const idealPercent = available ? day * 100 / daysInMonth : 0;
+  const idealCount = available ? Math.round(target * day / daysInMonth) : 0;
+  const angle = -Math.PI / 2 + idealPercent * Math.PI / 50;
+  const tick = available ? `<line class="lpb-overview-pace-tick" x1="${60 + 34 * Math.cos(angle)}" y1="${60 + 34 * Math.sin(angle)}" x2="${60 + 51 * Math.cos(angle)}" y2="${60 + 51 * Math.sin(angle)}"></line>` : "";
   els.lpbOverviewChart.innerHTML = `<svg viewBox="0 0 120 120" aria-hidden="true">
     <circle class="lpb-overview-track" cx="60" cy="60" r="42"></circle>
     <circle class="lpb-overview-done" cx="60" cy="60" r="42" pathLength="100" stroke-dasharray="${ring} ${100 - ring}" transform="rotate(-90 60 60)"></circle>
+    ${tick}
     <text class="lpb-overview-rate" x="60" y="57" text-anchor="middle">${label}</text>
     <text class="lpb-overview-caption" x="60" y="72" text-anchor="middle">realisasi</text>
   </svg>`;
   els.lpbOverviewChart.setAttribute("aria-label", available
-    ? `Realisasi LPB ${percent} persen, ${formatNumber(realization)} dari ${formatNumber(target)} IDPEL`
+    ? `Realisasi LPB ${label}, ${formatNumber(realization)} dari ${formatNumber(target)} IDPEL; pace ideal ${formatNumber(idealCount)} IDPEL`
     : "Realisasi LPB belum tersedia untuk bulan ini");
   els.lpbOverviewRealization.textContent = available ? formatNumber(realization) : "-";
+  els.lpbOverviewRealizationDetail.textContent = available ? `IDPEL selesai - ${label}` : "IDPEL selesai";
   els.lpbOverviewTarget.textContent = available ? formatNumber(target) : "-";
   els.lpbOverviewRemaining.textContent = available ? formatNumber(Math.max(0, target - realization)) : "-";
+  els.lpbOverviewPaceStatus.textContent = available
+    ? realization < idealCount ? `Tertinggal sekitar ${formatNumber(idealCount - realization)} IDPEL dari pace` : "Sesuai atau di atas pace"
+    : "Menunggu data LPB";
+  els.lpbOverviewPaceStatus.classList.toggle("is-on-track", available && realization >= idealCount);
+  els.lpbOverviewPaceLegend.textContent = available
+    ? `Penanda pada lingkaran: pace ideal hari ke-${day} dari ${daysInMonth} (${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(idealPercent)}% atau ${formatNumber(idealCount)} IDPEL)`
+    : "Penanda pada lingkaran: target ideal sesuai tanggal data terbaru.";
   if (!latestDate) {
     els.lpbOverviewStatus.textContent = "Upload LPB bulan terbaru untuk melihat realisasi.";
   } else if (!sameMonth) {

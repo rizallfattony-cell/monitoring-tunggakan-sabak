@@ -81,6 +81,14 @@
     }).format(number(value));
   }
 
+  function formatCompactRupiah(value) {
+    const amount = number(value);
+    if (amount >= 1e9) return `Rp ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(amount / 1e9)} miliar`;
+    if (amount >= 1e8) return `Rp ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(amount / 1e6)} juta`;
+    if (amount >= 1e6) return `Rp ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(amount / 1e6)} juta`;
+    return formatRupiah(amount);
+  }
+
   function formatPercent(value) {
     if (!Number.isFinite(Number(value))) return "-";
     return `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(Number(value))}%`;
@@ -149,6 +157,7 @@
   }
 
   function buildCards(summaries) {
+    const totalUnpaid = summaries.reduce((sum, summary) => sum + (summary.available ? summary.unpaidRupiah : 0), 0);
     return summaries.map((summary) => `
       <article class="kogol-card${summary.key === "KOGOL_0" ? " kogol-card-openable" : ""}" data-kogol-key="${summary.key}"${summary.key === "KOGOL_0" ? ' role="button" tabindex="0" aria-label="Lihat rincian Kogol 0 per petugas"' : ""}>
         <div class="kogol-card-head">
@@ -157,16 +166,22 @@
         </div>
         <div class="kogol-card-body">
           ${buildDonut(summary)}
-          <div class="kogol-legend">
-            <div><span>Lunas</span><strong>${summary.rate === null ? "-" : formatNumber(summary.paidId)} IDPEL</strong><small>${summary.rate === null ? "-" : formatRupiah(summary.paidRupiah)}</small></div>
-            <div><span>Belum lunas</span><strong>${formatNumber(summary.unpaidId)} IDPEL</strong><small>${formatRupiah(summary.unpaidRupiah)}</small></div>
+          <div class="kogol-card-figures">
+            <span>Belum lunas</span>
+            <strong title="${escapeHtml(formatRupiah(summary.unpaidRupiah))}">${summary.available ? formatCompactRupiah(summary.unpaidRupiah) : "-"}</strong>
+            <small>${summary.available ? `${formatNumber(summary.unpaidId)}${summary.opening ? ` dari ${formatNumber(summary.totalId)}` : ""} IDPEL` : "Belum ada saldo akhir"}</small>
+            <small>${summary.rate === null ? "Lunas belum dapat dihitung" : `Lunas ${formatNumber(summary.paidId)} IDPEL - ${formatCompactRupiah(summary.paidRupiah)}`}</small>
           </div>
         </div>
-        <footer>${summary.available
+        <div class="kogol-share">
+          <div><span>Porsi tunggakan</span><strong>${summary.available && totalUnpaid ? formatPercent(summary.unpaidRupiah * 100 / totalUnpaid) : "-"}</strong></div>
+          <div class="kogol-share-track" role="progressbar" aria-label="Porsi tunggakan ${escapeHtml(summary.label)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${summary.available && totalUnpaid ? Math.round(summary.unpaidRupiah * 100 / totalUnpaid) : 0}"><i style="width:${summary.available && totalUnpaid ? Math.max(0, Math.min(100, summary.unpaidRupiah * 100 / totalUnpaid)) : 0}%"></i></div>
+        </div>
+        <footer><span>${summary.available
           ? (!summary.opening ? "Saldo awal belum diunggah. Data akhir belum dapat dihitung sebagai realisasi."
             : summary.snapshotCount < 2 ? "Saldo awal tersedia; menunggu upload saldo akhir."
               : `Saldo awal ${formatDate(summary.opening?.snapshotDate)} - data terakhir ${formatDate(summary.closing?.snapshotDate)}`)
-          : "Upload saldo awal dan saldo terbaru untuk melihat pencapaian."}${summary.key === "KOGOL_0" ? '<span class="kogol-card-drill">Rincian petugas <i aria-hidden="true">&rarr;</i></span>' : ""}</footer>
+          : "Upload saldo awal dan saldo terbaru untuk melihat pencapaian."}</span>${summary.key === "KOGOL_0" ? '<span class="kogol-card-drill">Rincian petugas <i aria-hidden="true">&rarr;</i></span>' : ""}</footer>
       </article>
     `).join("");
   }
