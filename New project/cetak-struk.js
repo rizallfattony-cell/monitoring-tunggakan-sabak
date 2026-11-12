@@ -116,8 +116,8 @@ function receiptMarkup(receipt, logoData = "") {
       ${receiptField("BIAYA ADMIN PAYMENT CHANNEL", receiptMoney(receipt.admin_fee))}
       <div class="receipt-row receipt-total"><dt>TOTAL BAYAR</dt><dd>${receiptMoney(receipt.total)}</dd></div>
     </dl>
-    <div class="receipt-attestation">SIMONTOK menyatakan struk ini sebagai bukti pembayaran yang SAH</div>
-    <div class="receipt-foot"><strong>TERIMA KASIH</strong><span>Informasi hubungi admin SIMONTOK.</span><small>Referensi pembayaran diterbitkan secara internal oleh SIMONTOK.</small></div>
+    <div class="receipt-attestation"><strong>STRUK INI SEBAGAI BUKTI YANG SAH</strong><span>MOHON DI SIMPAN</span></div>
+    <div class="receipt-foot"><strong>TERIMA KASIH</strong><span>DOWNLOAD PLN MOBILE</span></div>
   </article>`;
 }
 

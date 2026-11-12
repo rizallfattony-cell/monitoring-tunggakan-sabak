@@ -98,10 +98,10 @@ dialog::backdrop { background: #08263da8; }
 .receipt-row dd { min-width: 0; margin: 0; color: #111827; font-weight: 700; overflow-wrap: anywhere; }
 .receipt-total { margin-top: 8px; padding-top: 14px; font-size: 17px; }
 .receipt-total dt { color: #1f2937; }
-.receipt-attestation { margin-top: 42px; padding: 16px 18px; border-radius: 14px; background: #f0f4f8; color: #111827; text-align: center; font-size: 14px; }
+.receipt-attestation { display: grid; gap: 3px; margin-top: 42px; padding: 14px 18px; border-radius: 14px; background: #f0f4f8; color: #111827; text-align: center; font-size: 13px; }
+.receipt-attestation strong { font-size: 14px; }
 .receipt-foot { display: grid; gap: 12px; margin-top: auto; padding-top: 66px; color: #111827; text-align: center; font-size: 14px; }
 .receipt-foot strong { font-size: 17px; }
-.receipt-foot small { color: #667481; font-size: 12px; }
 
 @media (max-width: 680px) {
   .site-header-inner { padding: 0 14px; }
@@ -160,8 +160,8 @@ dialog::backdrop { background: #08263da8; }
   .receipt-details { margin-top: 8mm; }
   .receipt-row { gap: 4mm; padding: .75mm 0; }
   .receipt-total { margin-top: 1mm; padding-top: 1.3mm; font-size: 8.7pt; }
-  .receipt-attestation { margin-top: 5mm; padding: 2.3mm 3mm; border-radius: 3mm; font-size: 7pt; }
+  .receipt-attestation { gap: .5mm; margin-top: 5mm; padding: 2mm 3mm; border-radius: 3mm; font-size: 6.5pt; }
+  .receipt-attestation strong { font-size: 7pt; }
   .receipt-foot { gap: 1mm; padding-top: 5mm; font-size: 7pt; }
   .receipt-foot strong { font-size: 8.2pt; }
-  .receipt-foot small { font-size: 6.2pt; }
 }
