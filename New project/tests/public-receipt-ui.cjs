@@ -70,11 +70,16 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
     await page.locator('#loginPassword').fill('password');
     await page.locator('#loginForm button[type="submit"]').click();
     await page.waitForFunction(() => !document.querySelector('#receiptWorkspace').hidden);
+    await page.locator('#accountButton').click();
+    assert.equal(await page.locator('#accountMenu').isVisible(), true);
+    await page.locator('#accountSettingsToggle').click();
+    assert.equal(await page.locator('#accountSettingsMenu').isVisible(), true);
     await page.locator('#logoFile').setInputFiles({
       name: 'logo.png', mimeType: 'image/png',
       buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lfsAAAAASUVORK5CYII=', 'base64'),
     });
     await page.waitForFunction(() => !document.querySelector('#logoPreview').hidden);
+    await page.locator('#accountButton').click();
     await page.locator('#singleIdpel').fill('143900000001');
     await page.locator('#singleMode button[type="submit"]').click();
     await page.waitForFunction(() => !document.querySelector('#results').hidden);
@@ -118,6 +123,7 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: path.join(qa, 'receipt-mobile.png'), fullPage: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'Mobile page has no horizontal overflow');
+    await page.locator('#accountButton').click();
     await page.locator('#logoutButton').click();
     await page.waitForFunction(() => document.querySelector('#receiptWorkspace').hidden);
     await page.locator('#loginEmail').fill('petugas@simontok.test');
@@ -128,6 +134,7 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
     await page.locator('#singleMode button[type="submit"]').click();
     await page.waitForFunction(() => !document.querySelector('#results').hidden);
     assert.equal(await page.locator('#resultRows tr').count(), 0, 'Petugas cannot see another petugas customer');
+    await page.locator('#accountButton').click();
     await page.locator('#logoutButton').click();
     await page.waitForFunction(() => document.querySelector('#receiptWorkspace').hidden);
     await page.locator('#loginEmail').fill('operator@simontok.test');

@@ -3,89 +3,95 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#123b5d" />
+    <meta name="theme-color" content="#0b7c8a" />
     <title>Cetak Struk Pembayaran | MONALISA</title>
     <link rel="icon" type="image/png" href="./monalisa-app-icon.png?v=20261112-logo" />
-    <link rel="stylesheet" href="./cetak-struk.css?v=20261112-v10" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./cetak-struk.css?v=20261112-v12" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./supabase-config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script src="./cetak-struk.js?v=20261112-v11" defer></script>
+    <script src="./cetak-struk.js?v=20261112-v12" defer></script>
   </head>
   <body>
     <header class="site-header no-print">
       <div class="site-header-inner">
-        <a class="brand" href="./cetak-struk.html"><img class="brand-logo-mark" src="./monalisa-logo-mark.png?v=20261112-logo" alt="" /><span><strong>MONALISA</strong><small>Monitoring Tunggakan dan Analisis Kinerja</small></span></a>
-        <div class="header-actions"><span id="sessionLabel" hidden></span><button type="button" id="logoutButton" class="logout-command" hidden>Keluar</button><a id="dashboardLink" class="admin-link" href="./index.html">Dashboard <i data-lucide="arrow-up-right" aria-hidden="true"></i></a></div>
+        <a class="brand" href="./cetak-struk.html" aria-label="MONALISA">
+          <img class="brand-logo-mark" src="./monalisa-logo-mark.png?v=20261112-logo" alt="" />
+          <span><strong>MONALISA</strong><small>Monitoring Tunggakan dan Analisis Kinerja</small></span>
+        </a>
+        <div class="account-shell">
+          <button type="button" id="accountButton" class="account-button" aria-haspopup="true" aria-expanded="false" aria-controls="accountMenu" aria-label="Buka menu akun" hidden><span id="accountInitials">MN</span></button>
+          <div id="accountMenu" class="account-menu" role="menu" hidden>
+            <div class="account-identity"><strong id="sessionLabel" hidden></strong><span>Akun MONALISA</span></div>
+            <a id="dashboardLink" class="account-menu-item" href="./index.html" role="menuitem"><i data-lucide="layout-dashboard" aria-hidden="true"></i>Dashboard</a>
+            <button type="button" id="accountSettingsToggle" class="account-menu-item" role="menuitem" aria-expanded="false" aria-controls="accountSettingsMenu"><i data-lucide="settings" aria-hidden="true"></i>Pengaturan<i class="menu-chevron" data-lucide="chevron-down" aria-hidden="true"></i></button>
+            <div id="accountSettingsMenu" class="account-submenu" hidden>
+              <section class="logo-settings" aria-labelledby="logoSettingsTitle">
+                <div class="logo-settings-copy">
+                  <div class="logo-preview"><img id="logoPreview" alt="Logo untuk struk" hidden /><span id="logoPlaceholder"><i data-lucide="image" aria-hidden="true"></i></span></div>
+                  <div><h2 id="logoSettingsTitle">Logo struk</h2><p id="logoStatus" role="status" aria-live="polite">Logo disimpan di browser perangkat ini.</p></div>
+                </div>
+                <div class="logo-settings-actions">
+                  <input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+                  <button type="button" id="uploadLogo" class="secondary-command"><i data-lucide="upload" aria-hidden="true"></i>Unggah</button>
+                  <button type="button" id="removeLogo" class="icon-command" title="Hapus logo" aria-label="Hapus logo" hidden><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                </div>
+              </section>
+            </div>
+            <div class="account-menu-separator"></div>
+            <button type="button" id="logoutButton" class="account-menu-item logout-command" role="menuitem" hidden><i data-lucide="log-out" aria-hidden="true"></i>Keluar</button>
+          </div>
+        </div>
       </div>
     </header>
 
+    <section class="hero no-print" aria-labelledby="heroTitle">
+      <svg class="hero-decor" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <path d="M-20 70 Q60 8 140 42 Q64 96 -20 70Z" fill="#5cc76f" /><path d="M-10 130 Q76 72 160 118 Q76 170 -10 130Z" fill="#2e9e5b" /><path d="M40 30 Q100 -10 170 10" stroke="#2e9e5b" stroke-width="3" fill="none" /><path d="M300 -10 Q640 60 760 -20" stroke="#fff" stroke-width="14" fill="none" opacity=".55" /><path d="M330 -10 Q650 40 790 -20" stroke="#2bb3a0" stroke-width="5" fill="none" opacity=".6" /><path d="M0 420 Q170 300 430 390 V420Z" fill="#7ed7a6" opacity=".6" /><path d="M0 420 Q120 350 300 410 V420Z" fill="#2bb3a0" opacity=".7" />
+      </svg>
+      <svg class="hero-scene" viewBox="0 0 560 340" preserveAspectRatio="xMaxYMax meet" aria-hidden="true">
+        <circle cx="340" cy="160" r="175" fill="#fff" opacity=".35" /><path d="M150 262 240 150 300 210 360 125 490 262Z" fill="#9cc5d8" /><path d="M0 272 Q140 218 300 252 T560 238 V340H0Z" fill="#8fd08a" /><path d="M0 302 Q200 256 380 292 T560 282 V340H0Z" fill="#58b868" />
+        <g stroke="#fff" stroke-width="4" stroke-linecap="round"><path d="M92 135V262M92 135l-4-44M92 135l36 18M92 135l-30 22" /></g><rect x="148" y="72" width="7" height="232" fill="#7a6a5a" /><rect x="122" y="90" width="60" height="5" fill="#7a6a5a" /><rect x="338" y="100" width="6" height="200" fill="#7a6a5a" /><rect x="316" y="114" width="50" height="5" fill="#7a6a5a" /><rect x="352" y="130" width="26" height="30" rx="3" fill="#8c98a3" /><path d="M0 112 Q70 138 125 92 M180 92 Q250 142 319 116 M366 116 Q420 140 470 110" stroke="#3b4a55" stroke-width="1.6" fill="none" />
+        <rect x="430" y="196" width="130" height="86" fill="#f4c08a" /><polygon points="414 200 490 140 560 200" fill="#c8642e" /><rect x="470" y="226" width="26" height="56" fill="#8a4b2a" /><g fill="#2e6fb5" stroke="#cfe6f7" stroke-width="1.5"><polygon points="360 290 440 280 456 314 372 326" /><polygon points="448 280 520 272 540 304 462 314" /></g>
+        <g transform="translate(260 170)"><circle cx="0" cy="-30" r="13" fill="#f0b38b" /><path d="M-13-36 Q0-52 14-36L11-28H-11Z" fill="#f5b700" /><path d="M-18-16 16-17 28 49H-29Z" fill="#0b7c8a" /><path d="M-27 49h18v58h-18zm25 0h18v58H-2z" fill="#193a59" /><path d="M-17-5-55 32M14-5l38 31" stroke="#f0b38b" stroke-width="12" stroke-linecap="round" /></g>
+      </svg>
+      <div class="hero-inner"><p class="hero-kicker">Layanan pembayaran MONALISA</p><h1 id="heroTitle"><span>Cetak struk</span><br />pembayaran</h1><div class="hero-accent"></div></div>
+      <svg class="hero-wave" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0 52C250 2 450 88 720 42s500-7 720-24v72H0Z" fill="#eef3f5" /></svg>
+    </section>
+
     <main class="workspace no-print">
-      <section id="authGate" class="auth-gate" aria-labelledby="authTitle">
-        <h1 id="authTitle">Masuk ke MONALISA</h1>
-        <p id="authIntro">Masuk dengan akun cetak struk dari admin. Admin dan petugas MONALISA juga dapat memakai halaman ini.</p>
-        <form id="loginForm">
-          <label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="username" required />
-          <label for="loginPassword">Password</label><input id="loginPassword" type="password" autocomplete="current-password" required />
-          <button type="submit" class="primary-command">Masuk</button>
-        </form>
+      <section id="authGate" class="auth-gate surface-card" aria-labelledby="authTitle">
+        <span class="eyebrow">Akses layanan</span><h1 id="authTitle">Masuk ke MONALISA</h1><p id="authIntro">Masuk dengan akun cetak struk dari admin. Admin dan petugas MONALISA juga dapat memakai halaman ini.</p>
+        <form id="loginForm"><label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="username" required /><label for="loginPassword">Password</label><input id="loginPassword" type="password" autocomplete="current-password" required /><button type="submit" class="primary-command">Masuk</button></form>
         <button type="button" id="forgotPasswordButton" class="auth-text-command">Lupa password?</button>
-        <form id="recoveryRequestForm" hidden>
-          <label for="recoveryEmail">Email akun</label><input id="recoveryEmail" type="email" autocomplete="username" required />
-          <button type="submit" class="primary-command">Kirim tautan pemulihan</button>
-          <button type="button" id="backToLoginButton" class="auth-text-command">Kembali ke masuk</button>
-        </form>
-        <form id="newPasswordForm" hidden>
-          <label for="newPassword">Password baru</label><input id="newPassword" type="password" autocomplete="new-password" minlength="8" required />
-          <label for="confirmPassword">Ulangi password baru</label><input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required />
-          <button type="submit" class="primary-command">Simpan password baru</button>
-        </form>
+        <form id="recoveryRequestForm" hidden><label for="recoveryEmail">Email akun</label><input id="recoveryEmail" type="email" autocomplete="username" required /><button type="submit" class="primary-command">Kirim tautan pemulihan</button><button type="button" id="backToLoginButton" class="auth-text-command">Kembali ke masuk</button></form>
+        <form id="newPasswordForm" hidden><label for="newPassword">Password baru</label><input id="newPassword" type="password" autocomplete="new-password" minlength="8" required /><label for="confirmPassword">Ulangi password baru</label><input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required /><button type="submit" class="primary-command">Simpan password baru</button></form>
         <p id="authStatus" role="status" aria-live="polite">Memeriksa sesi akun...</p>
       </section>
+
       <div id="receiptWorkspace" hidden>
-      <div class="page-heading">
-        <div><span class="eyebrow">Layanan MONALISA</span><h1>Cetak struk pembayaran</h1><p>Cari ID pelanggan, periksa nominal, lalu cetak struk pembayaran pada kertas A4.</p></div>
-      </div>
+        <section class="lookup surface-card" aria-labelledby="lookupTitle">
+          <div class="section-heading"><div><span class="eyebrow">Pencarian pelanggan</span><h2 id="lookupTitle">Cari tagihan listrik</h2><p>Gunakan IDPEL lengkap. Cetak kolektif menerima hingga 20 pembayaran sekaligus.</p></div></div>
+          <div class="mode-switch" role="tablist" aria-label="Mode pencarian"><button type="button" role="tab" id="singleTab" aria-selected="true" aria-controls="singleMode">Satu IDPEL</button><button type="button" role="tab" id="bulkTab" aria-selected="false" aria-controls="bulkMode">Cetak kolektif</button></div>
+          <form id="lookupForm" novalidate>
+            <div id="singleMode" role="tabpanel" aria-labelledby="singleTab"><label for="singleIdpel">ID pelanggan</label><div class="single-input-row"><div class="field-with-icon"><i data-lucide="search" aria-hidden="true"></i><input id="singleIdpel" inputmode="numeric" autocomplete="off" placeholder="Contoh: 143900000001" maxlength="16" /></div><button type="submit" class="primary-command">Cek tagihan<i data-lucide="arrow-right" aria-hidden="true"></i></button></div></div>
+            <div id="bulkMode" role="tabpanel" aria-labelledby="bulkTab" hidden><label for="bulkIdpels">Daftar ID pelanggan</label><textarea id="bulkIdpels" rows="5" spellcheck="false" placeholder="Satu IDPEL per baris, atau pisahkan dengan koma"></textarea><div class="bulk-actions"><button type="submit" class="primary-command">Cek tagihan<i data-lucide="arrow-right" aria-hidden="true"></i></button><span id="bulkCount">0 / 20 IDPEL</span></div></div>
+          </form>
+          <p class="lookup-status" id="lookupStatus" role="status" aria-live="polite">Belum ada tagihan yang diperiksa.</p>
+        </section>
 
-      <section class="logo-settings" aria-labelledby="logoSettingsTitle">
-        <div class="logo-settings-copy"><div class="logo-preview"><img id="logoPreview" alt="Logo untuk struk" hidden /><span id="logoPlaceholder"><i data-lucide="image" aria-hidden="true"></i></span></div><div><h2 id="logoSettingsTitle">Logo struk</h2><p id="logoStatus" role="status" aria-live="polite">Logo disimpan di browser perangkat ini.</p></div></div>
-        <div class="logo-settings-actions"><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp" hidden /><button type="button" id="uploadLogo" class="secondary-command"><i data-lucide="upload" aria-hidden="true"></i>Unggah logo</button><button type="button" id="removeLogo" class="icon-command" title="Hapus logo" aria-label="Hapus logo" hidden><i data-lucide="trash-2" aria-hidden="true"></i></button></div>
-      </section>
-
-      <section class="lookup" aria-labelledby="lookupTitle">
-        <div class="section-heading"><div><h2 id="lookupTitle">Cari pelanggan</h2><p>Gunakan IDPEL lengkap. Cetak kolektif menerima hingga 20 pembayaran sekaligus.</p></div></div>
-        <div class="mode-switch" role="tablist" aria-label="Mode pencarian">
-          <button type="button" role="tab" id="singleTab" aria-selected="true" aria-controls="singleMode">Satu IDPEL</button>
-          <button type="button" role="tab" id="bulkTab" aria-selected="false" aria-controls="bulkMode">Cetak kolektif</button>
-        </div>
-        <form id="lookupForm" novalidate>
-          <div id="singleMode" role="tabpanel" aria-labelledby="singleTab">
-            <label for="singleIdpel">ID pelanggan</label>
-            <div class="single-input-row"><input id="singleIdpel" inputmode="numeric" autocomplete="off" placeholder="Contoh: 143900000001" maxlength="16" /><button type="submit" class="primary-command"><i data-lucide="search" aria-hidden="true"></i>Cek tagihan</button></div>
-          </div>
-          <div id="bulkMode" role="tabpanel" aria-labelledby="bulkTab" hidden>
-            <label for="bulkIdpels">Daftar ID pelanggan</label>
-            <textarea id="bulkIdpels" rows="5" spellcheck="false" placeholder="Satu IDPEL per baris, atau pisahkan dengan koma"></textarea>
-            <div class="bulk-actions"><button type="submit" class="primary-command"><i data-lucide="search" aria-hidden="true"></i>Cek tagihan</button><span id="bulkCount">0 / 20 IDPEL</span></div>
-          </div>
-        </form>
-        <p class="lookup-status" id="lookupStatus" role="status" aria-live="polite">Belum ada tagihan yang diperiksa.</p>
-      </section>
-
-      <section class="results" id="results" aria-labelledby="resultsTitle" hidden>
-        <div class="section-heading results-heading"><div><h2 id="resultsTitle">Hasil cek tagihan</h2><p id="resultsSummary"></p></div><button type="button" id="printSelected" class="primary-command" disabled><i data-lucide="printer" aria-hidden="true"></i><span id="printLabel">Cetak struk</span></button></div>
-        <div class="table-scroll"><table><thead><tr><th class="select-col"><input id="selectAll" type="checkbox" aria-label="Pilih semua pelanggan" /></th><th>IDPEL / Pelanggan</th><th>Tarif / Daya</th><th>Stand Meter</th><th>Tagihan</th><th>Admin</th><th>Total</th><th></th></tr></thead><tbody id="resultRows"></tbody></table></div>
-        <p class="missing-ids" id="missingIds" hidden></p>
-      </section>
+        <section class="results surface-card" id="results" aria-labelledby="resultsTitle" hidden>
+          <div class="section-heading results-heading"><div><span class="eyebrow">Data pembayaran</span><h2 id="resultsTitle">Hasil cek tagihan</h2><p id="resultsSummary"></p></div><button type="button" id="printSelected" class="primary-command" disabled><i data-lucide="printer" aria-hidden="true"></i><span id="printLabel">Cetak struk</span></button></div>
+          <div class="table-scroll"><table><thead><tr><th class="select-col"><input id="selectAll" type="checkbox" aria-label="Pilih semua pelanggan" /></th><th>IDPEL / Pelanggan</th><th>Tarif / Daya</th><th>Stand Meter</th><th>Tagihan</th><th>Admin</th><th>Total</th><th></th></tr></thead><tbody id="resultRows"></tbody></table></div>
+          <p class="missing-ids" id="missingIds" hidden></p>
+        </section>
       </div>
     </main>
 
-    <dialog id="receiptPreview" class="preview-dialog no-print" aria-labelledby="previewTitle">
-      <div class="preview-head"><h2 id="previewTitle">Pratinjau struk</h2><button type="button" id="closePreview" class="icon-command" title="Tutup" aria-label="Tutup"><i data-lucide="x" aria-hidden="true"></i></button></div>
-      <div id="previewContent"></div>
-      <div class="preview-actions"><button type="button" id="printPreview" class="primary-command"><i data-lucide="printer" aria-hidden="true"></i>Cetak A4</button></div>
-    </dialog>
-
+    <dialog id="receiptPreview" class="preview-dialog no-print" aria-labelledby="previewTitle"><div class="preview-head"><h2 id="previewTitle">Pratinjau struk</h2><button type="button" id="closePreview" class="icon-command" title="Tutup" aria-label="Tutup"><i data-lucide="x" aria-hidden="true"></i></button></div><div id="previewContent"></div><div class="preview-actions"><button type="button" id="printPreview" class="primary-command"><i data-lucide="printer" aria-hidden="true"></i>Cetak A4</button></div></dialog>
     <div id="printArea" class="print-area" aria-hidden="true"></div>
   </body>
 </html>

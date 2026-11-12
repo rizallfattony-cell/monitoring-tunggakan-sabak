@@ -193,7 +193,9 @@ function initPublicReceipt() {
     newPassword: document.querySelector("#newPassword"), confirmPassword: document.querySelector("#confirmPassword"),
     authStatus: document.querySelector("#authStatus"), receiptWorkspace: document.querySelector("#receiptWorkspace"),
     sessionLabel: document.querySelector("#sessionLabel"), logoutButton: document.querySelector("#logoutButton"),
-    dashboardLink: document.querySelector("#dashboardLink"),
+    dashboardLink: document.querySelector("#dashboardLink"), accountButton: document.querySelector("#accountButton"),
+    accountInitials: document.querySelector("#accountInitials"), accountMenu: document.querySelector("#accountMenu"),
+    accountSettingsToggle: document.querySelector("#accountSettingsToggle"), accountSettingsMenu: document.querySelector("#accountSettingsMenu"),
     singleTab: document.querySelector("#singleTab"), bulkTab: document.querySelector("#bulkTab"),
     singleMode: document.querySelector("#singleMode"), bulkMode: document.querySelector("#bulkMode"),
     singleIdpel: document.querySelector("#singleIdpel"), bulkIdpels: document.querySelector("#bulkIdpels"),
@@ -241,6 +243,19 @@ function initPublicReceipt() {
     elements.status.classList.toggle("is-error", isError);
   }
 
+  function closeAccountMenu() {
+    elements.accountMenu.hidden = true;
+    elements.accountButton.setAttribute("aria-expanded", "false");
+    elements.accountSettingsMenu.hidden = true;
+    elements.accountSettingsToggle.setAttribute("aria-expanded", "false");
+  }
+
+  function initials(value) {
+    const source = String(value || "MONALISA").split("@")[0].trim();
+    const parts = source.split(/[\s._-]+/).filter(Boolean);
+    return (parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : source.slice(0, 2)).toUpperCase();
+  }
+
   function showGate(message, isError = false, view = "login") {
     identity = null;
     setMode("single");
@@ -256,6 +271,8 @@ function initPublicReceipt() {
     if (elements.dialog.open) elements.dialog.close();
     elements.receiptWorkspace.hidden = true;
     elements.authGate.hidden = false;
+    closeAccountMenu();
+    elements.accountButton.hidden = true;
     elements.sessionLabel.hidden = true;
     elements.logoutButton.hidden = true;
     elements.dashboardLink.hidden = false;
@@ -320,6 +337,8 @@ function initPublicReceipt() {
       elements.sessionLabel.hidden = false;
       elements.logoutButton.hidden = false;
       elements.dashboardLink.hidden = profile.role === "receipt_operator";
+      elements.accountInitials.textContent = initials(profile.petugas || profile.email || userData.user.email);
+      elements.accountButton.hidden = false;
       setStatus("Masukkan IDPEL untuk memeriksa tagihan.");
     } catch {
       if (version === viewVersion) showGate("Gagal memeriksa akun. Periksa koneksi lalu muat ulang halaman.", true);
@@ -371,6 +390,23 @@ function initPublicReceipt() {
     window.print();
   }
 
+  elements.accountButton.addEventListener("click", () => {
+    const open = elements.accountMenu.hidden;
+    closeAccountMenu();
+    elements.accountMenu.hidden = !open;
+    elements.accountButton.setAttribute("aria-expanded", String(open));
+  });
+  elements.accountSettingsToggle.addEventListener("click", () => {
+    const open = elements.accountSettingsMenu.hidden;
+    elements.accountSettingsMenu.hidden = !open;
+    elements.accountSettingsToggle.setAttribute("aria-expanded", String(open));
+  });
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".account-shell")) closeAccountMenu();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeAccountMenu();
+  });
   elements.uploadLogo.addEventListener("click", () => elements.logoFile.click());
   elements.logoFile.addEventListener("change", () => {
     const file = elements.logoFile.files?.[0];
