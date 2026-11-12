@@ -1073,7 +1073,14 @@ async function hydrateSession() {
     state.user = null;
   }
   if (state.user) await loadProfile();
+  if (redirectReceiptOperator()) return;
   updateOnlineUi();
+}
+
+function redirectReceiptOperator() {
+  if (state.profile?.role !== "receipt_operator") return false;
+  window.location.replace("./cetak-struk.html");
+  return true;
 }
 
 async function loginOnline(source = "panel") {
@@ -1113,6 +1120,7 @@ async function loginOnline(source = "panel") {
     if (sessionUser) {
       state.user = sessionUser;
       await loadProfile();
+      if (redirectReceiptOperator()) return;
       updateOnlineUi();
       setOnlineStatus(`Sudah login sebagai ${state.user.email}. Tidak perlu login ulang.`);
       setGateStatus("");
@@ -1136,6 +1144,7 @@ async function loginOnline(source = "panel") {
     return;
   }
   await loadProfile();
+  if (redirectReceiptOperator()) return;
   if (els.passwordInput) els.passwordInput.value = "";
   if (els.gatePasswordInput) els.gatePasswordInput.value = "";
   updateOnlineUi();
@@ -1278,6 +1287,17 @@ async function loadProfile() {
     return;
   }
 
+  if (!data) {
+    const operatorResult = await state.supabaseClient
+      .from("monitoring_receipt_operators")
+      .select("user_id,email")
+      .eq("user_id", state.user.id)
+      .maybeSingle();
+    if (!operatorResult.error && operatorResult.data) {
+      state.profile = { role: "receipt_operator", email: operatorResult.data.email, petugas: "" };
+      return;
+    }
+  }
   state.profile = data || makeFallbackAdminProfile();
 }
 

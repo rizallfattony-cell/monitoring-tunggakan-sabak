@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#123b5d" />
+    <title>Cek Tagihan & Cetak Struk | SIMONTOK</title>
+    <link rel="icon" type="image/png" href="./simontok-super-web.png" />
+    <link rel="stylesheet" href="./cetak-struk.css?v=20261112-v3" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./supabase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script src="./cetak-struk.js?v=20261112-v3" defer></script>
+  </head>
+  <body>
+    <header class="site-header no-print">
+      <div class="site-header-inner">
+        <a class="brand" href="./cetak-struk.html"><span class="brand-mark">S</span><span><strong>SIMONTOK</strong><small>Super Web</small></span></a>
+        <div class="header-actions"><span id="sessionLabel" hidden></span><button type="button" id="logoutButton" class="logout-command" hidden>Keluar</button><a id="dashboardLink" class="admin-link" href="./index.html">Dashboard <i data-lucide="arrow-up-right" aria-hidden="true"></i></a></div>
+      </div>
+    </header>
+
+    <main class="workspace no-print">
+      <section id="authGate" class="auth-gate" aria-labelledby="authTitle">
+        <h1 id="authTitle">Masuk ke SIMONTOK</h1>
+        <p>Masuk dengan akun cetak struk dari admin. Admin dan petugas SIMONTOK juga dapat memakai halaman ini.</p>
+        <form id="loginForm">
+          <label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="username" required />
+          <label for="loginPassword">Password</label><input id="loginPassword" type="password" autocomplete="current-password" required />
+          <button type="submit" class="primary-command">Masuk</button>
+        </form>
+        <p id="authStatus" role="status" aria-live="polite">Memeriksa sesi akun...</p>
+      </section>
+      <div id="receiptWorkspace" hidden>
+      <div class="page-heading">
+        <div><span class="eyebrow">Layanan pelanggan</span><h1>Cek tagihan &amp; cetak struk</h1><p>Masukkan ID pelanggan untuk melihat tagihan terkini dan menyiapkan cetakan A4.</p></div>
+      </div>
+
+      <section class="lookup" aria-labelledby="lookupTitle">
+        <div class="section-heading"><div><h2 id="lookupTitle">Cari pelanggan</h2><p>Gunakan IDPEL lengkap. Cetak kolektif menerima hingga 20 IDPEL sekaligus.</p></div></div>
+        <div class="mode-switch" role="tablist" aria-label="Mode pencarian">
+          <button type="button" role="tab" id="singleTab" aria-selected="true" aria-controls="singleMode">Satu IDPEL</button>
+          <button type="button" role="tab" id="bulkTab" aria-selected="false" aria-controls="bulkMode">Cetak kolektif</button>
+        </div>
+        <form id="lookupForm" novalidate>
+          <div id="singleMode" role="tabpanel" aria-labelledby="singleTab">
+            <label for="singleIdpel">ID pelanggan</label>
+            <div class="single-input-row"><input id="singleIdpel" inputmode="numeric" autocomplete="off" placeholder="Contoh: 143900000001" maxlength="16" /><button type="submit" class="primary-command"><i data-lucide="search" aria-hidden="true"></i>Cek tagihan</button></div>
+          </div>
+          <div id="bulkMode" role="tabpanel" aria-labelledby="bulkTab" hidden>
+            <label for="bulkIdpels">Daftar ID pelanggan</label>
+            <textarea id="bulkIdpels" rows="5" spellcheck="false" placeholder="Satu IDPEL per baris, atau pisahkan dengan koma"></textarea>
+            <div class="bulk-actions"><button type="submit" class="primary-command"><i data-lucide="search" aria-hidden="true"></i>Cek tagihan</button><span id="bulkCount">0 / 20 IDPEL</span></div>
+          </div>
+        </form>
+        <p class="lookup-status" id="lookupStatus" role="status" aria-live="polite">Belum ada tagihan yang diperiksa.</p>
+      </section>
+
+      <section class="results" id="results" aria-labelledby="resultsTitle" hidden>
+        <div class="section-heading results-heading"><div><h2 id="resultsTitle">Hasil cek tagihan</h2><p id="resultsSummary"></p></div><button type="button" id="printSelected" class="primary-command" disabled><i data-lucide="printer" aria-hidden="true"></i><span id="printLabel">Cetak struk</span></button></div>
+        <div class="table-scroll"><table><thead><tr><th class="select-col"><input id="selectAll" type="checkbox" aria-label="Pilih semua pelanggan" /></th><th>IDPEL / Pelanggan</th><th>Tarif / Daya</th><th>Stand Meter</th><th>Tagihan</th><th>Admin</th><th>Total</th><th></th></tr></thead><tbody id="resultRows"></tbody></table></div>
+        <p class="missing-ids" id="missingIds" hidden></p>
+      </section>
+      </div>
+    </main>
+
+    <dialog id="receiptPreview" class="preview-dialog no-print" aria-labelledby="previewTitle">
+      <div class="preview-head"><h2 id="previewTitle">Pratinjau struk</h2><button type="button" id="closePreview" class="icon-command" title="Tutup" aria-label="Tutup"><i data-lucide="x" aria-hidden="true"></i></button></div>
+      <div id="previewContent"></div>
+      <div class="preview-actions"><button type="button" id="printPreview" class="primary-command"><i data-lucide="printer" aria-hidden="true"></i>Cetak A4</button></div>
+    </dialog>
+
+    <div id="printArea" class="print-area" aria-hidden="true"></div>
+  </body>
+</html>

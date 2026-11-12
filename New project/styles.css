@@ -2483,6 +2483,15 @@ body {
   background: var(--panel-soft);
 }
 
+.auth-login-card .public-receipt-entry {
+  margin: 0;
+  padding: 0 22px 18px;
+  background: var(--panel-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+.auth-login-card .public-receipt-entry a { color: #087183; }
+
 .app-shell {
   background: var(--bg);
 }
