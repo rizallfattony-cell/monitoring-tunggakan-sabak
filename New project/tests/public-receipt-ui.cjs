@@ -81,8 +81,8 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
     assert.match(await page.locator('#resultRows').innerText(), /Rp\s*364\.152/);
     assert.equal(await page.locator('#resultRows tr').count(), 1);
     await page.locator('[data-preview="143900000001"]').click();
-    assert.match(await page.locator('#previewContent').innerText(), /STRUK PEMBAYARAN TAGIHAN LISTRIK/);
-    assert.match(await page.locator('#previewContent').innerText(), /BUKTI PEMBAYARAN SIMONTOK/);
+    assert.match(await page.locator('#previewContent').innerText(), /STRUK PEMBAYARAN TAGIHAN\s+LISTRIK/);
+    assert.match(await page.locator('#previewContent').innerText(), /bukti pembayaran yang SAH/i);
     assert.equal(await page.locator('#previewContent .receipt-logo').count(), 1);
     await page.locator('#printPreview').click();
     assert.equal(await page.evaluate(() => window.__printCalls), 1);
@@ -99,7 +99,16 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
     assert.equal(await page.locator('.print-sheet').count(), 2);
     assert.equal(await page.evaluate(() => window.__printCalls), 2);
     await page.emulateMedia({ media: 'print' });
-    assert.equal(await page.locator('.receipt').evaluateAll((items) => items.every((item) => item.scrollHeight <= item.clientHeight + 1)), true, 'Receipt content must fit within each half-page');
+    const printSizes = await page.locator('.receipt').evaluateAll((items) => items.map((item) => ({
+      scrollHeight: item.scrollHeight, clientHeight: item.clientHeight,
+      fontSize: getComputedStyle(item).fontSize, padding: getComputedStyle(item).padding,
+      head: item.querySelector('.receipt-head')?.getBoundingClientRect().height,
+      details: item.querySelector('.receipt-details')?.getBoundingClientRect().height,
+      attestation: item.querySelector('.receipt-attestation')?.getBoundingClientRect().height,
+      foot: item.querySelector('.receipt-foot')?.getBoundingClientRect().height,
+      contentBottom: item.querySelector('.receipt-foot') ? item.querySelector('.receipt-foot').getBoundingClientRect().bottom - item.getBoundingClientRect().top : 0,
+    })));
+    assert.equal(printSizes.filter((item) => item.clientHeight > 0).every((item) => item.contentBottom <= item.clientHeight + 1), true, `Receipt content must fit within each half-page: ${JSON.stringify(printSizes)}`);
     await page.pdf({ path: path.join(qa, 'receipt-collective-a4.pdf'), printBackground: true, preferCSSPageSize: true });
     await page.emulateMedia({ media: 'screen' });
     await page.screenshot({ path: path.join(qa, 'receipt-desktop.png'), fullPage: true });

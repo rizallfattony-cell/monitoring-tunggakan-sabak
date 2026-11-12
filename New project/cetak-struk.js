@@ -20,6 +20,10 @@ function money(value) {
   return rupiah.format(amount);
 }
 
+function receiptMoney(value) {
+  return money(value).replace(/^Rp\s+/u, "Rp");
+}
+
 function receiptTime(date) {
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) return "-";
@@ -29,12 +33,30 @@ function receiptTime(date) {
   }).format(parsed);
 }
 
+function receiptHeaderTime(date) {
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return "-";
+  const parts = new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+    hour12: false, timeZone: "Asia/Jakarta",
+  }).formatToParts(parsed).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
+  return `${parts.day} ${String(parts.month || "").toUpperCase()} ${parts.year} - ${parts.hour}:${parts.minute} WIB`;
+}
+
 function periodsLabel(periods) {
   if (!Array.isArray(periods) || !periods.length) return "-";
   return periods.map((value) => {
     const match = /^(\d{4})(0[1-9]|1[0-2])$/.exec(String(value));
     return match ? `${periodNames[Number(match[2]) - 1]} ${match[1]}` : "-";
   }).join(", ");
+}
+
+function compactPeriodsLabel(periods) {
+  if (!Array.isArray(periods) || !periods.length) return "-";
+  return periods.map((value) => {
+    const match = /^(\d{4})(0[1-9]|1[0-2])$/.exec(String(value));
+    return match ? `${periodNames[Number(match[2]) - 1].toUpperCase()}${match[1].slice(-2)}` : "-";
+  }).join("/");
 }
 
 function printCode() {
@@ -64,35 +86,38 @@ function receiptField(label, value) {
   return `<div class="receipt-row"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value || "-")}</dd></div>`;
 }
 
+function receiptReferenceField(value) {
+  const chunks = String(value || "-").match(/.{1,23}/g) || ["-"];
+  return `<div class="receipt-row"><dt>NO REF</dt><dd class="receipt-reference-value">${chunks.map(escapeHtml).join("<br>")}</dd></div>`;
+}
+
 function safeLogoData(value) {
   return typeof value === "string" && value.length < 700000 && /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value) ? value : "";
 }
 
 function receiptMarkup(receipt, logoData = "") {
-  const stand = [receipt.stand_awal, receipt.stand_akhir].filter((value) => String(value || "").trim()).join("-") || "-";
-  const period = periodsLabel(receipt.billing_periods);
+  const stand = [receipt.stand_awal, receipt.stand_akhir].filter((value) => String(value || "").trim()).join(" - ") || "-";
+  const period = compactPeriodsLabel(receipt.billing_periods);
   const logo = safeLogoData(logoData);
   return `<article class="receipt">
     <div class="receipt-head">
-      <div class="receipt-brand">${logo ? `<img class="receipt-logo" src="${logo}" alt="Logo struk" />` : ""}<div><strong>${escapeHtml(receipt.nama_toko || "PLN MOBILE")}</strong><span>${escapeHtml(receipt.alamat_toko || "PLN ULP SABAK")}</span></div></div>
-      <time>${escapeHtml(receiptTime(receipt.printedAt))} WIB</time>
-      <h2>STRUK PEMBAYARAN TAGIHAN LISTRIK</h2>
+      <div class="receipt-brand">${logo ? `<img class="receipt-logo" src="${logo}" alt="Logo struk" />` : `<span class="receipt-logo-fallback">${escapeHtml(receipt.nama_toko || "SIMONTOK")}</span>`}</div>
+      <time>${escapeHtml(receiptHeaderTime(receipt.printedAt))}</time>
+      <h2>STRUK PEMBAYARAN TAGIHAN<br />LISTRIK</h2>
     </div>
-    <div class="receipt-warning">BUKTI PEMBAYARAN SIMONTOK</div>
     <dl class="receipt-details">
-      ${receiptField("TGL BAYAR", `${receiptTime(receipt.printedAt)} WIB`)}
-      ${receiptField("ID TRANSAKSI", receipt.printId)}
       ${receiptField("ID PELANGGAN", receipt.idpel)}
       ${receiptField("NAMA", receipt.nama)}
       ${receiptField("TARIF/DAYA", `${receipt.tarif || "-"}/${receipt.daya || "-"} VA`)}
-      ${receiptField("RP TAG PLN", money(receipt.rptag))}
-      ${receiptField("REF SIMONTOK", receipt.printReference)}
+      ${receiptField("RP TAG PLN", receiptMoney(receipt.rptag))}
+      ${receiptReferenceField(receipt.printReference)}
       ${receiptField("BL/TH", period)}
       ${receiptField("STAND METER", stand)}
-      ${receiptField("BIAYA ADMIN", money(receipt.admin_fee))}
-      <div class="receipt-row receipt-total"><dt>TOTAL BAYAR</dt><dd>${money(receipt.total)}</dd></div>
+      ${receiptField("BIAYA ADMIN PAYMENT CHANNEL", receiptMoney(receipt.admin_fee))}
+      <div class="receipt-row receipt-total"><dt>TOTAL BAYAR</dt><dd>${receiptMoney(receipt.total)}</dd></div>
     </dl>
-    <div class="receipt-foot"><strong>STRUK INI SEBAGAI BUKTI PEMBAYARAN SIMONTOK YANG SAH</strong><span>Referensi diterbitkan dan dikelola secara internal oleh SIMONTOK.</span><strong>TERIMA KASIH</strong></div>
+    <div class="receipt-attestation">SIMONTOK menyatakan struk ini sebagai bukti pembayaran yang SAH</div>
+    <div class="receipt-foot"><strong>TERIMA KASIH</strong><span>Informasi hubungi admin SIMONTOK.</span><small>Referensi pembayaran diterbitkan secara internal oleh SIMONTOK.</small></div>
   </article>`;
 }
 
@@ -517,4 +542,4 @@ function initPublicReceipt() {
 }
 
 if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", initPublicReceipt);
-if (typeof module !== "undefined") module.exports = { parseIdpels, escapeHtml, money, periodsLabel, receiptMarkup, printSheets, makeReceipt, prepareCustomers, lookupCustomers };
+if (typeof module !== "undefined") module.exports = { parseIdpels, escapeHtml, money, receiptMoney, receiptTime, receiptHeaderTime, periodsLabel, compactPeriodsLabel, receiptMarkup, printSheets, makeReceipt, prepareCustomers, lookupCustomers };
