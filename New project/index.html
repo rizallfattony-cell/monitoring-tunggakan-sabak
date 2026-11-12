@@ -8,6 +8,9 @@
     <link rel="icon" type="image/png" href="./monalisa-app-icon.png?v=20261112-logo" />
     <link rel="apple-touch-icon" href="./monalisa-app-icon.png?v=20261112-logo" />
     <link rel="manifest" href="./manifest.webmanifest?v=20261112-monalisa" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css?v=20261112-monalisa-logo-v1" />
     <link rel="stylesheet" href="./invoice.css?v=20261024-invoice-tractor-v7" />
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
@@ -16,6 +19,7 @@
     <link rel="stylesheet" href="./kogol-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <link rel="stylesheet" href="./kogol0-detail.css?v=20261106-kogol-v5" />
     <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-dashboard-usulan-v1" />
+    <link rel="stylesheet" href="./dashboard-redesign.css?v=20261113-dashboard-hero-v1" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -192,11 +196,72 @@
                       <button class="icon-button" id="kogolDashboardRefresh" type="button" aria-label="Muat ulang dashboard Kogol" title="Muat ulang dashboard Kogol"><i data-lucide="refresh-cw" aria-hidden="true"></i></button>
                       <button class="button secondary" type="button" data-tab="upload" data-upload-view="database">Kelola unggahan</button>
                     </div>
+                    <div class="monalisa-dashboard-art" aria-hidden="true">
+                      <svg viewBox="0 0 760 320" role="presentation">
+                        <circle cx="410" cy="130" r="176" fill="#ffffff" opacity=".42" />
+                        <path d="M96 250 218 126l72 76 102-112 164 160Z" fill="#9bc8d7" />
+                        <path d="M0 260c154-59 300-34 416-2 124 34 212 7 344-24v86H0Z" fill="#89d4a1" />
+                        <path d="M0 275c170-33 303 3 428 9 122 6 211-13 332-34v70H0Z" fill="#42ae68" />
+                        <path d="M0 292h760v28H0Z" fill="#415561" />
+                        <path d="M14 305h732" stroke="#fff" stroke-width="3" stroke-dasharray="24 17" />
+                        <g fill="none" stroke="#455560" stroke-width="2">
+                          <path d="M48 124c96 29 178-22 274 2s180-18 274 5 112 4 152-3" />
+                          <path d="M154 275V101M140 114h28M560 275V92M545 105h30" stroke="#746a60" stroke-width="7" />
+                        </g>
+                        <g transform="translate(78 0)">
+                          <rect x="0" y="184" width="104" height="91" rx="4" fill="#f7d5a2" />
+                          <path d="m-10 188 62-54 64 54Z" fill="#c86635" />
+                          <rect x="40" y="226" width="25" height="49" fill="#8c5233" />
+                        </g>
+                        <g transform="translate(635 0)">
+                          <rect x="0" y="198" width="92" height="77" rx="4" fill="#f2c58e" />
+                          <path d="m-8 201 54-47 56 47Z" fill="#bd5c31" />
+                          <rect x="34" y="235" width="22" height="40" fill="#8c5233" />
+                        </g>
+                        <g transform="translate(308 276)">
+                          <rect x="-18" y="-68" width="14" height="68" rx="4" fill="#133a58" />
+                          <rect x="5" y="-68" width="14" height="68" rx="4" fill="#133a58" />
+                          <rect x="-24" y="-139" width="48" height="75" rx="11" fill="#1888d0" />
+                          <rect x="-11" y="-139" width="7" height="72" fill="#f5df3e" />
+                          <rect x="5" y="-139" width="7" height="72" fill="#f5df3e" />
+                          <circle cy="-158" r="16" fill="#efbd98" />
+                          <path d="M-21-160a21 17 0 0 1 42 0Z" fill="#1676ba" />
+                          <rect x="-25" y="-162" width="50" height="6" rx="3" fill="#126da9" />
+                          <path d="m20-124 43-31" stroke="#1888d0" stroke-width="13" stroke-linecap="round" />
+                          <rect x="57" y="-190" width="23" height="38" rx="4" fill="#0b2a3c" />
+                          <path d="m68-184-7 14h6l-4 11 10-16h-6Z" fill="#f5b700" />
+                        </g>
+                        <g transform="translate(455 276)">
+                          <rect x="-18" y="-68" width="14" height="68" rx="4" fill="#133a58" />
+                          <rect x="5" y="-68" width="14" height="68" rx="4" fill="#133a58" />
+                          <rect x="-24" y="-139" width="48" height="75" rx="11" fill="#1888d0" />
+                          <rect x="-11" y="-139" width="7" height="72" fill="#f5df3e" />
+                          <rect x="5" y="-139" width="7" height="72" fill="#f5df3e" />
+                          <circle cy="-158" r="16" fill="#efbd98" />
+                          <path d="M-21-160a21 17 0 0 1 42 0Z" fill="#1676ba" />
+                          <rect x="-25" y="-162" width="50" height="6" rx="3" fill="#126da9" />
+                          <path d="m-19-121-42 18" stroke="#1888d0" stroke-width="13" stroke-linecap="round" />
+                          <rect x="-78" y="-122" width="25" height="34" rx="3" fill="#fff" stroke="#aabdc8" />
+                          <path d="M-72-112h13m-13 8h13m-13 8h9" stroke="#7c929f" stroke-width="2" />
+                        </g>
+                        <g opacity=".9">
+                          <rect x="204" y="46" width="15" height="8" rx="2" fill="#f5b700" transform="rotate(28 204 46)" />
+                          <rect x="281" y="75" width="8" height="15" rx="2" fill="#6b4fe0" transform="rotate(-24 281 75)" />
+                          <rect x="590" y="48" width="15" height="8" rx="2" fill="#e85d9a" transform="rotate(35 590 48)" />
+                          <rect x="688" y="98" width="13" height="7" rx="2" fill="#1e88d6" transform="rotate(-26 688 98)" />
+                        </g>
+                      </svg>
+                    </div>
                   </header>
                   <div class="kogol-dashboard-cards" id="kogolDashboardCards">
                     <div class="kogol-dashboard-empty">Memuat dashboard Kogol...</div>
                   </div>
                 </section>
+
+                <svg class="dashboard-wave-divider" viewBox="0 0 1200 62" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M0 28Q210 0 430 27T870 22T1200 10V62H0Z" fill="#5cc9a0" opacity=".42" />
+                  <path d="M0 45Q260 13 570 41T1200 30V62H0Z" fill="#0b7c8a" opacity=".18" />
+                </svg>
 
                 <section class="lpb-overview" id="lpbOverviewPanel" aria-labelledby="lpbOverviewTitle">
                   <header class="lpb-overview-head">
