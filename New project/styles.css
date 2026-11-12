@@ -3302,6 +3302,18 @@ body {
   color: #153550;
 }
 
+.brand-logo-mark {
+  width: 48px;
+  height: 42px;
+  flex: 0 0 auto;
+  display: block;
+  object-fit: contain;
+}
+
+.brand-copy {
+  min-width: 0;
+}
+
 .brand-copy strong,
 .top-app-context strong,
 .user-copy strong {
@@ -3316,6 +3328,12 @@ body {
 .top-app-context span,
 .user-copy span {
   color: #71808e;
+}
+
+.brand-copy span {
+  max-width: 132px;
+  font-size: 8px;
+  line-height: 1.2;
 }
 
 .top-app-context {
