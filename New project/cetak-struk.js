@@ -144,6 +144,13 @@ function initPublicReceipt() {
   const elements = {
     authGate: document.querySelector("#authGate"), loginForm: document.querySelector("#loginForm"),
     loginEmail: document.querySelector("#loginEmail"), loginPassword: document.querySelector("#loginPassword"),
+    authTitle: document.querySelector("#authTitle"), authIntro: document.querySelector("#authIntro"),
+    forgotPasswordButton: document.querySelector("#forgotPasswordButton"),
+    recoveryRequestForm: document.querySelector("#recoveryRequestForm"),
+    recoveryEmail: document.querySelector("#recoveryEmail"),
+    backToLoginButton: document.querySelector("#backToLoginButton"),
+    newPasswordForm: document.querySelector("#newPasswordForm"),
+    newPassword: document.querySelector("#newPassword"), confirmPassword: document.querySelector("#confirmPassword"),
     authStatus: document.querySelector("#authStatus"), receiptWorkspace: document.querySelector("#receiptWorkspace"),
     sessionLabel: document.querySelector("#sessionLabel"), logoutButton: document.querySelector("#logoutButton"),
     dashboardLink: document.querySelector("#dashboardLink"),
@@ -160,6 +167,7 @@ function initPublicReceipt() {
     printArea: document.querySelector("#printArea"),
   };
   if (!elements.form) return;
+  const authFragment = new URLSearchParams(window.location.hash.slice(1));
   const config = window.MONITORING_SUPABASE || {};
   const client = config.url && config.anonKey && window.supabase?.createClient(config.url, config.anonKey);
   let identity = null;
@@ -168,13 +176,16 @@ function initPublicReceipt() {
   let selected = new Set();
   let previewId = "";
   let viewVersion = 0;
+  const recoveryStorageKey = "simontok-receipt-recovery-user";
+  let recoveryLinkOpened = authFragment.get("type") === "recovery" || authFragment.has("error_code");
+  let recoveryMode = false;
 
   function setStatus(message, isError = false) {
     elements.status.textContent = message;
     elements.status.classList.toggle("is-error", isError);
   }
 
-  function showGate(message, isError = false) {
+  function showGate(message, isError = false, view = "login") {
     identity = null;
     setMode("single");
     elements.singleIdpel.value = "";
@@ -192,6 +203,15 @@ function initPublicReceipt() {
     elements.sessionLabel.hidden = true;
     elements.logoutButton.hidden = true;
     elements.dashboardLink.hidden = false;
+    elements.authTitle.textContent = view === "reset" ? "Buat password baru" : view === "forgot" ? "Lupa password" : "Masuk ke SIMONTOK";
+    elements.authIntro.textContent = view === "reset"
+      ? "Masukkan password baru untuk akun cetak struk Anda."
+      : view === "forgot" ? "Kami akan mengirim tautan pemulihan ke email akun Anda."
+      : "Masuk dengan akun cetak struk dari admin. Admin dan petugas SIMONTOK juga dapat memakai halaman ini.";
+    elements.loginForm.hidden = view !== "login";
+    elements.forgotPasswordButton.hidden = view !== "login";
+    elements.recoveryRequestForm.hidden = view !== "forgot";
+    elements.newPasswordForm.hidden = view !== "reset";
     elements.authStatus.textContent = message;
     elements.authStatus.classList.toggle("is-error", isError);
   }
@@ -202,10 +222,28 @@ function initPublicReceipt() {
     try {
       const { data: userData, error: userError } = await client.auth.getUser();
       if (version !== viewVersion) return;
+      if (recoveryLinkOpened || recoveryMode || sessionStorage.getItem(recoveryStorageKey)) {
+        const expectedUserId = sessionStorage.getItem(recoveryStorageKey);
+        if (authFragment.has("error_code") || userError || !userData?.user || (expectedUserId && expectedUserId !== userData.user.id)) {
+          sessionStorage.removeItem(recoveryStorageKey);
+          recoveryMode = false;
+          recoveryLinkOpened = false;
+          window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+          showGate("Tautan pemulihan tidak berlaku lagi. Minta tautan baru.", true, "forgot");
+        } else {
+          recoveryMode = true;
+          recoveryLinkOpened = false;
+          sessionStorage.setItem(recoveryStorageKey, userData.user.id);
+          window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+          showGate("Buat password baru, lalu masuk kembali.", false, "reset");
+        }
+        return;
+      }
       if (userError || !userData?.user) { showGate("Masuk dengan akun SIMONTOK untuk melanjutkan."); return; }
       const { data: accountProfile, error: profileError } = await client.from("monitoring_profiles")
         .select("role,petugas,email").eq("user_id", userData.user.id).maybeSingle();
       if (version !== viewVersion) return;
+      if (recoveryMode) return;
       if (profileError) { showGate("Profil akun tidak dapat dibaca. Coba lagi nanti.", true); return; }
       let profile = accountProfile;
       if (!profile) {
@@ -295,6 +333,54 @@ function initPublicReceipt() {
       showGate("Login gagal. Periksa email, password, dan koneksi internet.", true);
     } finally { button.disabled = false; }
   });
+  elements.forgotPasswordButton.addEventListener("click", () => {
+    elements.recoveryEmail.value = elements.loginEmail.value.trim();
+    showGate("Masukkan email akun untuk menerima tautan pemulihan.", false, "forgot");
+  });
+  elements.backToLoginButton.addEventListener("click", () => showGate("Masuk dengan akun SIMONTOK untuk melanjutkan."));
+  elements.recoveryRequestForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!client) { showGate("Layanan akun belum tersedia. Coba muat ulang halaman.", true, "forgot"); return; }
+    const button = elements.recoveryRequestForm.querySelector('button[type="submit"]');
+    button.disabled = true;
+    elements.authStatus.textContent = "Mengirim tautan...";
+    elements.authStatus.classList.remove("is-error");
+    try {
+      const { error } = await client.auth.resetPasswordForEmail(elements.recoveryEmail.value.trim(), {
+        redirectTo: `${window.location.origin}${window.location.pathname}`,
+      });
+      if (error) throw error;
+      elements.authStatus.textContent = "Jika email terdaftar, tautan pemulihan akan dikirim. Periksa juga folder Spam.";
+    } catch {
+      elements.authStatus.textContent = "Gagal mengirim tautan. Periksa koneksi atau coba lagi nanti.";
+      elements.authStatus.classList.add("is-error");
+    } finally { button.disabled = false; }
+  });
+  elements.newPasswordForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (elements.newPassword.value !== elements.confirmPassword.value) {
+      elements.authStatus.textContent = "Kedua password belum sama.";
+      elements.authStatus.classList.add("is-error");
+      return;
+    }
+    const button = elements.newPasswordForm.querySelector('button[type="submit"]');
+    button.disabled = true;
+    elements.authStatus.textContent = "Menyimpan password...";
+    elements.authStatus.classList.remove("is-error");
+    try {
+      const { error } = await client.auth.updateUser({ password: elements.newPassword.value });
+      if (error) throw error;
+      elements.newPasswordForm.reset();
+      sessionStorage.removeItem(recoveryStorageKey);
+      recoveryMode = false;
+      recoveryLinkOpened = false;
+      try { await client.auth.signOut(); } catch { /* Password is already saved. */ }
+      showGate("Password baru tersimpan. Masuk kembali dengan password tersebut.");
+    } catch {
+      elements.authStatus.textContent = "Password belum tersimpan. Gunakan password yang kuat atau minta tautan baru.";
+      elements.authStatus.classList.add("is-error");
+    } finally { button.disabled = false; }
+  });
   elements.logoutButton.addEventListener("click", async () => {
     try {
       await client?.auth.signOut();
@@ -303,7 +389,14 @@ function initPublicReceipt() {
       setStatus("Gagal keluar. Periksa koneksi lalu coba lagi.", true);
     }
   });
-  client?.auth.onAuthStateChange((event) => {
+  client?.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY" && session?.user?.id) {
+      recoveryMode = true;
+      recoveryLinkOpened = false;
+      sessionStorage.setItem(recoveryStorageKey, session.user.id);
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+      showGate("Buat password baru, lalu masuk kembali.", false, "reset");
+    }
     if (event === "SIGNED_OUT") showGate("Anda sudah keluar. Masuk kembali untuk mencetak.");
   });
 

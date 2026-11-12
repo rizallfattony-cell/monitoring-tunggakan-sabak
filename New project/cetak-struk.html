@@ -6,11 +6,11 @@
     <meta name="theme-color" content="#123b5d" />
     <title>Cek Tagihan & Cetak Struk | SIMONTOK</title>
     <link rel="icon" type="image/png" href="./simontok-super-web.png" />
-    <link rel="stylesheet" href="./cetak-struk.css?v=20261112-v3" />
+    <link rel="stylesheet" href="./cetak-struk.css?v=20261112-v4" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./supabase-config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script src="./cetak-struk.js?v=20261112-v3" defer></script>
+    <script src="./cetak-struk.js?v=20261112-v4" defer></script>
   </head>
   <body>
     <header class="site-header no-print">
@@ -23,11 +23,22 @@
     <main class="workspace no-print">
       <section id="authGate" class="auth-gate" aria-labelledby="authTitle">
         <h1 id="authTitle">Masuk ke SIMONTOK</h1>
-        <p>Masuk dengan akun cetak struk dari admin. Admin dan petugas SIMONTOK juga dapat memakai halaman ini.</p>
+        <p id="authIntro">Masuk dengan akun cetak struk dari admin. Admin dan petugas SIMONTOK juga dapat memakai halaman ini.</p>
         <form id="loginForm">
           <label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="username" required />
           <label for="loginPassword">Password</label><input id="loginPassword" type="password" autocomplete="current-password" required />
           <button type="submit" class="primary-command">Masuk</button>
+        </form>
+        <button type="button" id="forgotPasswordButton" class="auth-text-command">Lupa password?</button>
+        <form id="recoveryRequestForm" hidden>
+          <label for="recoveryEmail">Email akun</label><input id="recoveryEmail" type="email" autocomplete="username" required />
+          <button type="submit" class="primary-command">Kirim tautan pemulihan</button>
+          <button type="button" id="backToLoginButton" class="auth-text-command">Kembali ke masuk</button>
+        </form>
+        <form id="newPasswordForm" hidden>
+          <label for="newPassword">Password baru</label><input id="newPassword" type="password" autocomplete="new-password" minlength="8" required />
+          <label for="confirmPassword">Ulangi password baru</label><input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required />
+          <button type="submit" class="primary-command">Simpan password baru</button>
         </form>
         <p id="authStatus" role="status" aria-live="polite">Memeriksa sesi akun...</p>
       </section>
