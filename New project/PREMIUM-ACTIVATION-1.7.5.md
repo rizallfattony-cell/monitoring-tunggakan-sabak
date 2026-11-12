@@ -27,7 +27,7 @@ Masukkan password DATABASE BARU pada prompt. Script menerapkan step 22 dan step 
 memverifikasi hash unduhan, lalu mengaktifkan update wajib 1.7.5. Jangan jalankan SQL release
 sebelum APK tersedia. Script dapat dijalankan ulang dan memiliki proteksi penurunan versi.
 
-Unduhan setelah publikasi: https://simontok-superweb.vercel.app/SIMONTOK-v1.7.5.apk
+Unduhan setelah publikasi: https://monalisa-superweb.vercel.app/SIMONTOK-v1.7.5.apk
 
 Pasang pembaruan di HP ADRI tanpa uninstall. Sambungkan internet, buka aplikasi dan Menu.
 Jika web tetap Belum terikat atau aplikasi menyatakan Perangkat lain, periksa Status Premium;

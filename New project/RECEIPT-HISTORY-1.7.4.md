@@ -37,7 +37,7 @@ Script memeriksa repo bersih/main, menerapkan persiapan database dan step 21, me
 Script dapat diulang jika jaringan/deployment gagal. Tidak ada penurunan versi atau penambahan pendapatan ketika migrasi diulang.
 Database Kelola Premium dan rekap pembayaran sebelumnya (step 17/18) harus sudah tersedia. Script persiapan menerapkan step 19 bila belum ada dan memperbarui step 20 (dua paket Rp50.000) tanpa mengubah pembayaran yang sudah lunas. Script tidak menurunkan versi produksi yang lebih baru.
 
-Unduhan setelah rilis: https://simontok-superweb.vercel.app/SIMONTOK-v1.7.4.apk
+Unduhan setelah rilis: https://monalisa-superweb.vercel.app/SIMONTOK-v1.7.4.apk
 Pasang tanpa uninstall. Metadata rilis memakai URL khusus versi, tidak mengganti SIMONTOK-latest.apk sebelum verifikasi.
 
 ## Antarmuka Database

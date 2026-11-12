@@ -1188,7 +1188,7 @@ private fun HomeScreen(
             onDismiss = { showMoreMenu = false },
             onAdminPremium = {
                 showMoreMenu = false
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://simontok-superweb.vercel.app/")))
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://monalisa-superweb.vercel.app/")))
             },
             onExportExcel = {
                 showMoreMenu = false

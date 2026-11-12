@@ -16,7 +16,7 @@ insert into public.monitoring_app_releases (
   id, latest_version, minimum_version, download_url, message, force_update
 ) values (
   'android', '1.7.2', '1.7.2',
-  'https://simontok-superweb.vercel.app/SIMONTOK-v1.7.2.apk',
+  'https://monalisa-superweb.vercel.app/SIMONTOK-v1.7.2.apk',
   'Perbarui SIMONTOK untuk pengingat tagihan bulanan dan sinkronisasi pembayaran premium dengan admin.',
   true
 )

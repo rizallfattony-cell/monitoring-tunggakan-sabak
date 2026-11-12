@@ -44,7 +44,7 @@ migrasi paket step 20 dan mengaktifkan update wajib 1.7.3. Jika step 19 belum te
 script menerapkannya lebih dahulu. Menjalankan ulang script yang sama tidak menggandakan
 tagihan atau mengubah pembayaran yang sudah lunas.
 
-Unduh `https://simontok-superweb.vercel.app/SIMONTOK-v1.7.3.apk` setelah migrasi berhasil.
+Unduh `https://monalisa-superweb.vercel.app/SIMONTOK-v1.7.3.apk` setelah migrasi berhasil.
 Tidak perlu uninstall aplikasi sebelumnya. Gunakan script 1.7.3, bukan script 1.7.2.
 
 ## Verifikasi

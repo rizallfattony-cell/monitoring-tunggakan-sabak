@@ -87,8 +87,8 @@ try {
     $ready = $false
     for ($attempt = 1; $attempt -le 60; $attempt++) {
         try {
-            Invoke-WebRequest -Uri "https://simontok-superweb.vercel.app/SIMONTOK-v$ReleaseVersion.apk" -OutFile $temporaryApk -UseBasicParsing -TimeoutSec 30
-            $page = Invoke-WebRequest -Uri 'https://simontok-superweb.vercel.app/' -UseBasicParsing -TimeoutSec 30
+            Invoke-WebRequest -Uri "https://monalisa-superweb.vercel.app/SIMONTOK-v$ReleaseVersion.apk" -OutFile $temporaryApk -UseBasicParsing -TimeoutSec 30
+            $page = Invoke-WebRequest -Uri 'https://monalisa-superweb.vercel.app/' -UseBasicParsing -TimeoutSec 30
             if ((Get-SimontokSha256 -Path $temporaryApk) -eq $expectedHash -and $page.Content.Contains($webMarker)) { $ready = $true; break }
         } catch { }
         Start-Sleep -Seconds 5

@@ -14,7 +14,7 @@ do $$ begin
   end if;
 end $$;
 insert into public.monitoring_app_releases(id,latest_version,minimum_version,download_url,message,force_update)
-values('android','1.7.5','1.7.5','https://simontok-superweb.vercel.app/SIMONTOK-v1.7.5.apk',
+values('android','1.7.5','1.7.5','https://monalisa-superweb.vercel.app/SIMONTOK-v1.7.5.apk',
  'Perbaikan aktivasi premium setelah verifikasi perangkat, pembacaan perangkat kosong, dan pembaruan status otomatis.',true)
 on conflict(id) do update set latest_version=excluded.latest_version,minimum_version=excluded.minimum_version,
  download_url=excluded.download_url,message=excluded.message,force_update=excluded.force_update,updated_at=now();

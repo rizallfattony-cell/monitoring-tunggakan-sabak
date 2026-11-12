@@ -14,7 +14,7 @@ select to_regprocedure('public.get_my_premium_billing_status()') is not null as 
 
 begin;
 insert into public.monitoring_app_releases (id, latest_version, minimum_version, download_url, message, force_update)
-values ('android', '1.7.3', '1.7.3', 'https://simontok-superweb.vercel.app/SIMONTOK-v1.7.3.apk',
+values ('android', '1.7.3', '1.7.3', 'https://monalisa-superweb.vercel.app/SIMONTOK-v1.7.3.apk',
   'Pengingat tagihan per jam, tombol BAYAR dengan salin rekening, dan paket SIMONTOK PREMIUM / BILLMAN PRO.', true)
 on conflict (id) do update set latest_version = excluded.latest_version, minimum_version = excluded.minimum_version,
   download_url = excluded.download_url, message = excluded.message, force_update = excluded.force_update, updated_at = now();
