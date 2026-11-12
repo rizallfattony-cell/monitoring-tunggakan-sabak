@@ -94,7 +94,8 @@ dialog::backdrop { background: #08263da8; }
 .receipt-head h2 { max-width: 540px; margin: 28px 0 0; font-size: 29px; font-weight: 700; line-height: 1.18; }
 .receipt-details { margin: 58px 0 0; }
 .receipt-row { display: grid; grid-template-columns: 47% minmax(0, 1fr); gap: 16px; padding: 8px 0; }
-.receipt-row dt { color: #374151; text-transform: uppercase; }
+.receipt-row dt { position: relative; padding-right: 16px; color: #374151; text-transform: uppercase; }
+.receipt-row dt::after { content: ":"; position: absolute; right: 0; }
 .receipt-row dd { min-width: 0; margin: 0; color: #111827; font-weight: 700; overflow-wrap: anywhere; }
 .receipt-total { margin-top: 8px; padding-top: 14px; font-size: 17px; }
 .receipt-total dt { color: #1f2937; }

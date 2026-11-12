@@ -85,6 +85,7 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
     assert.match(await page.locator('#previewContent').innerText(), /STRUK INI SEBAGAI BUKTI YANG SAH/);
     assert.match(await page.locator('#previewContent').innerText(), /MOHON DI SIMPAN/);
     assert.match(await page.locator('#previewContent').innerText(), /DOWNLOAD PLN MOBILE/);
+    assert.equal(await page.locator('#previewContent .receipt-row dt').first().evaluate((item) => getComputedStyle(item, '::after').content), '":"');
     assert.equal(await page.locator('#previewContent .receipt-logo').count(), 1);
     await page.locator('#printPreview').click();
     assert.equal(await page.evaluate(() => window.__printCalls), 1);
