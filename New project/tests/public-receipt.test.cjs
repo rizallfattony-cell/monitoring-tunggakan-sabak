@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { parseIdpels, escapeHtml, money, receiptMoney, receiptHeaderTime, periodsLabel, compactPeriodsLabel, receiptMarkup, printSheets, makeReceipt, prepareCustomers } = require('../cetak-struk.js');
+const { parseIdpels, escapeHtml, money, receiptMoney, receiptHeaderTime, periodsLabel, compactPeriodsLabel, receiptPrintMonth, receiptMarkup, printSheets, makeReceipt, prepareCustomers } = require('../cetak-struk.js');
 
 assert.deepEqual(parseIdpels('143900000001\n143900000002,143900000003'), ['143900000001', '143900000002', '143900000003']);
 assert.throws(() => parseIdpels('143900000001 143900000001'), /unik/);
@@ -10,6 +10,10 @@ assert.equal(receiptMoney(289229), 'Rp289.229');
 assert.equal(periodsLabel(['202610', '202611']), 'Okt 2026, Nov 2026');
 assert.equal(compactPeriodsLabel(['202610', '202611']), 'OKT26/NOV26');
 assert.equal(receiptHeaderTime('2026-11-12T04:56:00Z'), '12 NOV 2026 - 11:56 WIB');
+assert.equal(receiptPrintMonth('2026-01-31T17:30:00Z'), 'FEB 26');
+assert.equal(receiptPrintMonth('2026-03-12T04:56:00Z'), 'MARET 26');
+assert.equal(receiptPrintMonth('2026-08-12T04:56:00Z'), 'AGUST 26');
+assert.equal(receiptPrintMonth('2026-09-12T04:56:00Z'), 'SEPT 26');
 assert.equal(escapeHtml('<script>'), '&lt;script&gt;');
 
 const base = { idpel: '143900000001', nama: '<script>alert(1)</script>', tarif: 'R1', daya: '900', rptag: 359152, admin_fee: 5000, stand_awal: '100', stand_akhir: '120', billing_periods: ['202610'] };
@@ -24,7 +28,7 @@ assert.match(receiptMarkup(receipt), /NO REF/);
 assert.doesNotMatch(receiptMarkup(receipt), /ID TRANSAKSI/);
 assert.doesNotMatch(receiptMarkup(receipt), /<script>/);
 assert.match(receiptMarkup(receipt), /100 - 120/);
-assert.match(receiptMarkup(receipt), /OKT26/);
+assert.match(receiptMarkup(receipt), /NOV 26/);
 assert.match(receiptMarkup(receipt, 'data:image/png;base64,aGVsbG8='), /class="receipt-logo"/);
 assert.doesNotMatch(receiptMarkup(receipt, 'javascript:alert(1)'), /class="receipt-logo"/);
 assert.equal((printSheets([receipt, receipt, receipt]).match(/class="print-sheet"/g) || []).length, 2);

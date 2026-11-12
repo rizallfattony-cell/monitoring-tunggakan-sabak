@@ -1,6 +1,7 @@
 const PUBLIC_RECEIPT_LIMIT = 20;
 const rupiah = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 });
 const periodNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+const receiptMonthNames = ["JAN", "FEB", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUST", "SEPT", "OKT", "NOV", "DES"];
 
 function parseIdpels(value) {
   const ids = String(value || "").split(/[\s,;]+/).map((part) => part.trim()).filter(Boolean);
@@ -59,6 +60,16 @@ function compactPeriodsLabel(periods) {
   }).join("/");
 }
 
+function receiptPrintMonth(date) {
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return "-";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    month: "numeric", year: "2-digit", timeZone: "Asia/Jakarta",
+  }).formatToParts(parsed).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
+  const monthIndex = Number(parts.month) - 1;
+  return receiptMonthNames[monthIndex] ? `${receiptMonthNames[monthIndex]} ${parts.year}` : "-";
+}
+
 function printCode() {
   const bytes = new Uint8Array(10);
   crypto.getRandomValues(bytes);
@@ -97,7 +108,7 @@ function safeLogoData(value) {
 
 function receiptMarkup(receipt, logoData = "") {
   const stand = [receipt.stand_awal, receipt.stand_akhir].filter((value) => String(value || "").trim()).join(" - ") || "-";
-  const period = compactPeriodsLabel(receipt.billing_periods);
+  const period = receiptPrintMonth(receipt.printedAt);
   const logo = safeLogoData(logoData);
   return `<article class="receipt">
     <div class="receipt-head">
@@ -542,4 +553,4 @@ function initPublicReceipt() {
 }
 
 if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", initPublicReceipt);
-if (typeof module !== "undefined") module.exports = { parseIdpels, escapeHtml, money, receiptMoney, receiptTime, receiptHeaderTime, periodsLabel, compactPeriodsLabel, receiptMarkup, printSheets, makeReceipt, prepareCustomers, lookupCustomers };
+if (typeof module !== "undefined") module.exports = { parseIdpels, escapeHtml, money, receiptMoney, receiptTime, receiptHeaderTime, periodsLabel, compactPeriodsLabel, receiptPrintMonth, receiptMarkup, printSheets, makeReceipt, prepareCustomers, lookupCustomers };
