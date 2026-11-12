@@ -76,22 +76,23 @@ function receiptMarkup(receipt, logoData = "") {
     <div class="receipt-head">
       <div class="receipt-brand">${logo ? `<img class="receipt-logo" src="${logo}" alt="Logo struk" />` : ""}<div><strong>${escapeHtml(receipt.nama_toko || "PLN MOBILE")}</strong><span>${escapeHtml(receipt.alamat_toko || "PLN ULP SABAK")}</span></div></div>
       <time>${escapeHtml(receiptTime(receipt.printedAt))} WIB</time>
-      <h2>STRUK INFORMASI TAGIHAN LISTRIK</h2>
+      <h2>STRUK PEMBAYARAN TAGIHAN LISTRIK</h2>
     </div>
-    <div class="receipt-warning">TAGIHAN BELUM LUNAS - BUKAN BUKTI PEMBAYARAN</div>
+    <div class="receipt-warning">BUKTI PEMBAYARAN SIMONTOK</div>
     <dl class="receipt-details">
+      ${receiptField("TGL BAYAR", `${receiptTime(receipt.printedAt)} WIB`)}
+      ${receiptField("ID TRANSAKSI", receipt.printId)}
       ${receiptField("ID PELANGGAN", receipt.idpel)}
       ${receiptField("NAMA", receipt.nama)}
       ${receiptField("TARIF/DAYA", `${receipt.tarif || "-"}/${receipt.daya || "-"} VA`)}
       ${receiptField("RP TAG PLN", money(receipt.rptag))}
-      ${receiptField("NO REF CETAK", receipt.printReference)}
-      ${receiptField("ID CETAK", receipt.printId)}
+      ${receiptField("REF SIMONTOK", receipt.printReference)}
       ${receiptField("BL/TH", period)}
       ${receiptField("STAND METER", stand)}
       ${receiptField("BIAYA ADMIN", money(receipt.admin_fee))}
       <div class="receipt-row receipt-total"><dt>TOTAL BAYAR</dt><dd>${money(receipt.total)}</dd></div>
     </dl>
-    <div class="receipt-foot"><strong>TERIMA KASIH</strong><span>Periksa status pembayaran melalui kanal resmi sebelum menggunakan bukti bayar.</span></div>
+    <div class="receipt-foot"><strong>STRUK INI SEBAGAI BUKTI PEMBAYARAN SIMONTOK YANG SAH</strong><span>Referensi diterbitkan dan dikelola secara internal oleh SIMONTOK.</span><strong>TERIMA KASIH</strong></div>
   </article>`;
 }
 
@@ -307,7 +308,7 @@ function initPublicReceipt() {
     selected = new Set(found.map((row) => row.idpel));
     const missing = ids.filter((id) => !selected.has(id));
     elements.results.hidden = false;
-    elements.summary.textContent = `${found.length} dari ${ids.length} IDPEL ditemukan dalam saldo tunggakan terkini.`;
+    elements.summary.textContent = `${found.length} dari ${ids.length} IDPEL siap dibuatkan struk pembayaran.`;
     elements.missing.hidden = !missing.length;
     elements.missing.textContent = missing.length ? `Tidak ditemukan atau sudah lunas: ${missing.join(", ")}` : "";
     elements.rows.innerHTML = found.map((row) => `<tr>
@@ -484,7 +485,7 @@ function initPublicReceipt() {
       const found = (await lookupCustomers(client, ids, identity.profile.role)).map((row) => makeReceipt(row));
       if (requestVersion !== viewVersion || identity?.user?.id !== requestUserId) return;
       renderResults(ids, found);
-      setStatus(found.length ? `${found.length} tagihan ditemukan. Periksa rinciannya sebelum mencetak.` : "Tidak ada tagihan ditemukan untuk IDPEL tersebut.");
+      setStatus(found.length ? `${found.length} data pembayaran siap. Periksa rinciannya sebelum mencetak.` : "Tidak ada data tagihan untuk IDPEL tersebut.");
     } catch (error) {
       if (requestVersion === viewVersion) setStatus("Gagal memeriksa tagihan. Periksa koneksi atau izin akun lalu coba lagi.", true);
     } finally { submit.disabled = false; }

@@ -81,7 +81,8 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
     assert.match(await page.locator('#resultRows').innerText(), /Rp\s*364\.152/);
     assert.equal(await page.locator('#resultRows tr').count(), 1);
     await page.locator('[data-preview="143900000001"]').click();
-    assert.match(await page.locator('#previewContent').innerText(), /BUKAN BUKTI PEMBAYARAN/);
+    assert.match(await page.locator('#previewContent').innerText(), /STRUK PEMBAYARAN TAGIHAN LISTRIK/);
+    assert.match(await page.locator('#previewContent').innerText(), /BUKTI PEMBAYARAN SIMONTOK/);
     assert.equal(await page.locator('#previewContent .receipt-logo').count(), 1);
     await page.locator('#printPreview').click();
     assert.equal(await page.evaluate(() => window.__printCalls), 1);
@@ -99,9 +100,9 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
     assert.equal(await page.evaluate(() => window.__printCalls), 2);
     await page.emulateMedia({ media: 'print' });
     assert.equal(await page.locator('.receipt').evaluateAll((items) => items.every((item) => item.scrollHeight <= item.clientHeight + 1)), true, 'Receipt content must fit within each half-page');
+    await page.pdf({ path: path.join(qa, 'receipt-collective-a4.pdf'), printBackground: true, preferCSSPageSize: true });
     await page.emulateMedia({ media: 'screen' });
     await page.screenshot({ path: path.join(qa, 'receipt-desktop.png'), fullPage: true });
-    await page.pdf({ path: path.join(qa, 'receipt-collective-a4.pdf'), printBackground: true, preferCSSPageSize: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: path.join(qa, 'receipt-mobile.png'), fullPage: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'Mobile page has no horizontal overflow');

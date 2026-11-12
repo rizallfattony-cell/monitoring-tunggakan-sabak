@@ -4,13 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#123b5d" />
-    <title>Cek Tagihan & Cetak Struk | SIMONTOK</title>
+    <title>Cetak Struk Pembayaran | SIMONTOK</title>
     <link rel="icon" type="image/png" href="./simontok-super-web.png" />
-    <link rel="stylesheet" href="./cetak-struk.css?v=20261112-v5" />
+    <link rel="stylesheet" href="./cetak-struk.css?v=20261112-v6" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./supabase-config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script src="./cetak-struk.js?v=20261112-v5" defer></script>
+    <script src="./cetak-struk.js?v=20261112-v6" defer></script>
   </head>
   <body>
     <header class="site-header no-print">
@@ -44,7 +44,7 @@
       </section>
       <div id="receiptWorkspace" hidden>
       <div class="page-heading">
-        <div><span class="eyebrow">Layanan pelanggan</span><h1>Cek tagihan &amp; cetak struk</h1><p>Masukkan ID pelanggan untuk melihat tagihan terkini dan menyiapkan cetakan A4.</p></div>
+        <div><span class="eyebrow">Layanan SIMONTOK</span><h1>Cetak struk pembayaran</h1><p>Cari ID pelanggan, periksa nominal, lalu cetak struk pembayaran SIMONTOK pada kertas A4.</p></div>
       </div>
 
       <section class="logo-settings" aria-labelledby="logoSettingsTitle">
@@ -53,7 +53,7 @@
       </section>
 
       <section class="lookup" aria-labelledby="lookupTitle">
-        <div class="section-heading"><div><h2 id="lookupTitle">Cari pelanggan</h2><p>Gunakan IDPEL lengkap. Cetak kolektif menerima hingga 20 IDPEL sekaligus.</p></div></div>
+        <div class="section-heading"><div><h2 id="lookupTitle">Cari pelanggan</h2><p>Gunakan IDPEL lengkap. Cetak kolektif menerima hingga 20 pembayaran sekaligus.</p></div></div>
         <div class="mode-switch" role="tablist" aria-label="Mode pencarian">
           <button type="button" role="tab" id="singleTab" aria-selected="true" aria-controls="singleMode">Satu IDPEL</button>
           <button type="button" role="tab" id="bulkTab" aria-selected="false" aria-controls="bulkMode">Cetak kolektif</button>

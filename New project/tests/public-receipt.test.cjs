@@ -13,7 +13,10 @@ const base = { idpel: '143900000001', nama: '<script>alert(1)</script>', tarif: 
 const receipt = makeReceipt(base, new Date('2026-11-12T03:04:05Z'));
 assert.equal(receipt.total, 364152);
 assert.match(receiptMarkup(receipt), /Rp&nbsp;364\.152|Rp\u00a0364\.152/);
-assert.match(receiptMarkup(receipt), /BUKAN BUKTI PEMBAYARAN/);
+assert.match(receiptMarkup(receipt), /STRUK PEMBAYARAN TAGIHAN LISTRIK/);
+assert.match(receiptMarkup(receipt), /BUKTI PEMBAYARAN SIMONTOK/);
+assert.match(receiptMarkup(receipt), /REF SIMONTOK/);
+assert.match(receiptMarkup(receipt), /ID TRANSAKSI/);
 assert.doesNotMatch(receiptMarkup(receipt), /<script>/);
 assert.match(receiptMarkup(receipt), /100-120/);
 assert.match(receiptMarkup(receipt), /Okt 2026/);
