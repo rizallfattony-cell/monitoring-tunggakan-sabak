@@ -6,11 +6,11 @@
     <meta name="theme-color" content="#123b5d" />
     <title>Cek Tagihan & Cetak Struk | SIMONTOK</title>
     <link rel="icon" type="image/png" href="./simontok-super-web.png" />
-    <link rel="stylesheet" href="./cetak-struk.css?v=20261112-v4" />
+    <link rel="stylesheet" href="./cetak-struk.css?v=20261112-v5" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./supabase-config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script src="./cetak-struk.js?v=20261112-v4" defer></script>
+    <script src="./cetak-struk.js?v=20261112-v5" defer></script>
   </head>
   <body>
     <header class="site-header no-print">
@@ -46,6 +46,11 @@
       <div class="page-heading">
         <div><span class="eyebrow">Layanan pelanggan</span><h1>Cek tagihan &amp; cetak struk</h1><p>Masukkan ID pelanggan untuk melihat tagihan terkini dan menyiapkan cetakan A4.</p></div>
       </div>
+
+      <section class="logo-settings" aria-labelledby="logoSettingsTitle">
+        <div class="logo-settings-copy"><div class="logo-preview"><img id="logoPreview" alt="Logo untuk struk" hidden /><span id="logoPlaceholder"><i data-lucide="image" aria-hidden="true"></i></span></div><div><h2 id="logoSettingsTitle">Logo struk</h2><p id="logoStatus" role="status" aria-live="polite">Logo disimpan di browser perangkat ini.</p></div></div>
+        <div class="logo-settings-actions"><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp" hidden /><button type="button" id="uploadLogo" class="secondary-command"><i data-lucide="upload" aria-hidden="true"></i>Unggah logo</button><button type="button" id="removeLogo" class="icon-command" title="Hapus logo" aria-label="Hapus logo" hidden><i data-lucide="trash-2" aria-hidden="true"></i></button></div>
+      </section>
 
       <section class="lookup" aria-labelledby="lookupTitle">
         <div class="section-heading"><div><h2 id="lookupTitle">Cari pelanggan</h2><p>Gunakan IDPEL lengkap. Cetak kolektif menerima hingga 20 IDPEL sekaligus.</p></div></div>

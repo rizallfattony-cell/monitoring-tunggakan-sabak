@@ -70,6 +70,11 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
     await page.locator('#loginPassword').fill('password');
     await page.locator('#loginForm button[type="submit"]').click();
     await page.waitForFunction(() => !document.querySelector('#receiptWorkspace').hidden);
+    await page.locator('#logoFile').setInputFiles({
+      name: 'logo.png', mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lfsAAAAASUVORK5CYII=', 'base64'),
+    });
+    await page.waitForFunction(() => !document.querySelector('#logoPreview').hidden);
     await page.locator('#singleIdpel').fill('143900000001');
     await page.locator('#singleMode button[type="submit"]').click();
     await page.waitForFunction(() => !document.querySelector('#results').hidden);
@@ -77,9 +82,11 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
     assert.equal(await page.locator('#resultRows tr').count(), 1);
     await page.locator('[data-preview="143900000001"]').click();
     assert.match(await page.locator('#previewContent').innerText(), /BUKAN BUKTI PEMBAYARAN/);
+    assert.equal(await page.locator('#previewContent .receipt-logo').count(), 1);
     await page.locator('#printPreview').click();
     assert.equal(await page.evaluate(() => window.__printCalls), 1);
     assert.equal(await page.locator('.print-sheet').count(), 1);
+    assert.equal(await page.locator('.print-sheet .receipt-logo').count(), 1);
     await page.locator('#closePreview').click();
 
     await page.locator('#bulkTab').click();
@@ -90,6 +97,9 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
     await page.locator('#printSelected').click();
     assert.equal(await page.locator('.print-sheet').count(), 2);
     assert.equal(await page.evaluate(() => window.__printCalls), 2);
+    await page.emulateMedia({ media: 'print' });
+    assert.equal(await page.locator('.receipt').evaluateAll((items) => items.every((item) => item.scrollHeight <= item.clientHeight + 1)), true, 'Receipt content must fit within each half-page');
+    await page.emulateMedia({ media: 'screen' });
     await page.screenshot({ path: path.join(qa, 'receipt-desktop.png'), fullPage: true });
     await page.pdf({ path: path.join(qa, 'receipt-collective-a4.pdf'), printBackground: true, preferCSSPageSize: true });
     await page.setViewportSize({ width: 390, height: 844 });

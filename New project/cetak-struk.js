@@ -61,42 +61,45 @@ function makeReceipt(row, now = new Date()) {
 }
 
 function receiptField(label, value) {
-  return `<div class="receipt-field"><span>${escapeHtml(label)}</span><span>:</span><span>${escapeHtml(value || "-")}</span></div>`;
+  return `<div class="receipt-row"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value || "-")}</dd></div>`;
 }
 
-function receiptMarkup(receipt) {
+function safeLogoData(value) {
+  return typeof value === "string" && value.length < 700000 && /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value) ? value : "";
+}
+
+function receiptMarkup(receipt, logoData = "") {
   const stand = [receipt.stand_awal, receipt.stand_akhir].filter((value) => String(value || "").trim()).join("-") || "-";
   const period = periodsLabel(receipt.billing_periods);
+  const logo = safeLogoData(logoData);
   return `<article class="receipt">
-    <div class="receipt-head"><strong>${escapeHtml(receipt.nama_toko || "PLN MOBILE")}</strong><span>${escapeHtml(receipt.alamat_toko || "PLN ULP SABAK")}</span><span class="receipt-title">Struk Pembayaran Tagihan Listrik</span></div>
-    <div class="receipt-warning">DATA TAGIHAN BELUM LUNAS - BUKAN BUKTI PEMBAYARAN</div>
-    <div class="receipt-grid">
-      ${receiptField("Tgl Cetak", receiptTime(receipt.printedAt))}
-      ${receiptField("ID Cetak", receipt.printId)}
-      ${receiptField("No Pelanggan", receipt.idpel)}
-      ${receiptField("Nama", receipt.nama)}
-      ${receiptField("Tarif/Daya", `${receipt.tarif || "-"}/${receipt.daya || "-"}`)}
-      ${receiptField("Stand Meter", stand)}
-      ${receiptField("Periode", period)}
-      ${receiptField("Reff Cetak", receipt.printReference)}
+    <div class="receipt-head">
+      <div class="receipt-brand">${logo ? `<img class="receipt-logo" src="${logo}" alt="Logo struk" />` : ""}<div><strong>${escapeHtml(receipt.nama_toko || "PLN MOBILE")}</strong><span>${escapeHtml(receipt.alamat_toko || "PLN ULP SABAK")}</span></div></div>
+      <time>${escapeHtml(receiptTime(receipt.printedAt))} WIB</time>
+      <h2>STRUK INFORMASI TAGIHAN LISTRIK</h2>
     </div>
-    <div class="receipt-section-title">Rincian Tagihan</div>
-    <table class="receipt-money"><tbody>
-      <tr><td>Rp Tagihan</td><td>${money(receipt.rptag)}</td></tr>
-      <tr><td>Denda</td><td>${money(0)}</td></tr>
-      <tr><td>Lain-Lain</td><td>${money(0)}</td></tr>
-      <tr><td>Admin Bank</td><td>${money(receipt.admin_fee)}</td></tr>
-      <tr class="receipt-total"><td>Total Bayar</td><td>${money(receipt.total)}</td></tr>
-    </tbody></table>
-    <div class="receipt-foot">Konfirmasi pembayaran melalui kanal resmi. Simpan struk pembayaran resmi setelah transaksi berhasil.</div>
+    <div class="receipt-warning">TAGIHAN BELUM LUNAS - BUKAN BUKTI PEMBAYARAN</div>
+    <dl class="receipt-details">
+      ${receiptField("ID PELANGGAN", receipt.idpel)}
+      ${receiptField("NAMA", receipt.nama)}
+      ${receiptField("TARIF/DAYA", `${receipt.tarif || "-"}/${receipt.daya || "-"} VA`)}
+      ${receiptField("RP TAG PLN", money(receipt.rptag))}
+      ${receiptField("NO REF CETAK", receipt.printReference)}
+      ${receiptField("ID CETAK", receipt.printId)}
+      ${receiptField("BL/TH", period)}
+      ${receiptField("STAND METER", stand)}
+      ${receiptField("BIAYA ADMIN", money(receipt.admin_fee))}
+      <div class="receipt-row receipt-total"><dt>TOTAL BAYAR</dt><dd>${money(receipt.total)}</dd></div>
+    </dl>
+    <div class="receipt-foot"><strong>TERIMA KASIH</strong><span>Periksa status pembayaran melalui kanal resmi sebelum menggunakan bukti bayar.</span></div>
   </article>`;
 }
 
-function printSheets(receipts) {
+function printSheets(receipts, logoData = "") {
   let html = "";
   for (let index = 0; index < receipts.length; index += 2) {
-    html += `<section class="print-sheet"><div class="receipt-slot">${receiptMarkup(receipts[index])}</div>`;
-    html += receipts[index + 1] ? `<div class="receipt-slot">${receiptMarkup(receipts[index + 1])}</div>` : `<div class="receipt-slot receipt-slot-empty"></div>`;
+    html += `<section class="print-sheet"><div class="receipt-slot">${receiptMarkup(receipts[index], logoData)}</div>`;
+    html += receipts[index + 1] ? `<div class="receipt-slot">${receiptMarkup(receipts[index + 1], logoData)}</div>` : `<div class="receipt-slot receipt-slot-empty"></div>`;
     html += "</section>";
   }
   return html;
@@ -165,6 +168,9 @@ function initPublicReceipt() {
     dialog: document.querySelector("#receiptPreview"), preview: document.querySelector("#previewContent"),
     closePreview: document.querySelector("#closePreview"), printPreview: document.querySelector("#printPreview"),
     printArea: document.querySelector("#printArea"),
+    logoFile: document.querySelector("#logoFile"), logoPreview: document.querySelector("#logoPreview"),
+    logoPlaceholder: document.querySelector("#logoPlaceholder"), logoStatus: document.querySelector("#logoStatus"),
+    uploadLogo: document.querySelector("#uploadLogo"), removeLogo: document.querySelector("#removeLogo"),
   };
   if (!elements.form) return;
   const authFragment = new URLSearchParams(window.location.hash.slice(1));
@@ -179,6 +185,19 @@ function initPublicReceipt() {
   const recoveryStorageKey = "simontok-receipt-recovery-user";
   let recoveryLinkOpened = authFragment.get("type") === "recovery" || authFragment.has("error_code");
   let recoveryMode = false;
+  const logoStorageKey = "simontok-receipt-logo-v1";
+  let logoData = "";
+  try { logoData = safeLogoData(localStorage.getItem(logoStorageKey)); } catch { /* Browser storage may be disabled. */ }
+
+  function showLogo(message = "Logo disimpan di browser perangkat ini.") {
+    elements.logoPreview.hidden = !logoData;
+    elements.logoPlaceholder.hidden = !!logoData;
+    elements.removeLogo.hidden = !logoData;
+    if (logoData) elements.logoPreview.src = logoData;
+    else elements.logoPreview.removeAttribute("src");
+    elements.logoStatus.textContent = message;
+  }
+  showLogo();
 
   function setStatus(message, isError = false) {
     elements.status.textContent = message;
@@ -311,9 +330,45 @@ function initPublicReceipt() {
 
   function doPrint(items) {
     if (!items.length || !identity) return;
-    elements.printArea.innerHTML = printSheets(items);
+    elements.printArea.innerHTML = printSheets(items, logoData);
     window.print();
   }
+
+  elements.uploadLogo.addEventListener("click", () => elements.logoFile.click());
+  elements.logoFile.addEventListener("change", () => {
+    const file = elements.logoFile.files?.[0];
+    elements.logoFile.value = "";
+    if (!file) return;
+    if (!/^image\/(?:png|jpeg|webp)$/.test(file.type) || file.size > 350000) {
+      showLogo("Gunakan PNG, JPG, atau WebP berukuran maksimal 350 KB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const nextLogo = safeLogoData(reader.result);
+      if (!nextLogo) { showLogo("File logo tidak dapat dibaca."); return; }
+      try {
+        localStorage.setItem(logoStorageKey, nextLogo);
+        logoData = nextLogo;
+        showLogo("Logo siap dipakai untuk pratinjau dan cetak di browser ini.");
+        if (elements.dialog.open) {
+          const receipt = receipts.find((row) => row.idpel === previewId);
+          if (receipt) elements.preview.innerHTML = receiptMarkup(receipt, logoData);
+        }
+      } catch { showLogo("Penyimpanan browser penuh. Coba logo yang lebih kecil."); }
+    };
+    reader.onerror = () => showLogo("File logo tidak dapat dibaca.");
+    reader.readAsDataURL(file);
+  });
+  elements.removeLogo.addEventListener("click", () => {
+    try { localStorage.removeItem(logoStorageKey); } catch { /* Preview still clears. */ }
+    logoData = "";
+    showLogo("Logo dihapus dari browser ini.");
+    if (elements.dialog.open) {
+      const receipt = receipts.find((row) => row.idpel === previewId);
+      if (receipt) elements.preview.innerHTML = receiptMarkup(receipt);
+    }
+  });
 
   elements.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -445,7 +500,7 @@ function initPublicReceipt() {
     const receipt = receipts.find((row) => row.idpel === id);
     if (!receipt) return;
     previewId = id;
-    elements.preview.innerHTML = receiptMarkup(receipt);
+    elements.preview.innerHTML = receiptMarkup(receipt, logoData);
     elements.dialog.showModal();
   });
   elements.selectAll.addEventListener("change", () => {

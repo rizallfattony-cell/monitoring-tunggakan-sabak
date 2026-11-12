@@ -17,6 +17,8 @@ assert.match(receiptMarkup(receipt), /BUKAN BUKTI PEMBAYARAN/);
 assert.doesNotMatch(receiptMarkup(receipt), /<script>/);
 assert.match(receiptMarkup(receipt), /100-120/);
 assert.match(receiptMarkup(receipt), /Okt 2026/);
+assert.match(receiptMarkup(receipt, 'data:image/png;base64,aGVsbG8='), /class="receipt-logo"/);
+assert.doesNotMatch(receiptMarkup(receipt, 'javascript:alert(1)'), /class="receipt-logo"/);
 assert.equal((printSheets([receipt, receipt, receipt]).match(/class="print-sheet"/g) || []).length, 2);
 assert.equal((printSheets([receipt, receipt, receipt]).match(/class="receipt-slot">/g) || []).length, 3);
 assert.throws(() => makeReceipt({ ...base, rptag: -1 }), /tidak valid/);
