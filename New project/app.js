@@ -2485,7 +2485,7 @@ function updateOnlineUi() {
       ? "Supabase siap. Silakan login untuk sinkronisasi online."
       : "Supabase belum dikonfigurasi. Isi supabase-config.js untuk mode online.");
   setGateStatus(state.supabaseClient
-    ? "Silakan login untuk membuka SIMONTOK Admin."
+    ? "Silakan login untuk membuka MONALISA Admin."
     : "Supabase belum dikonfigurasi. Isi supabase-config.js untuk mode online.");
 }
 
@@ -6591,7 +6591,7 @@ function premiumPackageAmount(packageCode) {
 
 function premiumPackageLabel(packageCode) {
   if (packageCode === "BILLMAN_PRO") return "BILLMAN PRO";
-  if (["P1", "P2", "P3", "SIMONTOK_PREMIUM"].includes(packageCode)) return "SIMONTOK PREMIUM";
+  if (["P1", "P2", "P3", "SIMONTOK_PREMIUM"].includes(packageCode)) return "MONALISA PREMIUM";
   return packageCode === "FREE" ? "FREE" : "-";
 }
 

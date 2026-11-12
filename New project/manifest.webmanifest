@@ -1,6 +1,6 @@
 {
-  "name": "Simontok Super Web",
-  "short_name": "Simontok",
+  "name": "MONALISA - Monitoring Tunggakan dan Analisis Kinerja",
+  "short_name": "MONALISA",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#eef3f7",
@@ -8,10 +8,10 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "simontok-super-web.png",
-      "sizes": "1024x1024",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "monalisa-web.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }

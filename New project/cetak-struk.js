@@ -112,7 +112,7 @@ function receiptMarkup(receipt, logoData = "") {
   const logo = safeLogoData(logoData);
   return `<article class="receipt">
     <div class="receipt-head">
-      <div class="receipt-brand">${logo ? `<img class="receipt-logo" src="${logo}" alt="Logo struk" />` : `<span class="receipt-logo-fallback">${escapeHtml(receipt.nama_toko || "SIMONTOK")}</span>`}</div>
+      <div class="receipt-brand">${logo ? `<img class="receipt-logo" src="${logo}" alt="Logo struk" />` : `<span class="receipt-logo-fallback">${escapeHtml(receipt.nama_toko || "MONALISA")}</span>`}</div>
       <time>${escapeHtml(receiptHeaderTime(receipt.printedAt))}</time>
       <h2>STRUK PEMBAYARAN TAGIHAN<br />LISTRIK</h2>
     </div>
@@ -259,11 +259,11 @@ function initPublicReceipt() {
     elements.sessionLabel.hidden = true;
     elements.logoutButton.hidden = true;
     elements.dashboardLink.hidden = false;
-    elements.authTitle.textContent = view === "reset" ? "Buat password baru" : view === "forgot" ? "Lupa password" : "Masuk ke SIMONTOK";
+    elements.authTitle.textContent = view === "reset" ? "Buat password baru" : view === "forgot" ? "Lupa password" : "Masuk ke MONALISA";
     elements.authIntro.textContent = view === "reset"
       ? "Masukkan password baru untuk akun cetak struk Anda."
       : view === "forgot" ? "Kami akan mengirim tautan pemulihan ke email akun Anda."
-      : "Masuk dengan akun cetak struk dari admin. Admin dan petugas SIMONTOK juga dapat memakai halaman ini.";
+      : "Masuk dengan akun cetak struk dari admin. Admin dan petugas MONALISA juga dapat memakai halaman ini.";
     elements.loginForm.hidden = view !== "login";
     elements.forgotPasswordButton.hidden = view !== "login";
     elements.recoveryRequestForm.hidden = view !== "forgot";
@@ -295,7 +295,7 @@ function initPublicReceipt() {
         }
         return;
       }
-      if (userError || !userData?.user) { showGate("Masuk dengan akun SIMONTOK untuk melanjutkan."); return; }
+      if (userError || !userData?.user) { showGate("Masuk dengan akun MONALISA untuk melanjutkan."); return; }
       const { data: accountProfile, error: profileError } = await client.from("monitoring_profiles")
         .select("role,petugas,email").eq("user_id", userData.user.id).maybeSingle();
       if (version !== viewVersion) return;
@@ -310,13 +310,13 @@ function initPublicReceipt() {
         if (operator) profile = { role: "receipt_operator", email: operator.email, petugas: "" };
       }
       if (!profile || !["admin", "petugas", "receipt_operator"].includes(profile.role) || (profile.role === "petugas" && !profile.petugas)) {
-        showGate("Profil akun belum memiliki izin cetak. Hubungi admin SIMONTOK.", true);
+        showGate("Profil akun belum memiliki izin cetak. Hubungi admin MONALISA.", true);
         return;
       }
       identity = { user: userData.user, profile };
       elements.authGate.hidden = true;
       elements.receiptWorkspace.hidden = false;
-      elements.sessionLabel.textContent = profile.petugas || profile.email || userData.user.email || "SIMONTOK";
+      elements.sessionLabel.textContent = profile.petugas || profile.email || userData.user.email || "MONALISA";
       elements.sessionLabel.hidden = false;
       elements.logoutButton.hidden = false;
       elements.dashboardLink.hidden = profile.role === "receipt_operator";
@@ -429,7 +429,7 @@ function initPublicReceipt() {
     elements.recoveryEmail.value = elements.loginEmail.value.trim();
     showGate("Masukkan email akun untuk menerima tautan pemulihan.", false, "forgot");
   });
-  elements.backToLoginButton.addEventListener("click", () => showGate("Masuk dengan akun SIMONTOK untuk melanjutkan."));
+  elements.backToLoginButton.addEventListener("click", () => showGate("Masuk dengan akun MONALISA untuk melanjutkan."));
   elements.recoveryRequestForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!client) { showGate("Layanan akun belum tersedia. Coba muat ulang halaman.", true, "forgot"); return; }
@@ -501,7 +501,7 @@ function initPublicReceipt() {
   elements.form.addEventListener("submit", async (event) => {
     event.preventDefault();
     elements.results.hidden = true;
-    if (!identity) { showGate("Masuk dengan akun SIMONTOK untuk melanjutkan."); return; }
+    if (!identity) { showGate("Masuk dengan akun MONALISA untuk melanjutkan."); return; }
     let ids;
     try { ids = parseIdpels(mode === "single" ? elements.singleIdpel.value : elements.bulkIdpels.value); }
     catch (error) { setStatus(error.message, true); return; }

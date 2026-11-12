@@ -10,13 +10,13 @@
   function buildExportMatrices(month, summary, details) {
     return {
       summary: [
-        ["REKAP PENDAPATAN TAMBAHAN SIMONTOK", month],
+        ["REKAP PENDAPATAN TAMBAHAN MONALISA", month],
         ["Petugas", "Struk Asli", "Cetak Ulang", "Pendapatan Tambahan"],
         ...summary.map((r) => [r.petugas, Number(r.transaction_count), Number(r.reprint_count), Number(r.extra_income)]),
         ["TOTAL", ...["transaction_count", "reprint_count", "extra_income"].map((k) => summary.reduce((s, r) => s + Number(r[k]), 0))],
       ],
       details: [
-        ["DETAIL TRANSAKSI SIMONTOK", month],
+        ["DETAIL TRANSAKSI MONALISA", month],
         ["Waktu Asli WIB", "Petugas", "Username", "IDPEL", "Pelanggan", "ID Transaksi", "Referensi", "Tagihan Asli", "Tambahan", "Admin Bank", "Total Bayar", "Cetak Ulang"],
         ...details.map((r) => [wib(r.printed_at), r.petugas, r.username, String(r.idpel), r.customer_name, String(r.transaction_id), String(r.reference),
           Number(r.base_amount), Number(r.extra_amount), Number(r.admin_amount), Number(r.total_amount), Number(r.reprint_count)]),
