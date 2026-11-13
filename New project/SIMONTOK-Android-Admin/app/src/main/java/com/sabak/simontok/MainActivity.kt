@@ -948,7 +948,6 @@ private fun HomeScreen(
         initialFirstVisibleItemScrollOffset = savedScroll.offset
     )
     val deviceId = remember { deviceStore.deviceId() }
-    val standbyStartedAt = remember(accessToken) { System.currentTimeMillis() }
     var lastNotifiedVersion by remember(accessToken) { mutableStateOf(dataVersion.orEmpty()) }
 
     LaunchedEffect(username) {
@@ -971,12 +970,9 @@ private fun HomeScreen(
         }
     }
 
-    fun notifyIfFreshUpdate(latestVersion: String?) {
+    fun notifyIfNewUpdate(latestVersion: String?) {
         if (latestVersion.isNullOrBlank()) return
         if (latestVersion == lastNotifiedVersion) return
-        val latestTime = parseDataVersionDate(latestVersion)?.time
-        val isFreshUpload = latestTime == null || latestTime >= standbyStartedAt - 5_000
-        if (!isFreshUpload) return
         lastNotifiedVersion = latestVersion
         onUpdateAvailable(latestVersion)
     }
@@ -997,10 +993,26 @@ private fun HomeScreen(
         }.onFailure { premiumStatusError = "Status premium belum dapat diperbarui. Periksa koneksi atau hubungi admin." }
     }
 
+    suspend fun refreshDebtIfChanged() {
+        if (accessToken.isBlank() || syncState is SyncState.Running) return
+        val latestVersion = withContext(Dispatchers.IO) {
+            runCatching { api.fetchLatestDebtUploadAt(accessToken, username) }
+                .recoverCatching {
+                    val activeSession = freshSession()
+                    api.fetchLatestDebtUploadAt(activeSession.accessToken, activeSession.username)
+                }
+                .getOrNull()
+        }
+        notifyIfNewUpdate(latestVersion)
+    }
+
     DisposableEffect(context, username, accessToken) {
         val lifecycle = (context as ComponentActivity).lifecycle
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) premiumScope.launch { refreshPremiumStatus() }
+            if (event == Lifecycle.Event.ON_RESUME) premiumScope.launch {
+                refreshPremiumStatus()
+                refreshDebtIfChanged()
+            }
         }
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
@@ -1056,7 +1068,7 @@ private fun HomeScreen(
                 onUpdate = { latestVersion ->
                     runOnMainThread {
                         if (syncState !is SyncState.Running) {
-                            notifyIfFreshUpdate(latestVersion)
+                            notifyIfNewUpdate(latestVersion)
                         }
                     }
                 },
@@ -1071,17 +1083,7 @@ private fun HomeScreen(
     }
 
     LaunchedEffect(accessToken, dataVersion) {
-        if (accessToken.isNotBlank()) {
-            val latestVersion = withContext(Dispatchers.IO) {
-                runCatching {
-                    val activeSession = freshSession()
-                    api.fetchLatestDebtUploadAt(activeSession.accessToken, activeSession.username)
-                }.getOrNull()
-            }
-            if (syncState !is SyncState.Running) {
-                notifyIfFreshUpdate(latestVersion)
-            }
-        }
+        refreshDebtIfChanged()
     }
 
     LaunchedEffect(accessToken) {
@@ -1089,15 +1091,7 @@ private fun HomeScreen(
             while (true) {
                 delay(5 * 60_000L)
                 if (syncState is SyncState.Running) continue
-                val latestVersion = withContext(Dispatchers.IO) {
-                    runCatching { api.fetchLatestDebtUploadAt(accessToken, username) }
-                        .recoverCatching {
-                            val activeSession = freshSession()
-                            api.fetchLatestDebtUploadAt(activeSession.accessToken, activeSession.username)
-                        }
-                        .getOrNull()
-                }
-                notifyIfFreshUpdate(latestVersion)
+                refreshDebtIfChanged()
             }
         }
     }
