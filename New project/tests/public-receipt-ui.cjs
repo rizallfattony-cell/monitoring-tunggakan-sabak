@@ -79,17 +79,23 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
       buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lfsAAAAASUVORK5CYII=', 'base64'),
     });
     await page.waitForFunction(() => !document.querySelector('#logoPreview').hidden);
+    await page.locator('#adminFeeInput').fill('7500');
+    await page.locator('#adminFeeForm button[type="submit"]').click();
+    assert.match(await page.locator('#adminFeeStatus').innerText(), /Rp\s*7\.500/);
+    await page.screenshot({ path: path.join(qa, 'receipt-admin-fee-settings.png') });
     await page.locator('#accountButton').click();
     await page.locator('#singleIdpel').fill('143900000001');
     await page.locator('#singleMode button[type="submit"]').click();
     await page.waitForFunction(() => !document.querySelector('#results').hidden);
-    assert.match(await page.locator('#resultRows').innerText(), /Rp\s*364\.152/);
+    assert.match(await page.locator('#resultRows').innerText(), /Rp\s*366\.652/);
     assert.equal(await page.locator('#resultRows tr').count(), 1);
     await page.locator('[data-preview="143900000001"]').click();
     assert.match(await page.locator('#previewContent').innerText(), /STRUK PEMBAYARAN TAGIHAN\s+LISTRIK/);
     assert.match(await page.locator('#previewContent').innerText(), /STRUK INI SEBAGAI BUKTI YANG SAH/);
     assert.match(await page.locator('#previewContent').innerText(), /MOHON DI SIMPAN/);
     assert.match(await page.locator('#previewContent').innerText(), /DOWNLOAD PLN MOBILE/);
+    assert.match(await page.locator('#previewContent').innerText(), /Rp7\.500/);
+    assert.match(await page.locator('#previewContent').innerText(), /Rp366\.652/);
     assert.equal(await page.locator('#previewContent .receipt-row dt').first().evaluate((item) => getComputedStyle(item, '::after').content), '":"');
     assert.equal(await page.locator('#previewContent .receipt-logo').count(), 1);
     await page.locator('#printPreview').click();

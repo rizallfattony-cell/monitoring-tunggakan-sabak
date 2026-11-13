@@ -25,6 +25,23 @@ function receiptMoney(value) {
   return money(value).replace(/^Rp\s+/u, "Rp");
 }
 
+function parseAdminFee(value) {
+  const amount = Number(value);
+  if (!Number.isSafeInteger(amount) || amount < 0 || amount > 1000000) {
+    throw new Error("Biaya admin harus berupa angka Rp0 sampai Rp1.000.000.");
+  }
+  return amount;
+}
+
+function updateReceiptAdminFee(receipt, value) {
+  const adminFee = parseAdminFee(value);
+  const base = Number(receipt.rptag);
+  if (!Number.isSafeInteger(base) || base < 0 || !Number.isSafeInteger(base + adminFee)) {
+    throw new Error("Nilai tagihan tidak valid.");
+  }
+  return { ...receipt, admin_fee: adminFee, total: base + adminFee };
+}
+
 function receiptTime(date) {
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) return "-";
@@ -210,6 +227,8 @@ function initPublicReceipt() {
     logoFile: document.querySelector("#logoFile"), logoPreview: document.querySelector("#logoPreview"),
     logoPlaceholder: document.querySelector("#logoPlaceholder"), logoStatus: document.querySelector("#logoStatus"),
     uploadLogo: document.querySelector("#uploadLogo"), removeLogo: document.querySelector("#removeLogo"),
+    adminFeeForm: document.querySelector("#adminFeeForm"), adminFeeInput: document.querySelector("#adminFeeInput"),
+    adminFeeStatus: document.querySelector("#adminFeeStatus"),
   };
   if (!elements.form) return;
   const authFragment = new URLSearchParams(window.location.hash.slice(1));
@@ -218,6 +237,7 @@ function initPublicReceipt() {
   let identity = null;
   let mode = "single";
   let receipts = [];
+  let resultIds = [];
   let selected = new Set();
   let previewId = "";
   let viewVersion = 0;
@@ -225,8 +245,14 @@ function initPublicReceipt() {
   let recoveryLinkOpened = authFragment.get("type") === "recovery" || authFragment.has("error_code");
   let recoveryMode = false;
   const logoStorageKey = "simontok-receipt-logo-v1";
+  const adminFeeStorageKey = "monalisa-receipt-admin-fee-v1";
   let logoData = "";
+  let adminFee = 5000;
   try { logoData = safeLogoData(localStorage.getItem(logoStorageKey)); } catch { /* Browser storage may be disabled. */ }
+  try {
+    const savedAdminFee = localStorage.getItem(adminFeeStorageKey);
+    if (savedAdminFee !== null) adminFee = parseAdminFee(savedAdminFee);
+  } catch { /* Keep the standard fee when browser storage is unavailable or invalid. */ }
 
   function showLogo(message = "Logo disimpan di browser perangkat ini.") {
     elements.logoPreview.hidden = !logoData;
@@ -237,6 +263,13 @@ function initPublicReceipt() {
     elements.logoStatus.textContent = message;
   }
   showLogo();
+
+  function showAdminFee(message = `Aktif: ${money(adminFee)} per struk.`) {
+    elements.adminFeeInput.value = String(adminFee);
+    elements.adminFeeStatus.textContent = message;
+    elements.adminFeeStatus.classList.remove("is-error");
+  }
+  showAdminFee();
 
   function setStatus(message, isError = false) {
     elements.status.textContent = message;
@@ -267,6 +300,7 @@ function initPublicReceipt() {
     elements.rows.innerHTML = "";
     elements.printArea.innerHTML = "";
     elements.preview.innerHTML = "";
+    resultIds = [];
     previewId = "";
     if (elements.dialog.open) elements.dialog.close();
     elements.receiptWorkspace.hidden = true;
@@ -354,11 +388,13 @@ function initPublicReceipt() {
     elements.bulkTab.setAttribute("aria-selected", String(mode === "bulk"));
     elements.results.hidden = true;
     receipts = [];
+    resultIds = [];
     selected = new Set();
     setStatus("Belum ada tagihan yang diperiksa.");
   }
 
   function renderResults(ids, found) {
+    resultIds = [...ids];
     receipts = found;
     selected = new Set(found.map((row) => row.idpel));
     const missing = ids.filter((id) => !selected.has(id));
@@ -440,6 +476,30 @@ function initPublicReceipt() {
     if (elements.dialog.open) {
       const receipt = receipts.find((row) => row.idpel === previewId);
       if (receipt) elements.preview.innerHTML = receiptMarkup(receipt);
+    }
+  });
+  elements.adminFeeForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    try {
+      const nextAdminFee = parseAdminFee(elements.adminFeeInput.value);
+      localStorage.setItem(adminFeeStorageKey, String(nextAdminFee));
+      adminFee = nextAdminFee;
+      if (receipts.length) {
+        const currentSelection = new Set(selected);
+        const updatedReceipts = receipts.map((row) => updateReceiptAdminFee(row, adminFee));
+        renderResults(resultIds, updatedReceipts);
+        selected = currentSelection;
+        elements.rows.querySelectorAll("[data-select]").forEach((input) => { input.checked = selected.has(input.dataset.select); });
+        updateSelection();
+        if (elements.dialog.open) {
+          const receipt = receipts.find((row) => row.idpel === previewId);
+          if (receipt) elements.preview.innerHTML = receiptMarkup(receipt, logoData);
+        }
+      }
+      showAdminFee(`Tersimpan: ${money(adminFee)} per struk.`);
+    } catch (error) {
+      elements.adminFeeStatus.textContent = error.message || "Biaya admin belum tersimpan.";
+      elements.adminFeeStatus.classList.add("is-error");
     }
   });
 
@@ -554,7 +614,7 @@ function initPublicReceipt() {
         showGate("Sesi akun berakhir. Masuk kembali untuk melanjutkan.", true);
         return;
       }
-      const found = (await lookupCustomers(client, ids, identity.profile.role)).map((row) => makeReceipt(row));
+      const found = (await lookupCustomers(client, ids, identity.profile.role)).map((row) => makeReceipt(updateReceiptAdminFee(row, adminFee)));
       if (requestVersion !== viewVersion || identity?.user?.id !== requestUserId) return;
       renderResults(ids, found);
       setStatus(found.length ? `${found.length} data pembayaran siap. Periksa rinciannya sebelum mencetak.` : "Tidak ada data tagihan untuk IDPEL tersebut.");
@@ -589,4 +649,4 @@ function initPublicReceipt() {
 }
 
 if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", initPublicReceipt);
-if (typeof module !== "undefined") module.exports = { parseIdpels, escapeHtml, money, receiptMoney, receiptTime, receiptHeaderTime, periodsLabel, compactPeriodsLabel, receiptPrintMonth, receiptMarkup, printSheets, makeReceipt, prepareCustomers, lookupCustomers };
+if (typeof module !== "undefined") module.exports = { parseIdpels, escapeHtml, money, receiptMoney, parseAdminFee, updateReceiptAdminFee, receiptTime, receiptHeaderTime, periodsLabel, compactPeriodsLabel, receiptPrintMonth, receiptMarkup, printSheets, makeReceipt, prepareCustomers, lookupCustomers };

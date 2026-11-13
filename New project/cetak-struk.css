@@ -63,6 +63,21 @@ h1, h2, h3 { font-family: "Sora", "Figtree", sans-serif; }
 .logo-settings-actions { display: flex; align-items: center; gap: 7px; }
 .secondary-command { min-height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 11px; border: 1px solid #bfd0d8; border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 12px; font-weight: 700; }
 .secondary-command:hover { border-color: var(--teal); color: var(--teal-dark); }
+.settings-divider { height: 1px; margin: 12px 0; background: var(--line); }
+.admin-fee-settings { display: grid; gap: 9px; }
+.admin-fee-settings-copy { min-width: 0; display: flex; align-items: center; gap: 9px; }
+.settings-icon { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--teal-soft); color: var(--teal-dark); }
+.settings-icon svg { width: 18px; height: 18px; }
+.admin-fee-settings h2 { margin: 0; font: 700 12px "Sora", sans-serif; }
+.admin-fee-settings-copy p, .admin-fee-status { margin: 2px 0 0; color: var(--muted); font-size: 10px; line-height: 1.3; }
+.admin-fee-form { margin: 0; }
+.admin-fee-form label { margin-bottom: 5px; font-size: 11px; }
+.admin-fee-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 7px; }
+.admin-fee-input { position: relative; min-width: 0; }
+.admin-fee-input > span { position: absolute; z-index: 1; top: 50%; left: 9px; transform: translateY(-50%); color: var(--muted); font-size: 11px; font-weight: 700; }
+.admin-fee-form .admin-fee-input input { min-height: 34px; padding: 6px 8px 6px 29px; border-radius: 8px; font-size: 12px; }
+.admin-fee-status { min-height: 13px; }
+.admin-fee-status.is-error { color: var(--danger); }
 
 .hero { position: relative; min-height: 340px; overflow: hidden; background: linear-gradient(160deg, #bdeff6 0%, #d6f6ec 55%, #eefad4 100%); color: var(--ink); }
 .hero-decor, .hero-scene, .hero-wave { position: absolute; pointer-events: none; }

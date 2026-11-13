@@ -9,11 +9,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./cetak-struk.css?v=20261112-v12" />
+    <link rel="stylesheet" href="./cetak-struk.css?v=20261113-v13" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./supabase-config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script src="./cetak-struk.js?v=20261112-v12" defer></script>
+    <script src="./cetak-struk.js?v=20261113-v13" defer></script>
   </head>
   <body>
     <header class="site-header no-print">
@@ -39,6 +39,21 @@
                   <button type="button" id="uploadLogo" class="secondary-command"><i data-lucide="upload" aria-hidden="true"></i>Unggah</button>
                   <button type="button" id="removeLogo" class="icon-command" title="Hapus logo" aria-label="Hapus logo" hidden><i data-lucide="trash-2" aria-hidden="true"></i></button>
                 </div>
+              </section>
+              <div class="settings-divider" aria-hidden="true"></div>
+              <section class="admin-fee-settings" aria-labelledby="adminFeeSettingsTitle">
+                <div class="admin-fee-settings-copy">
+                  <span class="settings-icon"><i data-lucide="badge-dollar-sign" aria-hidden="true"></i></span>
+                  <div><h2 id="adminFeeSettingsTitle">Biaya admin</h2><p>Nominal per struk pada perangkat ini.</p></div>
+                </div>
+                <form id="adminFeeForm" class="admin-fee-form">
+                  <label for="adminFeeInput">Nominal biaya</label>
+                  <div class="admin-fee-row">
+                    <div class="admin-fee-input"><span>Rp</span><input id="adminFeeInput" type="number" inputmode="numeric" min="0" max="1000000" step="500" required /></div>
+                    <button type="submit" class="secondary-command"><i data-lucide="save" aria-hidden="true"></i>Simpan</button>
+                  </div>
+                </form>
+                <p id="adminFeeStatus" class="admin-fee-status" role="status" aria-live="polite"></p>
               </section>
             </div>
             <div class="account-menu-separator"></div>
