@@ -23,9 +23,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -35,6 +37,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -44,6 +47,7 @@ import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Refresh
@@ -93,6 +97,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -128,6 +133,8 @@ private val MarkColors = listOf(
     Color(0xFFFFE8EA),
     Color(0xFFEAF2FF)
 )
+
+private enum class HomeTab { Daftung, AllCustomers, History, Menu }
 
 private object AppMemoryCache {
     var home: CachedHome? = null
@@ -950,6 +957,7 @@ private fun HomeScreen(
 ) {
     val context = LocalContext.current
     val adminNotificationStore = remember(context) { AdminPremiumNotificationStore(context) }
+    var activeTab by remember { mutableStateOf(HomeTab.Daftung) }
     var listSearchQuery by remember { mutableStateOf("") }
     val allSortedRows = remember(rows) { sortCustomerRows(rows) }
     val sortedRows = remember(allSortedRows, listSearchQuery) {
@@ -995,11 +1003,9 @@ private fun HomeScreen(
     var showAdminPremium by remember { mutableStateOf(false) }
     var adminPremiumRequests by remember { mutableStateOf<List<PremiumAdminRequest>>(emptyList()) }
     var adminPremiumBusyId by remember { mutableStateOf<String?>(null) }
-    val collapsedKolok = remember(sortedRows) { mutableStateMapOf<String, Boolean>() }
-    val grouped = remember(sortedRows, collapsedKolok.toMap()) { groupedDisplayRows(sortedRows, collapsedKolok) }
     val savedScroll = remember(username) { customerScrollStore.read(username) }
     val customerListState = rememberLazyListState(
-        initialFirstVisibleItemIndex = savedScroll.index.coerceIn(0, (grouped.size - 1).coerceAtLeast(0)),
+        initialFirstVisibleItemIndex = savedScroll.index.coerceIn(0, (sortedRows.size - 1).coerceAtLeast(0)),
         initialFirstVisibleItemScrollOffset = savedScroll.offset
     )
     val deviceId = remember { deviceStore.deviceId() }
@@ -1109,8 +1115,8 @@ private fun HomeScreen(
         }
     }
 
-    LaunchedEffect(showMoreMenu) {
-        if (showMoreMenu) refreshPremiumStatus()
+    LaunchedEffect(activeTab) {
+        if (activeTab == HomeTab.Menu) refreshPremiumStatus()
     }
 
     LaunchedEffect(accessToken, username) {
@@ -1175,72 +1181,113 @@ private fun HomeScreen(
 
     Surface(modifier = Modifier.fillMaxSize(), color = AppBg) {
         Column(Modifier.fillMaxSize()) {
-            HeaderPanel(
-                petugasName = petugasName,
-                count = allSortedRows.size,
-                total = total,
-                printerName = receiptSettings.printerName,
-                onPrinter = { showPrinter = true }
-            )
-            SyncProgressBanner(syncState)
-            DataUpdateBanner(dataNotice = dataNotice, syncState = syncState, onRefresh = onRefresh)
-            PremiumWarningBar(
-                premiumStatus = premiumStatus,
-                onOpen = { showMoreMenu = true }
-            )
-            HighContrastSearch(
-                searchQuery = listSearchQuery,
-                onSearchQueryChange = { listSearchQuery = it }
-            )
-
-            if (allSortedRows.isEmpty()) {
-                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("Belum ada data tunggakan.", color = TextMuted)
-                }
-            } else if (sortedRows.isEmpty()) {
-                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("IDPEL tidak ditemukan di list.", color = TextMuted)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    state = customerListState,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    items(
-                        items = grouped,
-                        key = { it.key },
-                        contentType = { if (it is DisplayRow.GroupHeader) "header" else "customer" }
-                    ) { item ->
-                        when (item) {
-                            is DisplayRow.GroupHeader -> KolokHeader(
-                                header = item,
-                                collapsed = collapsedKolok[item.kolok] == true,
-                                onToggle = { collapsedKolok[item.kolok] = !(collapsedKolok[item.kolok] == true) }
+            when (activeTab) {
+                HomeTab.Daftung -> {
+                    HeaderPanel(
+                        petugasName = petugasName,
+                        count = allSortedRows.size,
+                        total = total,
+                        printerName = receiptSettings.printerName,
+                        onPrinter = { showPrinter = true }
+                    )
+                    LazyColumn(
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        state = customerListState,
+                        contentPadding = PaddingValues(start = 14.dp, top = 12.dp, end = 14.dp, bottom = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        item { SyncProgressBanner(syncState) }
+                        item { DataUpdateBanner(dataNotice = dataNotice, syncState = syncState, onRefresh = onRefresh) }
+                        item {
+                            PremiumWarningBar(
+                                premiumStatus = premiumStatus,
+                                onOpen = { activeTab = HomeTab.Menu }
                             )
-                            is DisplayRow.CustomerItem -> {
-                                val mark = marks[item.row.idpel] ?: CustomerMark()
+                        }
+                        item {
+                            HighContrastSearch(
+                                searchQuery = listSearchQuery,
+                                onSearchQueryChange = { listSearchQuery = it }
+                            )
+                        }
+                        if (allSortedRows.isEmpty()) {
+                            item { EmptyStateCard("Belum ada data tunggakan.") }
+                        } else if (sortedRows.isEmpty()) {
+                            item { EmptyStateCard("IDPEL atau nama pelanggan tidak ditemukan.") }
+                        } else {
+                            items(sortedRows, key = { it.idpel }) { row ->
+                                val mark = marks[row.idpel] ?: CustomerMark()
                                 CustomerCard(
-                                    row = item.row,
+                                    row = row,
                                     mark = mark,
                                     onColorChange = {
                                         val next = mark.copy(colorIndex = (mark.colorIndex + 1) % MarkColors.size)
-                                        marks[item.row.idpel] = next
-                                        markStore.save(item.row.idpel, next)
+                                        marks[row.idpel] = next
+                                        markStore.save(row.idpel, next)
                                     },
-                                    onPrint = { openReceiptPreview(item.row) }
+                                    onPrint = { openReceiptPreview(row) }
                                 )
                             }
                         }
                     }
-                    item { Spacer(Modifier.height(10.dp)) }
                 }
+                HomeTab.AllCustomers -> GlobalCustomerScreen(
+                    modifier = Modifier.weight(1f),
+                    onSearchIdpel = { idpel ->
+                        searchReceiptByIdpel(
+                            idpel = idpel,
+                            accessToken = accessToken,
+                            api = api,
+                            settings = receiptSettings,
+                            premiumStatus = premiumStatus,
+                            onReady = { receiptPreview = it },
+                            onMessage = { printMessage = it }
+                        )
+                    }
+                )
+                HomeTab.History -> ReceiptHistoryScreen(
+                    modifier = Modifier.weight(1f),
+                    context = context,
+                    username = username,
+                    printer = printer,
+                    printerAddress = receiptSettings.printerAddress
+                )
+                HomeTab.Menu -> FullMenuScreen(
+                    modifier = Modifier.weight(1f),
+                    receiptSettings = receiptSettings,
+                    premiumStatus = premiumStatus,
+                    isAdmin = isSuperUser(username),
+                    onAdminPremium = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://monalisa-superweb.vercel.app/"))) },
+                    onExportExcel = { showExportExcel = true },
+                    onPrinter = { showPrinter = true },
+                    onSettings = { showSettings = true },
+                    onUpgrade = { showUpgrade = true },
+                    onVerifyDevice = {
+                        thread {
+                            val result = runCatching {
+                                val fresh = freshSession()
+                                api.submitDeviceResetRequest(fresh.accessToken, username, premiumStatus.packageCode, deviceId)
+                            }
+                            runOnMainThread {
+                                result.onSuccess { printMessage = "Permintaan verifikasi ulang device terkirim. Tunggu admin ACC." }
+                                    .onFailure { printMessage = "Gagal kirim verifikasi device: ${it.message ?: "periksa koneksi."}" }
+                            }
+                        }
+                    },
+                    onLogout = {
+                        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+                            thread { runCatching { api.unregisterPushToken(accessToken, token) } }
+                        }
+                        onLogout()
+                    }
+                )
             }
             BottomNavigationBar(
-                onHome = { },
-                onStruk = { showPrintList = true },
-                onHistory = { showReceiptHistory = true },
-                onMenu = { showMoreMenu = true }
+                selected = activeTab,
+                onHome = { activeTab = HomeTab.Daftung },
+                onStruk = { activeTab = HomeTab.AllCustomers },
+                onHistory = { activeTab = HomeTab.History },
+                onMenu = { activeTab = HomeTab.Menu }
             )
         }
     }
@@ -1499,44 +1546,46 @@ private fun HeaderPanel(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(petugasName.uppercase(), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text(petugasName.uppercase(), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
                     Box(
                         Modifier
-                            .background(Color.White, RoundedCornerShape(4.dp))
+                            .background(Color(0xFF003339), RoundedCornerShape(4.dp))
+                            .border(1.dp, Color(0x99FFFFFF), RoundedCornerShape(4.dp))
                             .padding(horizontal = 7.dp, vertical = 2.dp)
                     ) {
-                        Text("PETUGAS", color = DeepTeal, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                        Text("PETUGAS", color = Color(0xFFE0F2F5), fontSize = 9.sp, fontWeight = FontWeight.Black)
                     }
-                    Text("PLN ULP SABAK", color = Color(0xFFDFF7F8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
+                Text("PLN ULP SABAK", color = Color(0xFFCCFBF1), fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
             Row(
                 Modifier
-                    .background(Color.White, RoundedCornerShape(6.dp))
-                    .border(2.dp, Line, RoundedCornerShape(6.dp))
+                    .height(46.dp)
+                    .background(Color.White, RoundedCornerShape(11.dp))
+                    .border(2.dp, Line, RoundedCornerShape(11.dp))
                     .clickable { onPrinter() }
-                    .padding(horizontal = 9.dp, vertical = 7.dp),
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = DeepTeal, modifier = Modifier.size(17.dp))
-                Spacer(Modifier.width(5.dp))
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("PRINTER", color = TextMuted, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                Box(Modifier.size(12.dp).background(Color(0xFF15803D), CircleShape).border(1.dp, Line, CircleShape))
+                Spacer(Modifier.width(7.dp))
+                Column {
                     Text(
                         printerName.ifBlank { "Belum dipilih" },
                         color = TextMain,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    Text(if (printerName.isBlank()) "Pilih Printer" else "Siap Cetak", color = Color(0xFF15803D), fontSize = 9.sp, fontWeight = FontWeight.Black)
                 }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SummaryCard("Pelanggan", count.toString(), SummaryIcon.People, Modifier.weight(1f))
-            SummaryCard("Total Tagihan", formatRupiah(total), SummaryIcon.Bill, Modifier.weight(1f))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            SummaryCard("Pelanggan", count.toString(), SummaryIcon.People, Modifier.weight(5f))
+            SummaryCard("Total Tagihan", formatRupiah(total), SummaryIcon.Bill, Modifier.weight(7f))
         }
     }
 }
@@ -1546,19 +1595,14 @@ private fun HighContrastSearch(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit
 ) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .background(AppBg)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
+    Box(Modifier.fillMaxWidth()) {
         TextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(54.dp)
-                .border(2.dp, Line, RoundedCornerShape(8.dp)),
+                .height(50.dp)
+                .border(2.dp, Line, RoundedCornerShape(11.dp)),
             placeholder = { Text("Cari IDPEL / Nama Pelanggan", fontSize = 13.sp, color = TextMuted) },
             leadingIcon = {
                 Icon(Icons.Outlined.Search, contentDescription = null, tint = DeepTeal, modifier = Modifier.size(20.dp))
@@ -1566,7 +1610,17 @@ private fun HighContrastSearch(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
             textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold),
-            shape = RoundedCornerShape(8.dp),
+            trailingIcon = if (searchQuery.isBlank()) null else ({
+                Box(
+                    Modifier
+                        .size(28.dp)
+                        .background(Color(0xFFE2E8F0), RoundedCornerShape(7.dp))
+                        .border(1.dp, Line, RoundedCornerShape(7.dp))
+                        .clickable { onSearchQueryChange("") },
+                    contentAlignment = Alignment.Center
+                ) { Text("X", color = TextMain, fontSize = 10.sp, fontWeight = FontWeight.Black) }
+            }),
+            shape = RoundedCornerShape(11.dp),
             colors = androidx.compose.material3.TextFieldDefaults.colors(
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
@@ -1585,10 +1639,7 @@ private fun SyncProgressBanner(syncState: SyncState) {
         SyncState.Idle -> Unit
         is SyncState.Running -> {
             Column(
-                Modifier
-                    .fillMaxWidth()
-                    .background(AppBg)
-                    .padding(horizontal = 12.dp, vertical = 5.dp)
+                Modifier.fillMaxWidth()
             ) {
                 LinearProgressIndicator(
                     progress = { syncState.progress.coerceIn(0f, 1f) },
@@ -1619,25 +1670,16 @@ private fun DataUpdateBanner(
         is DataUpdateNotice.UpdateAvailable -> "Update baru ditemukan - ${formatUpdateBannerTime(dataNotice.uploadedAt)}"
         is DataUpdateNotice.Updated -> "Data update ${formatUpdateBannerTime(dataNotice.uploadedAt)}"
     }
-    val bg = when (dataNotice) {
-        is DataUpdateNotice.UpdateAvailable -> Color(0xFFFFF8E1)
-        else -> Color(0xFFE8F8EE)
-    }
-    val fg = when (dataNotice) {
-        is DataUpdateNotice.UpdateAvailable -> Color(0xFF8A5700)
-        else -> Color(0xFF1F7A3A)
-    }
     Row(
         Modifier
             .fillMaxWidth()
-            .background(AppBg)
-            .padding(horizontal = 12.dp, vertical = 5.dp)
-            .background(bg, RoundedCornerShape(7.dp))
-            .border(2.dp, Line, RoundedCornerShape(7.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .background(Color.White, RoundedCornerShape(11.dp))
+            .border(2.dp, Color(0xFF94A3B8), RoundedCornerShape(11.dp))
+            .padding(horizontal = 10.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Box(Modifier.size(10.dp).background(DeepTeal, CircleShape))
         Text(
             text = if (isLoading) "Memperbarui data..." else message,
             modifier = Modifier.weight(1f),
@@ -1650,14 +1692,18 @@ private fun DataUpdateBanner(
         if (isLoading) {
             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = DeepTeal)
         } else {
-            IconButton(
-                onClick = onRefresh,
+            Row(
                 modifier = Modifier
-                    .size(34.dp)
-                    .background(Color.White, RoundedCornerShape(6.dp))
-                    .border(2.dp, Line, RoundedCornerShape(6.dp))
+                    .height(38.dp)
+                    .background(AppBg, RoundedCornerShape(8.dp))
+                    .border(2.dp, Line, RoundedCornerShape(8.dp))
+                    .clickable { onRefresh() }
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Outlined.Refresh, contentDescription = "Refresh data", tint = DeepTeal, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(5.dp))
+                Text("Refresh", color = TextMain, fontSize = 11.sp, fontWeight = FontWeight.Black)
             }
         }
     }
@@ -1669,16 +1715,18 @@ private fun PremiumWarningBar(premiumStatus: PremiumStatus, onOpen: () -> Unit) 
     Row(
         Modifier
             .fillMaxWidth()
-            .background(AppBg)
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-            .background(Color(0xFFFEF3C7), RoundedCornerShape(7.dp))
-            .border(2.dp, Line, RoundedCornerShape(7.dp))
-            .padding(horizontal = 10.dp, vertical = 7.dp),
+            .background(Color(0xFFFEF3C7), RoundedCornerShape(11.dp))
+            .border(2.dp, Color(0xFFB45309), RoundedCornerShape(11.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Box(
+            Modifier.size(24.dp).background(Color(0xFFB45309), RoundedCornerShape(6.dp)),
+            contentAlignment = Alignment.Center
+        ) { Text("!", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black) }
         Text(
-            "! Premium aktif di perangkat lain",
+            "Premium aktif di perangkat lain",
             modifier = Modifier.weight(1f),
             color = Color(0xFF92400E),
             fontSize = 12.sp,
@@ -1686,18 +1734,308 @@ private fun PremiumWarningBar(premiumStatus: PremiumStatus, onOpen: () -> Unit) 
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        Text(
-            "Periksa",
-            color = DeepTeal,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Black,
-            modifier = Modifier.clickable { onOpen() }.padding(horizontal = 8.dp, vertical = 4.dp)
-        )
+        Box(
+            Modifier
+                .height(38.dp)
+                .background(Color(0xFFB45309), RoundedCornerShape(8.dp))
+                .border(1.dp, Color(0xFF78350F), RoundedCornerShape(8.dp))
+                .clickable { onOpen() }
+                .padding(horizontal = 13.dp),
+            contentAlignment = Alignment.Center
+        ) { Text("Periksa", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black) }
+    }
+}
+
+@Composable
+private fun EmptyStateCard(message: String) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(Color.White, RoundedCornerShape(14.dp))
+            .border(2.dp, Line, RoundedCornerShape(14.dp))
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(message, color = TextMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun ScreenHeader(title: String, subtitle: String, trailing: (@Composable () -> Unit)? = null) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(DeepTeal)
+            .border(width = 2.dp, color = Line)
+            .padding(horizontal = 16.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+            Text(subtitle, color = Color(0xFFCCFBF1), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+        trailing?.invoke()
+    }
+}
+
+@Composable
+private fun GlobalCustomerScreen(
+    modifier: Modifier = Modifier,
+    onSearchIdpel: (String) -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+    Column(modifier.fillMaxSize()) {
+        ScreenHeader("Cetak Struk Global", "Pencarian IDPEL Saldo Akhir Semua Rute")
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 14.dp, vertical = 16.dp)
+        ) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(Color.White, RoundedCornerShape(14.dp))
+                    .border(2.dp, Line, RoundedCornerShape(14.dp))
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(13.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("NOMOR IDPEL (11-12 DIGIT)", modifier = Modifier.weight(1f), color = TextMain, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                    SmallOutlineButton("Tempel") { query = clipboard.getText()?.text.orEmpty().filter(Char::isDigit).take(12) }
+                    Spacer(Modifier.width(6.dp))
+                    SmallOutlineButton("Clear") { query = "" }
+                }
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it.filter(Char::isDigit).take(12) },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    placeholder = { Text("Contoh: 143900095934", color = Color(0xFF64748B), fontWeight = FontWeight.Bold) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(11.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Line,
+                        unfocusedBorderColor = Line,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        cursorColor = DeepTeal
+                    )
+                )
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .background(DeepTeal, RoundedCornerShape(11.dp))
+                        .border(2.dp, Line, RoundedCornerShape(11.dp))
+                        .clickable {
+                            if (query.isBlank()) Toast.makeText(context, "Masukkan nomor IDPEL terlebih dahulu", Toast.LENGTH_SHORT).show()
+                            else onSearchIdpel(query)
+                        },
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Outlined.Search, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text("CARI IDPEL", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SmallOutlineButton(text: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .height(38.dp)
+            .background(Color.White, RoundedCornerShape(10.dp))
+            .border(2.dp, Line, RoundedCornerShape(10.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center
+    ) { Text(text, color = TextMain, fontSize = 10.sp, fontWeight = FontWeight.Black) }
+}
+
+@Composable
+private fun FullMenuScreen(
+    modifier: Modifier = Modifier,
+    receiptSettings: ReceiptSettings,
+    premiumStatus: PremiumStatus,
+    isAdmin: Boolean,
+    onAdminPremium: () -> Unit,
+    onExportExcel: () -> Unit,
+    onPrinter: () -> Unit,
+    onSettings: () -> Unit,
+    onUpgrade: () -> Unit,
+    onVerifyDevice: () -> Unit,
+    onLogout: () -> Unit
+) {
+    Column(modifier.fillMaxSize()) {
+        ScreenHeader("Menu", "Fitur tambahan aplikasi")
+        Column(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            MenuStatusCard(
+                title = "STATUS PREMIUM",
+                value = if (premiumStatus.hasActivePeriod()) "Aktif sampai ${premiumStatus.activeUntil}" else "Belum aktif",
+                subtitle = if (premiumStatus.boundToOtherDevice) "Perlu sinkronisasi ke HP ini" else if (premiumStatus.isActive()) "Terhubung aktif di perangkat ini" else "Pilih paket Premium",
+                warning = !premiumStatus.isActive(),
+                action = "Atur >",
+                onClick = onUpgrade
+            )
+            MenuStatusCard(
+                title = "PRINTER AKTIF",
+                value = receiptSettings.printerName.ifBlank { "Belum dipilih" },
+                subtitle = if (receiptSettings.printerName.isBlank()) "Pilih Bluetooth Thermal 58mm" else "Bluetooth Thermal 58mm - Terhubung",
+                warning = false,
+                action = "Ganti >",
+                onClick = onPrinter
+            )
+            MenuSection(
+                title = "DATA & TOOLS",
+                items = buildList {
+                    add(MenuEntry("Export Excel", "Download data berdasarkan Koked & Rute", MenuEntryTone.Green, onExportExcel))
+                    add(MenuEntry(receiptSettings.printerName.ifBlank { "RPP02N" }, "Pilih printer struk", MenuEntryTone.Teal, onPrinter))
+                    if (isAdmin) add(MenuEntry("Kelola Premium di Web", "Akses premium dan rekap pembayaran", MenuEntryTone.Amber, onAdminPremium))
+                }
+            )
+            MenuSection(
+                title = "AKUN & APLIKASI",
+                items = buildList {
+                    add(MenuEntry("Setting", "Pengaturan header struk dan admin", MenuEntryTone.Neutral, onSettings))
+                    if (!isAdmin) add(MenuEntry("Status Premium", if (premiumStatus.hasActivePeriod()) "Aktif sampai ${premiumStatus.activeUntil}" else "Aktivasi paket Premium", MenuEntryTone.Amber, onUpgrade))
+                    if (!isAdmin && premiumStatus.boundToOtherDevice) add(MenuEntry("Verifikasi Device", "Minta admin ACC ulang perangkat ini", MenuEntryTone.Amber, onVerifyDevice))
+                    add(MenuEntry("Logout", "Keluar dari akun petugas", MenuEntryTone.Danger, onLogout))
+                }
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+private enum class MenuEntryTone { Green, Teal, Amber, Neutral, Danger }
+private data class MenuEntry(val title: String, val subtitle: String, val tone: MenuEntryTone, val onClick: () -> Unit)
+
+@Composable
+private fun MenuStatusCard(
+    title: String,
+    value: String,
+    subtitle: String,
+    warning: Boolean,
+    action: String,
+    onClick: () -> Unit
+) {
+    val background = if (warning) Color(0xFFFEF3C7) else Color.White
+    val border = if (warning) Color(0xFFB45309) else Line
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(background, RoundedCornerShape(14.dp))
+            .border(2.dp, border, RoundedCornerShape(14.dp))
+            .clickable { onClick() }
+            .padding(13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier.size(44.dp).background(if (warning) Color(0xFFB45309) else DeepTeal, RoundedCornerShape(11.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(if (warning) Icons.Outlined.Lock else Icons.Outlined.ReceiptLong, contentDescription = null, tint = Color.White, modifier = Modifier.size(23.dp))
+        }
+        Spacer(Modifier.width(11.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = if (warning) Color(0xFF78350F) else TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Black)
+            Text(value, color = TextMain, fontSize = 13.sp, fontWeight = FontWeight.Black)
+            Text(subtitle, color = if (warning) Color(0xFF92400E) else Color(0xFF15803D), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+        Box(
+            Modifier
+                .background(if (warning) Color(0xFFB45309) else AppBg, RoundedCornerShape(8.dp))
+                .then(if (warning) Modifier else Modifier.border(1.dp, Line, RoundedCornerShape(8.dp)))
+                .padding(horizontal = 9.dp, vertical = 6.dp)
+        ) { Text(action, color = if (warning) Color.White else TextMain, fontSize = 10.sp, fontWeight = FontWeight.Black) }
+    }
+}
+
+@Composable
+private fun MenuSection(title: String, items: List<MenuEntry>) {
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Text(title, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 4.dp))
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(14.dp))
+                .border(2.dp, Line, RoundedCornerShape(14.dp))
+        ) {
+            items.forEachIndexed { index, item ->
+                MenuSectionItem(item)
+                if (index != items.lastIndex) Box(Modifier.fillMaxWidth().height(2.dp).background(Color(0xFFCBD5E1)))
+            }
+        }
+    }
+}
+
+@Composable
+private fun MenuSectionItem(item: MenuEntry) {
+    val iconBackground = when (item.tone) {
+        MenuEntryTone.Green -> Color(0xFFDCFCE7)
+        MenuEntryTone.Teal -> Color(0xFFE0F2F5)
+        MenuEntryTone.Amber -> Color(0xFFFEF3C7)
+        MenuEntryTone.Neutral -> AppBg
+        MenuEntryTone.Danger -> Color(0xFFB91C1C)
+    }
+    val iconColor = when (item.tone) {
+        MenuEntryTone.Green -> Color(0xFF15803D)
+        MenuEntryTone.Teal -> DeepTeal
+        MenuEntryTone.Amber -> Color(0xFFB45309)
+        MenuEntryTone.Neutral -> TextMain
+        MenuEntryTone.Danger -> Color.White
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(if (item.tone == MenuEntryTone.Danger) Color(0xFFFEF2F2) else Color.White)
+            .clickable { item.onClick() }
+            .padding(13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier.size(44.dp).background(iconBackground, RoundedCornerShape(11.dp)).border(if (item.tone == MenuEntryTone.Danger) 0.dp else 2.dp, iconColor, RoundedCornerShape(11.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                when (item.tone) {
+                    MenuEntryTone.Green -> Icons.Outlined.ContentCopy
+                    MenuEntryTone.Teal -> Icons.Outlined.ReceiptLong
+                    MenuEntryTone.Amber -> Icons.Outlined.Lock
+                    MenuEntryTone.Neutral -> Icons.Outlined.Settings
+                    MenuEntryTone.Danger -> Icons.Outlined.Logout
+                },
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(23.dp)
+            )
+        }
+        Spacer(Modifier.width(13.dp))
+        Column(Modifier.weight(1f)) {
+            Text(item.title, color = if (item.tone == MenuEntryTone.Danger) Color(0xFFB91C1C) else TextMain, fontSize = 14.sp, fontWeight = FontWeight.Black)
+            Text(item.subtitle, color = if (item.tone == MenuEntryTone.Danger) Color(0xFF7F1D1D) else TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+        Text(">", color = if (item.tone == MenuEntryTone.Danger) Color(0xFFB91C1C) else TextMain, fontSize = 18.sp, fontWeight = FontWeight.Black)
     }
 }
 
 @Composable
 private fun BottomNavigationBar(
+    selected: HomeTab,
     onHome: () -> Unit,
     onStruk: () -> Unit,
     onHistory: () -> Unit,
@@ -1707,21 +2045,21 @@ private fun BottomNavigationBar(
         Modifier
             .fillMaxWidth()
             .background(Color.White)
-            .border(2.dp, Line)
+            .border(width = 2.dp, color = Line)
             .padding(horizontal = 8.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BottomNavItem("Home", selected = true, onClick = onHome, modifier = Modifier.weight(1f)) {
+        BottomNavItem("DAFTUNG", selected = selected == HomeTab.Daftung, onClick = onHome, modifier = Modifier.weight(1f)) {
             Icon(Icons.Outlined.Groups, contentDescription = null, tint = if (it) DeepTeal else TextMuted, modifier = Modifier.size(20.dp))
         }
-        BottomNavItem("Semua", selected = false, onClick = onStruk, modifier = Modifier.weight(1f)) {
+        BottomNavItem("All Pelanggan", selected = selected == HomeTab.AllCustomers, onClick = onStruk, modifier = Modifier.weight(1f)) {
+            Icon(Icons.Outlined.Search, contentDescription = null, tint = if (it) DeepTeal else TextMuted, modifier = Modifier.size(20.dp))
+        }
+        BottomNavItem("Riwayat Cetak", selected = selected == HomeTab.History, onClick = onHistory, modifier = Modifier.weight(1f)) {
             Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = if (it) DeepTeal else TextMuted, modifier = Modifier.size(20.dp))
         }
-        BottomNavItem("Riwayat", selected = false, onClick = onHistory, modifier = Modifier.weight(1f)) {
-            Icon(Icons.Outlined.ContentCopy, contentDescription = null, tint = if (it) DeepTeal else TextMuted, modifier = Modifier.size(20.dp))
-        }
-        BottomNavItem("Menu", selected = false, onClick = onMenu, modifier = Modifier.weight(1f)) {
+        BottomNavItem("Menu", selected = selected == HomeTab.Menu, onClick = onMenu, modifier = Modifier.weight(1f)) {
             Icon(Icons.Outlined.Settings, contentDescription = null, tint = if (it) DeepTeal else TextMuted, modifier = Modifier.size(20.dp))
         }
     }
@@ -1737,15 +2075,24 @@ private fun BottomNavItem(
 ) {
     Column(
         modifier
-            .height(48.dp)
-            .background(if (selected) Color(0xFFE0F2F5) else Color.White, RoundedCornerShape(7.dp))
-            .then(if (selected) Modifier.border(2.dp, Line, RoundedCornerShape(7.dp)) else Modifier)
+            .height(58.dp)
+            .background(if (selected) Color(0xFFCCFBF1) else Color.White, RoundedCornerShape(10.dp))
+            .then(if (selected) Modifier.border(2.dp, Line, RoundedCornerShape(10.dp)) else Modifier)
             .clickable { onClick() },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Box(Modifier.width(24.dp).height(4.dp).background(if (selected) DeepTeal else Color.Transparent, RoundedCornerShape(4.dp)))
+        Spacer(Modifier.height(2.dp))
         icon(selected)
-        Text(label, color = if (selected) DeepTeal else TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Black)
+        Text(
+            label,
+            color = TextMain,
+            fontSize = 9.sp,
+            fontWeight = if (selected) FontWeight.Black else FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -2073,31 +2420,29 @@ private fun CompactMenuButton(
 @Composable
 private fun SummaryCard(title: String, value: String, icon: SummaryIcon, modifier: Modifier = Modifier) {
     Card(
-        modifier = modifier.border(2.dp, Line, RoundedCornerShape(8.dp)),
-        shape = RoundedCornerShape(8.dp),
+        modifier = modifier.height(74.dp).border(2.dp, Line, RoundedCornerShape(14.dp)),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Row(Modifier.padding(horizontal = 9.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier
-                    .size(35.dp)
-                    .background(Color(0xFFE0F2F5), RoundedCornerShape(6.dp))
-                    .border(1.dp, Line, RoundedCornerShape(6.dp)),
-                contentAlignment = Alignment.Center
-            ) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.Center) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(
                     imageVector = if (icon == SummaryIcon.People) Icons.Outlined.Groups else Icons.Outlined.ReceiptLong,
                     contentDescription = null,
                     tint = DeepTeal,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(16.dp)
                 )
+                Text(title.uppercase(), fontSize = 10.sp, color = TextMuted, fontWeight = FontWeight.Black)
             }
-            Spacer(Modifier.width(8.dp))
-            Column {
-                Text(title.uppercase(), fontSize = 9.sp, color = TextMuted, fontWeight = FontWeight.Black)
-                Text(value, fontSize = 15.sp, fontWeight = FontWeight.Black, color = TextMain, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+            Text(
+                value,
+                fontSize = if (icon == SummaryIcon.People) 22.sp else 17.sp,
+                fontWeight = FontWeight.Black,
+                color = if (icon == SummaryIcon.People) TextMain else DeepTeal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -2152,66 +2497,97 @@ private fun CustomerCard(
 ) {
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
-    val markColor = MarkColors.getOrElse(mark.colorIndex) { Color.White }
-    val accentColor = if (markColor == Color.White) DeepTeal else markColor
+    val visual = customerMarkVisual(mark.colorIndex)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp)
-            .border(2.dp, Line, RoundedCornerShape(8.dp)),
-        shape = RoundedCornerShape(8.dp),
+            .border(2.dp, Line, RoundedCornerShape(14.dp)),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(Modifier.fillMaxWidth()) {
-            Box(Modifier.width(7.dp).height(188.dp).background(accentColor))
+            Box(Modifier.width(8.dp).height(224.dp).background(visual.accent))
             Column(
                 Modifier
                     .weight(1f)
-                    .padding(horizontal = 11.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(7.dp)
+                    .padding(horizontal = 12.dp, vertical = 11.dp),
+                verticalArrangement = Arrangement.spacedBy(9.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(row.nama.ifBlank { "-" }, modifier = Modifier.weight(1f), fontSize = 16.sp, fontWeight = FontWeight.Black, color = TextMain, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        Text(row.nama.ifBlank { "-" }, fontSize = 17.sp, fontWeight = FontWeight.Black, color = TextMain, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Box(
+                            Modifier
+                                .padding(top = 4.dp)
+                                .background(visual.badgeBackground, RoundedCornerShape(5.dp))
+                                .border(1.dp, visual.accent, RoundedCornerShape(5.dp))
+                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                        ) {
+                            Text(visual.label, color = visual.badgeText, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                        }
+                    }
                     Spacer(Modifier.width(8.dp))
-                    Text(formatRupiah(row.rptag), fontWeight = FontWeight.Black, color = DeepTeal, fontSize = 17.sp)
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("TAGIHAN", color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                        Text(formatRupiah(row.rptag), fontWeight = FontWeight.Black, color = DeepTeal, fontSize = 18.sp)
+                    }
                 }
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFFF1F5F9), RoundedCornerShape(6.dp))
-                        .border(1.dp, Line, RoundedCornerShape(6.dp))
-                        .padding(start = 10.dp, end = 3.dp, top = 5.dp, bottom = 5.dp),
+                        .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
+                        .border(2.dp, Color(0xFF94A3B8), RoundedCornerShape(10.dp))
+                        .padding(start = 10.dp, end = 4.dp, top = 5.dp, bottom = 5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text("ID PELANGGAN", fontSize = 9.sp, color = TextMuted, fontWeight = FontWeight.Black)
-                        Text(row.idpel, fontSize = 16.sp, color = TextMain, fontWeight = FontWeight.Black)
+                        Text("ID PEL", fontSize = 9.sp, color = TextMuted, fontWeight = FontWeight.Black)
+                        Text(row.idpel, fontSize = 15.sp, color = TextMain, fontWeight = FontWeight.Black)
                     }
-                    IconButton(onClick = {
-                        clipboard.setText(AnnotatedString(row.idpel))
-                        Toast.makeText(context, "IDPEL disalin", Toast.LENGTH_SHORT).show()
-                    }, modifier = Modifier.size(38.dp)) {
-                        Icon(Icons.Outlined.ContentCopy, contentDescription = "Salin IDPEL", tint = DeepTeal, modifier = Modifier.size(20.dp))
+                    Row(
+                        Modifier
+                            .height(40.dp)
+                            .background(Color.White, RoundedCornerShape(8.dp))
+                            .border(2.dp, Line, RoundedCornerShape(8.dp))
+                            .clickable {
+                                clipboard.setText(AnnotatedString(row.idpel))
+                                Toast.makeText(context, "IDPEL disalin", Toast.LENGTH_SHORT).show()
+                            }
+                            .padding(horizontal = 11.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Outlined.ContentCopy, contentDescription = "Salin IDPEL", tint = DeepTeal, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Salin", color = TextMain, fontSize = 11.sp, fontWeight = FontWeight.Black)
                     }
                 }
-                Text(
-                    "${row.tarif} / ${row.daya}  |  Lembar ${row.lembar}  |  KOLOK ${row.kolok.ifBlank { "-" }}  |  KOKED ${row.koked.ifBlank { "-" }}",
-                    fontSize = 11.sp,
-                    color = TextMuted,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(row.alamat.ifBlank { "-" }, fontSize = 11.sp, color = TextMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    MetadataChip("${row.tarif}/${row.daya}")
+                    MetadataChip("Lembar ${row.lembar}")
+                    MetadataChip("KOLOK ${row.kolok.ifBlank { "-" }}")
+                    MetadataChip("KOKED ${row.koked.ifBlank { "-" }}")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = DeepTeal, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(row.alamat.ifBlank { "-" }, fontSize = 11.sp, color = Color(0xFF1E293B), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     CustomerActionButton(
                         text = "Warna",
                         filled = false,
                         onClick = onColorChange,
                         modifier = Modifier.weight(5f),
-                        icon = { Icon(Icons.Outlined.WaterDrop, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp)) }
+                        icon = {
+                            Box(
+                                Modifier
+                                    .size(14.dp)
+                                    .background(Brush.linearGradient(listOf(Color(0xFF15803D), Color(0xFFD97706), Color(0xFFDC2626))), CircleShape)
+                                    .border(1.dp, Line, CircleShape)
+                            )
+                        }
                     )
                     CustomerActionButton(
                         text = "Cetak",
@@ -2234,13 +2610,13 @@ private fun CustomerActionButton(
     modifier: Modifier = Modifier,
     icon: @Composable () -> Unit
 ) {
-    val background = if (filled) DeepTeal else Color(0xFFFEF3C7)
-    val foreground = if (filled) Color.White else Color(0xFF92400E)
+    val background = if (filled) DeepTeal else Color.White
+    val foreground = if (filled) Color.White else TextMain
     Row(
         modifier
-            .height(42.dp)
-            .background(background, RoundedCornerShape(6.dp))
-            .border(2.dp, Line, RoundedCornerShape(6.dp))
+            .height(48.dp)
+            .background(background, RoundedCornerShape(11.dp))
+            .border(2.dp, Line, RoundedCornerShape(11.dp))
             .clickable { onClick() },
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
@@ -2248,6 +2624,33 @@ private fun CustomerActionButton(
         icon()
         Spacer(Modifier.width(6.dp))
         Text(text, color = foreground, fontSize = 13.sp, fontWeight = FontWeight.Black)
+    }
+}
+
+private data class CustomerMarkVisual(
+    val accent: Color,
+    val badgeBackground: Color,
+    val badgeText: Color,
+    val label: String
+)
+
+private fun customerMarkVisual(index: Int): CustomerMarkVisual = when (index) {
+    1 -> CustomerMarkVisual(Color(0xFFD97706), Color(0xFFFEF3C7), Color(0xFF78350F), "Kuning - Janji Bayar")
+    2 -> CustomerMarkVisual(Color(0xFF15803D), Color(0xFFDCFCE7), Color(0xFF14532D), "Hijau - Lunas")
+    3 -> CustomerMarkVisual(Color(0xFFDC2626), Color(0xFFFEE2E2), Color(0xFF7F1D1D), "Merah - Kendala")
+    4 -> CustomerMarkVisual(Color(0xFF2563EB), Color(0xFFDBEAFE), Color(0xFF1E3A8A), "Biru - Ditindaklanjuti")
+    else -> CustomerMarkVisual(Color(0xFF005461), Color(0xFFE0F2F5), Color(0xFF003B44), "Belum Ditandai")
+}
+
+@Composable
+private fun MetadataChip(text: String) {
+    Box(
+        Modifier
+            .background(AppBg, RoundedCornerShape(4.dp))
+            .border(1.dp, Color(0xFF64748B), RoundedCornerShape(4.dp))
+            .padding(horizontal = 5.dp, vertical = 2.dp)
+    ) {
+        Text(text, color = TextMain, fontSize = 8.sp, fontWeight = FontWeight.Black, maxLines = 1)
     }
 }
 
@@ -2640,60 +3043,179 @@ internal fun ReceiptPreviewDialog(
     }
     val previewText = snapshot.text
 
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier.border(2.dp, Line, RoundedCornerShape(8.dp)),
-            shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = AppBg)
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter
         ) {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("PREVIEW STRUK", fontSize = 18.sp, fontWeight = FontWeight.Black, color = TextMain)
-                Text("${preview.row.idpel} - ${preview.row.nama}", color = TextMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (premiumStatus.isActive()) {
-                    TextField(
-                        value = extraText,
-                        onValueChange = { raw ->
-                            val clean = normalizeIdpel(raw).take(12)
-                            val value = clean.toDoubleOrNull() ?: 0.0
-                            if (maxExtra != null && value > maxExtra) {
-                                extraText = maxExtra.toLong().toString()
-                                errorText = "Maksimal tambahan ${formatRupiah(maxExtra)} untuk ${premiumStatus.packageCode}."
-                            } else {
-                                extraText = clean
-                                errorText = null
-                            }
-                        },
-                        label = { Text("Tambah tagihan") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                    Text(
-                        errorText ?: premiumExtraInfo(premiumStatus),
-                        color = if (errorText == null) TextMuted else Color(0xFFB42318),
-                        fontSize = 11.sp
-                    )
-                } else {
-                    Text(if (premiumStatus.hasActivePeriod()) "Premium belum terhubung ke perangkat ini. Periksa Status Premium pada Menu." else "Fitur tambah tagihan khusus user premium.", color = TextMuted, fontSize = 11.sp)
-                }
-                LazyColumn(
-                    modifier = Modifier
-                        .height(320.dp)
-                        .fillMaxWidth()
-                        .background(Color.White, RoundedCornerShape(6.dp))
-                        .border(2.dp, Line, RoundedCornerShape(6.dp))
-                        .padding(10.dp)
-                ) {
-                    item {
-                        Text(previewText, color = TextMain, fontSize = 13.sp, lineHeight = 17.sp)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.95f)
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                    .border(2.dp, Line, RoundedCornerShape(14.dp)),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = AppBg)
+            ) {
+                Column(Modifier.fillMaxSize()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(DeepTeal)
+                            .padding(horizontal = 16.dp, vertical = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            Modifier
+                                .size(42.dp)
+                                .background(Color.White, RoundedCornerShape(10.dp))
+                                .border(2.dp, Line, RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Outlined.ReceiptLong, null, tint = DeepTeal, modifier = Modifier.size(23.dp))
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text("PREVIEW CETAK", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
+                            Text(
+                                "${preview.row.idpel} - ${preview.row.nama}",
+                                color = Color(0xFFD6F4F2),
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Row(
+                            modifier = Modifier
+                                .background(Color.White, RoundedCornerShape(18.dp))
+                                .border(2.dp, Line, RoundedCornerShape(18.dp))
+                                .padding(horizontal = 10.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(Modifier.size(8.dp).background(Color(0xFF16A34A), CircleShape))
+                            Text("SIAP", color = TextMain, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                        }
                     }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    DialogButton("Batal", filled = false, onClick = onDismiss, modifier = Modifier.weight(1f))
-                    DialogButton("Cetak", filled = true, onClick = {
-                        preview.snapshot = snapshot
-                        onPrint()
-                    }, modifier = Modifier.weight(1f))
+
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        if (premiumStatus.isActive()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFFFEF3C7), RoundedCornerShape(10.dp))
+                                    .border(2.dp, Color(0xFFB45309), RoundedCornerShape(10.dp))
+                                    .padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text("TAMBAHAN TAGIHAN PREMIUM", color = Color(0xFF78350F), fontSize = 10.sp, fontWeight = FontWeight.Black)
+                                OutlinedTextField(
+                                    value = extraText,
+                                    onValueChange = { raw ->
+                                        val clean = normalizeIdpel(raw).take(12)
+                                        val value = clean.toDoubleOrNull() ?: 0.0
+                                        if (maxExtra != null && value > maxExtra) {
+                                            extraText = maxExtra.toLong().toString()
+                                            errorText = "Maksimal tambahan ${formatRupiah(maxExtra)} untuk ${premiumStatus.packageCode}."
+                                        } else {
+                                            extraText = clean
+                                            errorText = null
+                                        }
+                                    },
+                                    label = { Text("Nominal tambahan") },
+                                    prefix = { Text("Rp") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Line,
+                                        unfocusedBorderColor = Color(0xFFB45309),
+                                        focusedContainerColor = Color.White,
+                                        unfocusedContainerColor = Color.White
+                                    )
+                                )
+                                Text(
+                                    errorText ?: premiumExtraInfo(premiumStatus),
+                                    color = if (errorText == null) Color(0xFF78350F) else Color(0xFFB42318),
+                                    fontSize = 10.sp
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFFFEF3C7), RoundedCornerShape(10.dp))
+                                    .border(2.dp, Color(0xFFB45309), RoundedCornerShape(10.dp))
+                                    .padding(10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Outlined.Lock, null, tint = Color(0xFF78350F), modifier = Modifier.size(18.dp))
+                                Text(
+                                    if (premiumStatus.hasActivePeriod()) "Premium aktif di perangkat lain. Periksa Status Premium pada Menu." else "Tambah tagihan tersedia untuk akun premium.",
+                                    color = Color(0xFF78350F),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFFCBD5E1), RoundedCornerShape(12.dp))
+                                .border(2.dp, Line, RoundedCornerShape(12.dp))
+                                .padding(horizontal = 12.dp, vertical = 14.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(0.dp)
+                        ) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth(0.72f)
+                                    .height(10.dp)
+                                    .background(Color(0xFF334155), RoundedCornerShape(5.dp))
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.94f)
+                                    .background(Color.White)
+                                    .border(1.dp, Color(0xFF94A3B8))
+                                    .padding(horizontal = 13.dp, vertical = 16.dp)
+                            ) {
+                                Text(
+                                    previewText,
+                                    color = TextMain,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.White)
+                            .border(1.dp, Color(0xFFCBD5E1))
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        DialogButton("Batal", filled = false, onClick = onDismiss, modifier = Modifier.weight(1f))
+                        DialogButton("Cetak sekarang", filled = true, onClick = {
+                            preview.snapshot = snapshot
+                            onPrint()
+                        }, modifier = Modifier.weight(1f))
+                    }
                 }
             }
         }

@@ -1,6 +1,9 @@
 package com.sabak.simontok
 
 import android.content.Context
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -17,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +50,210 @@ internal fun sendReceiptAndRecord(context: Context, username: String, snapshot: 
         }
     }
     ReceiptHistorySync.schedule(context)
+}
+
+@Composable
+internal fun ReceiptHistoryScreen(
+    modifier: Modifier = Modifier,
+    context: Context,
+    username: String,
+    printer: BluetoothReceiptPrinter,
+    printerAddress: String
+) {
+    val deepTeal = Color(0xFF004D56)
+    val canvas = Color(0xFFE8EEF3)
+    val ink = Color(0xFF090D16)
+    val muted = Color(0xFF334155)
+    var month by remember { mutableStateOf(receiptMonth()) }
+    var query by remember { mutableStateOf("") }
+    var pageSize by remember { mutableStateOf(50) }
+    var remoteTotal by remember { mutableStateOf(0) }
+    var entries by remember { mutableStateOf<List<ReceiptHistoryEntry>>(emptyList()) }
+    var message by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var refresh by remember { mutableStateOf(0) }
+    var selected by remember { mutableStateOf<Pair<ReceiptHistoryEntry, ReceiptSnapshot>?>(null) }
+    val scope = rememberCoroutineScope()
+
+    suspend fun readLocal() {
+        entries = withContext(Dispatchers.IO) { ReceiptHistoryStore(context).use { it.list(username, month, query, pageSize + 1) } }
+    }
+    suspend fun openEntry(entry: ReceiptHistoryEntry) {
+        busy = true
+        val result = withContext(Dispatchers.IO) { runCatching { ReceiptHistorySync.snapshot(context, username, entry) } }
+        result.onSuccess { selected = entry to it }
+            .onFailure { message = "Struk belum tersimpan di HP ini. Sambungkan internet untuk mengunduhnya." }
+        busy = false
+    }
+    LaunchedEffect(month, query, refresh) {
+        pageSize = 50
+        readLocal()
+        busy = true
+        val result = withContext(Dispatchers.IO) { runCatching { ReceiptHistorySync.loadPage(context, username, month, query, 0) } }
+        result.onSuccess { remoteTotal = it; message = "" }
+            .onFailure { message = "Offline / server belum siap. Menampilkan riwayat yang tersimpan di HP ini." }
+        readLocal()
+        busy = false
+    }
+
+    val visibleEntries = entries.take(pageSize)
+    val totalAmount = visibleEntries.sumOf { it.metadata.optDouble("total_amount") }
+    Column(modifier.fillMaxSize().background(canvas)) {
+        Row(
+            Modifier.fillMaxWidth().background(deepTeal).border(2.dp, ink).padding(horizontal = 16.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Riwayat Cetak", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                Text("Struk asli dan cetak ulang", color = Color(0xFFCCFBF1), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+            Box(
+                Modifier.background(Color.White, RoundedCornerShape(8.dp)).border(2.dp, ink, RoundedCornerShape(8.dp)).padding(horizontal = 9.dp, vertical = 6.dp)
+            ) { Text(month.uppercase(), color = ink, fontSize = 10.sp, fontWeight = FontWeight.Black) }
+        }
+        Column(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+            Row(
+                Modifier.fillMaxWidth().height(72.dp).background(Color.White, RoundedCornerShape(14.dp)).border(2.dp, ink, RoundedCornerShape(14.dp))
+            ) {
+                Column(Modifier.weight(5f).fillMaxHeight().padding(11.dp), verticalArrangement = Arrangement.Center) {
+                    Text("STRUK BULAN INI", color = muted, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                    Text("${visibleEntries.size} Struk", color = ink, fontSize = 19.sp, fontWeight = FontWeight.Black)
+                }
+                Box(Modifier.width(2.dp).fillMaxHeight().background(Color(0xFFCBD5E1)))
+                Column(Modifier.weight(7f).fillMaxHeight().background(Color(0xFFF8FAFC)).padding(11.dp), verticalArrangement = Arrangement.Center) {
+                    Text("TOTAL TERCETAK", color = muted, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                    Text(formatRupiah(totalAmount), color = deepTeal, fontSize = 17.sp, fontWeight = FontWeight.Black)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                IconButton(onClick = { month = shiftReceiptMonth(month, -1) }, enabled = !busy) { Icon(Icons.Outlined.ChevronLeft, "Bulan sebelumnya", tint = ink) }
+                Text(month, color = ink, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                IconButton(onClick = { month = shiftReceiptMonth(month, 1) }, enabled = !busy) { Icon(Icons.Outlined.ChevronRight, "Bulan berikutnya", tint = ink) }
+                IconButton(onClick = { refresh++ }, enabled = !busy) { Icon(Icons.Outlined.Refresh, "Sinkronkan riwayat", tint = deepTeal) }
+            }
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text("Cari IDPEL / Nama Pelanggan di riwayat...", fontSize = 12.sp, color = Color(0xFF475569)) },
+                leadingIcon = { Icon(Icons.Outlined.Search, null, tint = ink) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(11.dp),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ink, unfocusedBorderColor = ink, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White)
+            )
+            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth(), color = deepTeal, trackColor = Color.White)
+            if (message.isNotEmpty()) Text(message, color = muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            if (visibleEntries.isEmpty() && !busy) {
+                Box(Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(14.dp)).border(2.dp, ink, RoundedCornerShape(14.dp)).padding(24.dp), contentAlignment = Alignment.Center) {
+                    Text("Belum ada riwayat pada bulan ini.", color = muted, fontWeight = FontWeight.Bold)
+                }
+            }
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                items(visibleEntries, key = { it.id }) { entry ->
+                    val uncertain = entry.uncertain || entry.uncertainReprints > 0
+                    Column(
+                        Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(14.dp)).border(2.dp, ink, RoundedCornerShape(14.dp)).padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.Top) {
+                            Column(Modifier.weight(1f)) {
+                                Text(entry.metadata.optString("customer_name"), color = ink, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(entry.metadata.optString("idpel"), color = muted, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Box(Modifier.background(if (uncertain) Color(0xFFFEF3C7) else Color(0xFFDCFCE7), RoundedCornerShape(5.dp)).border(1.dp, if (uncertain) Color(0xFFB45309) else Color(0xFF15803D), RoundedCornerShape(5.dp)).padding(horizontal = 7.dp, vertical = 2.dp)) {
+                                    Text(if (uncertain) "PERLU DIPERIKSA" else "STRUK ASLI", color = if (uncertain) Color(0xFF78350F) else Color(0xFF14532D), fontSize = 8.sp, fontWeight = FontWeight.Black)
+                                }
+                                Text(formatRupiah(entry.metadata.optDouble("total_amount")), color = deepTeal, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth().background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp)).border(2.dp, Color(0xFF94A3B8), RoundedCornerShape(10.dp)).padding(9.dp)) {
+                            Column(Modifier.weight(1f)) {
+                                Text("WAKTU CETAK", color = Color(0xFF475569), fontSize = 8.sp, fontWeight = FontWeight.Black)
+                                Text(receiptDisplayTime(entry.metadata.optString("printed_at")), color = ink, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("CETAK ULANG", color = Color(0xFF475569), fontSize = 8.sp, fontWeight = FontWeight.Black)
+                                Text("${entry.reprintCount} kali", color = ink, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Row(
+                            Modifier.fillMaxWidth().height(48.dp).background(Color(0xFF005F6B), RoundedCornerShape(11.dp)).border(2.dp, ink, RoundedCornerShape(11.dp)).clickable(enabled = !busy) { scope.launch { openEntry(entry) } },
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Outlined.Print, null, tint = Color.White, modifier = Modifier.size(19.dp))
+                            Spacer(Modifier.width(7.dp))
+                            Text(if (uncertain) "Periksa Struk" else "Cetak Ulang", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                        }
+                    }
+                }
+                if (entries.size > pageSize || remoteTotal > pageSize) item {
+                    Button(onClick = { scope.launch {
+                        busy = true
+                        val offset = pageSize
+                        pageSize += 50
+                        withContext(Dispatchers.IO) { runCatching { ReceiptHistorySync.loadPage(context, username, month, query, offset) } }
+                            .onSuccess { remoteTotal = it }.onFailure { message = "Menampilkan data lokal. Sinkronisasi belum tersedia." }
+                        readLocal()
+                        busy = false
+                    } }, enabled = !busy, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = deepTeal)) { Text("Muat lagi", fontWeight = FontWeight.Black) }
+                }
+            }
+        }
+    }
+
+    selected?.let { (entry, snapshot) ->
+        HistorySnapshotDialog(
+            entry = entry,
+            snapshot = snapshot,
+            busy = busy,
+            onDismiss = { selected = null },
+            onAction = { scope.launch {
+                busy = true
+                val result = withContext(Dispatchers.IO) { runCatching {
+                    if (entry.uncertain) {
+                        ReceiptHistoryStore(context).use { it.sent(username, snapshot) }
+                        ReceiptHistorySync.schedule(context)
+                    } else if (entry.uncertainReprints > 0) {
+                        ReceiptHistoryStore(context).use { it.confirmInterruptedReprints(username, snapshot.id) }
+                        ReceiptHistorySync.schedule(context)
+                    } else sendReceiptAndRecord(context, username, snapshot, true) { printer.print(printerAddress, it) }
+                } }
+                message = result.fold({ if (entry.uncertain) "Riwayat dikonfirmasi dan menunggu sinkronisasi." else "Struk asli berhasil dikirim ulang ke printer." }, { it.message ?: "Gagal mencetak ulang." })
+                selected = null
+                readLocal()
+                busy = false
+            } }
+        )
+    }
+}
+
+@Composable
+private fun HistorySnapshotDialog(
+    entry: ReceiptHistoryEntry,
+    snapshot: ReceiptSnapshot,
+    busy: Boolean,
+    onDismiss: () -> Unit,
+    onAction: () -> Unit
+) {
+    Dialog(onDismissRequest = { if (!busy) onDismiss() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxWidth().fillMaxHeight(0.92f).padding(8.dp).border(2.dp, Color(0xFF090D16), RoundedCornerShape(14.dp)), shape = RoundedCornerShape(14.dp), color = Color(0xFFE8EEF3)) {
+            Column {
+                Row(Modifier.fillMaxWidth().background(Color(0xFF004D56)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Struk Asli", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                        Text(entry.metadata.optString("idpel"), color = Color(0xFFCCFBF1), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                    IconButton(onClick = onDismiss, enabled = !busy) { Icon(Icons.Outlined.Close, "Tutup", tint = Color.White) }
+                }
+                Text(snapshot.text, fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 15.sp, color = Color(0xFF090D16), modifier = Modifier.weight(1f).fillMaxWidth().padding(14.dp).background(Color.White).border(2.dp, Color(0xFF64748B)).padding(12.dp).verticalScroll(rememberScrollState()))
+                Button(onClick = onAction, enabled = !busy, modifier = Modifier.fillMaxWidth().height(54.dp).padding(horizontal = 12.dp, vertical = 5.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF004D56))) {
+                    Text(if (entry.uncertain || entry.uncertainReprints > 0) "Konfirmasi Sudah Tercetak" else "Cetak Ulang", fontWeight = FontWeight.Black)
+                }
+            }
+        }
+    }
 }
 
 @Composable
