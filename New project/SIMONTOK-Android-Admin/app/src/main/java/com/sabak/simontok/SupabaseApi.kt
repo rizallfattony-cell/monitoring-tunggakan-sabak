@@ -339,6 +339,42 @@ class SupabaseApi {
         }
     }
 
+    fun fetchOfflineSyncData(
+        accessToken: String,
+        onPage: (count: Int, meters: Map<String, ReceiptMeter>) -> Unit = { _, _ -> }
+    ): OfflineSyncData {
+        val rows = linkedMapOf<String, CustomerDebt>()
+        val meters = linkedMapOf<String, ReceiptMeter>()
+        var offset = 0
+
+        while (true) {
+            val page = fetchOfflineSyncPage(accessToken, offset)
+            if (page.isEmpty()) break
+
+            val previousCount = rows.size
+            val pageMeters = linkedMapOf<String, ReceiptMeter>()
+            page.forEach { item ->
+                rows[item.row.idpel] = item.row
+                item.meter?.let { meter ->
+                    meters[meter.idpel] = meter
+                    pageMeters[meter.idpel] = meter
+                }
+            }
+            if (page.size == pageSize && rows.size == previousCount) {
+                throw IOException("Server mengirim halaman sinkronisasi yang berulang.")
+            }
+            if (rows.size > 50_000) {
+                throw IOException("Jumlah data sinkronisasi melewati batas pengaman.")
+            }
+
+            onPage(rows.size, pageMeters)
+            if (page.size < pageSize) break
+            offset += page.size
+        }
+
+        return OfflineSyncData(rows.values.toList(), meters)
+    }
+
     private fun fetchRemainingCustomersInternal(
         accessToken: String,
         petugas: String?,
@@ -823,6 +859,44 @@ class SupabaseApi {
         }
     }
 
+    private fun fetchOfflineSyncPage(accessToken: String, offset: Int): List<OfflineSyncItem> {
+        val payload = JSONObject()
+            .put("p_offset", offset)
+            .put("p_limit", pageSize)
+            .toString()
+        val request = Request.Builder()
+            .url("${BuildConfig.SUPABASE_URL}/rest/v1/rpc/monitoring_sync_offline_page")
+            .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            .addHeader("Authorization", "Bearer $accessToken")
+            .addHeader("x-simontok-version", appVersionHeader)
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Accept", "application/json")
+            .post(payload.toRequestBody(jsonMediaType))
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (response.code == 401) throw SessionExpiredException()
+            if (!response.isSuccessful) {
+                throw IOException(appUpdateMessage(body, "Gagal mengambil paket data offline."))
+            }
+            val array = JSONArray(body)
+            return List(array.length()) { index ->
+                val item = array.getJSONObject(index)
+                val idpel = item.optString("idpel")
+                val meter = ReceiptMeter(
+                    idpel = idpel,
+                    standAwal = item.optString("stand_awal"),
+                    standAkhir = item.optString("stand_akhir")
+                )
+                OfflineSyncItem(
+                    row = item.toCustomerDebt(),
+                    meter = meter
+                )
+            }
+        }
+    }
+
     private fun <T> post(callback: (Result<T>) -> Unit, result: Result<T>) {
         mainHandler.post { callback(result) }
     }
@@ -965,7 +1039,7 @@ private fun appUpdateMessage(body: String, fallback: String): String {
     }
 }
 
-private fun usernameToPetugasCandidates(username: String): List<String> {
+internal fun usernameToPetugasCandidates(username: String): List<String> {
     val code = username.substringAfter('.', username).trim().uppercase(Locale.US)
     val primary = mapOf(
         "ADRI" to listOf("ADRI"),
@@ -1016,6 +1090,16 @@ data class CustomerDebt(
     val koked: String,
     val rptag: Double,
     val uploadedAt: String = ""
+)
+
+data class OfflineSyncData(
+    val rows: List<CustomerDebt>,
+    val meters: Map<String, ReceiptMeter>
+)
+
+private data class OfflineSyncItem(
+    val row: CustomerDebt,
+    val meter: ReceiptMeter?
 )
 
 data class PremiumStatus(

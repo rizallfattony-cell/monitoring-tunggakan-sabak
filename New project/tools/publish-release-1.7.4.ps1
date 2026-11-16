@@ -2,7 +2,7 @@
 param(
     [string]$ConnectionsFile = '',
     [string]$GitPath = '',
-    [ValidateSet('1.7.4', '1.7.5', '1.7.6', '1.7.7')][string]$ReleaseVersion = '1.7.4'
+    [ValidateSet('1.7.4', '1.7.5', '1.7.6', '1.7.7', '1.7.8')][string]$ReleaseVersion = '1.7.4'
 )
 $ErrorActionPreference = 'Stop'
 
@@ -52,7 +52,7 @@ if (-not (Test-Path -LiteralPath $repo) -and (Test-Path -LiteralPath (Join-Path 
     $repo = Split-Path -Parent $source
 }
 $apk = Join-Path $source "SIMONTOK-v$ReleaseVersion.apk"
-$webMarker = if ($ReleaseVersion -in @('1.7.6', '1.7.7')) {
+$webMarker = if ($ReleaseVersion -in @('1.7.6', '1.7.7', '1.7.8')) {
     '20261113-dashboard-hero-v1'
 } elseif ($ReleaseVersion -eq '1.7.5') {
     '20261106-kogol-rupiah-exact-v2'

@@ -139,7 +139,8 @@ private data class CachedHome(
     val rows: List<CustomerDebt>,
     val allRows: List<CustomerDebt>,
     val meters: Map<String, ReceiptMeter>,
-    val dataVersion: String?
+    val dataVersion: String?,
+    val fullSyncComplete: Boolean
 )
 
 private sealed class SyncState {
@@ -385,7 +386,7 @@ private fun SimontokApp(
             val offline = offlineDataStore.read(authenticatedSession.username)
             if (offline != null) {
                 val rows = sortCustomerRows(offline.ownRows)
-                AppMemoryCache.home = CachedHome(authenticatedSession.accessToken, authenticatedSession.username, rows, offline.allRows, offline.meters, offline.dataVersion)
+                AppMemoryCache.home = CachedHome(authenticatedSession.accessToken, authenticatedSession.username, rows, offline.allRows, offline.meters, offline.dataVersion, offline.fullSyncComplete)
                 screenState = ScreenState.Home(username = authenticatedSession.username, rows = rows)
             } else {
                 screenState = ScreenState.Loading
@@ -419,7 +420,8 @@ private fun SimontokApp(
                                     rows = emptyList(),
                                     allRows = emptyList(),
                                     meters = emptyMap(),
-                                    dataVersion = null
+                                    dataVersion = null,
+                                    fullSyncComplete = false
                                 )
                                 AppMemoryCache.home = fallback
                                 syncState = SyncState.Done("Login berhasil, tetapi data belum termuat. Tekan refresh saat koneksi stabil.")
@@ -468,7 +470,6 @@ private fun SimontokApp(
                         offlineDataStore = offlineDataStore,
                         accessToken = activeSession.accessToken,
                         username = activeSession.username,
-                        refreshHeavyData = !automatic,
                         onProgress = { message, progress ->
                             if (!automatic) {
                                 runOnMainThread { syncState = SyncState.Running(message, progress) }
@@ -663,36 +664,30 @@ private fun refreshOnlineCache(
     offlineDataStore: OfflineDataStore,
     accessToken: String,
     username: String,
-    refreshHeavyData: Boolean = true,
     onProgress: (String, Float) -> Unit = { _, _ -> }
 ): CachedHome {
-    onProgress("Mengambil data petugas...", 0.2f)
-    val ownRows = sortCustomerRows(api.fetchRemainingCustomers(accessToken, username))
-    val dataVersion = api.buildDebtFingerprint(ownRows) ?: api.fetchLatestDebtUploadAt(accessToken, username)
-    val cached = AppMemoryCache.home?.takeIf { it.username == username }
-    val allRows = if (refreshHeavyData || cached == null || cached.allRows.isEmpty()) {
-        onProgress("Mengambil seluruh saldo akhir untuk cetak...", 0.55f)
-        api.fetchAllRemainingCustomers(accessToken) { count ->
-            val progress = (0.28f + (count.coerceAtMost(20000) / 20000f) * 0.44f).coerceAtMost(0.72f)
-            onProgress("Mengambil saldo akhir: $count data...", progress)
+    onProgress("Menyiapkan sinkronisasi offline...", 0.08f)
+    val syncData = api.fetchOfflineSyncData(accessToken) { count, pageMeters ->
+        val currentCache = AppMemoryCache.home
+        if (currentCache != null && currentCache.accessToken == accessToken && pageMeters.isNotEmpty()) {
+            AppMemoryCache.home = currentCache.copy(meters = currentCache.meters + pageMeters)
         }
-    } else {
-        cached.allRows
+        val progress = (0.08f + (count.coerceAtMost(20_000) / 20_000f) * 0.82f).coerceAtMost(0.9f)
+        onProgress("Sinkronisasi offline: $count IDPEL...", progress)
     }
-    val meters = if (refreshHeavyData || cached == null || cached.meters.isEmpty()) {
-        onProgress("Mengambil stand meter...", 0.82f)
-        api.fetchReceiptMeters(accessToken) { count ->
-            val progress = (0.72f + (count.coerceAtMost(20000) / 20000f) * 0.18f).coerceAtMost(0.9f)
-            onProgress("Mengambil stand meter: $count data...", progress)
-        }
+    val allRows = sortCustomerRows(syncData.rows)
+    val candidates = usernameToPetugasCandidates(username)
+    val ownRows = if (isSuperUser(username)) {
+        allRows
     } else {
-        onProgress("Menyimpan data terbaru...", 0.85f)
-        cached.meters
+        allRows.filter { row -> candidates.any { it.equals(row.petugas, ignoreCase = true) } }
     }
+    val meters = syncData.meters
+    val dataVersion = api.buildDebtFingerprint(allRows) ?: api.fetchLatestDebtUploadAt(accessToken, username)
     onProgress("Menyimpan data offline...", 0.95f)
-    offlineDataStore.save(username, ownRows, allRows, meters, dataVersion)
+    offlineDataStore.save(username, ownRows, allRows, meters, dataVersion, fullSyncComplete = true)
     onProgress("Selesai.", 1f)
-    return CachedHome(accessToken, username, ownRows, allRows, meters, dataVersion)
+    return CachedHome(accessToken, username, ownRows, allRows, meters, dataVersion, fullSyncComplete = true)
 }
 
 private fun loadLoginCache(
@@ -706,8 +701,9 @@ private fun loadLoginCache(
     val existing = offlineDataStore.read(username)
     val allRows = existing?.allRows.orEmpty()
     val meters = existing?.meters.orEmpty()
-    offlineDataStore.save(username, ownRows, allRows, meters, dataVersion)
-    return CachedHome(accessToken, username, ownRows, allRows, meters, dataVersion)
+    val fullSyncComplete = existing?.fullSyncComplete == true
+    offlineDataStore.save(username, ownRows, allRows, meters, dataVersion, fullSyncComplete)
+    return CachedHome(accessToken, username, ownRows, allRows, meters, dataVersion, fullSyncComplete)
 }
 
 private fun loadLoginCacheWithRetry(
@@ -1009,6 +1005,12 @@ private fun HomeScreen(
             },
             onMessage = { printMessage = it }
         )
+    }
+
+    LaunchedEffect(accessToken) {
+        if (accessToken.isNotBlank() && AppMemoryCache.home?.fullSyncComplete != true) {
+            onRefresh()
+        }
     }
 
     LaunchedEffect(username) {

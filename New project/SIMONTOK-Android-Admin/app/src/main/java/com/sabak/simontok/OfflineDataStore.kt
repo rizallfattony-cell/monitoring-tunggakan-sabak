@@ -12,7 +12,8 @@ class OfflineDataStore(context: Context) {
         ownRows: List<CustomerDebt>,
         allRows: List<CustomerDebt>,
         meters: Map<String, ReceiptMeter>,
-        dataVersion: String?
+        dataVersion: String?,
+        fullSyncComplete: Boolean
     ) {
         prefs.edit()
             .putString("username", username)
@@ -20,6 +21,7 @@ class OfflineDataStore(context: Context) {
             .putString("all_rows", JSONArray(allRows.map { it.toJson() }).toString())
             .putString("meters", JSONArray(meters.values.map { it.toJson() }).toString())
             .putString("data_version", dataVersion.orEmpty())
+            .putInt("sync_format", if (fullSyncComplete) OFFLINE_SYNC_FORMAT else 0)
             .apply()
     }
 
@@ -28,11 +30,13 @@ class OfflineDataStore(context: Context) {
         if (!savedUsername.equals(username, ignoreCase = true)) return null
         if (!prefs.contains("own_rows")) return null
         val ownRows = parseRows(prefs.getString("own_rows", "[]").orEmpty())
+        val fullSyncComplete = prefs.getInt("sync_format", 0) == OFFLINE_SYNC_FORMAT
         return OfflineCache(
             ownRows = ownRows,
-            allRows = parseRows(prefs.getString("all_rows", "[]").orEmpty()),
-            meters = parseMeters(prefs.getString("meters", "[]").orEmpty()),
-            dataVersion = prefs.getString("data_version", "").orEmpty().ifBlank { null }
+            allRows = if (fullSyncComplete) parseRows(prefs.getString("all_rows", "[]").orEmpty()) else emptyList(),
+            meters = if (fullSyncComplete) parseMeters(prefs.getString("meters", "[]").orEmpty()) else emptyMap(),
+            dataVersion = prefs.getString("data_version", "").orEmpty().ifBlank { null },
+            fullSyncComplete = fullSyncComplete
         )
     }
 
@@ -56,13 +60,18 @@ class OfflineDataStore(context: Context) {
             )
         }.associateBy { it.idpel }
     }
+
+    private companion object {
+        const val OFFLINE_SYNC_FORMAT = 2
+    }
 }
 
 data class OfflineCache(
     val ownRows: List<CustomerDebt>,
     val allRows: List<CustomerDebt>,
     val meters: Map<String, ReceiptMeter>,
-    val dataVersion: String?
+    val dataVersion: String?,
+    val fullSyncComplete: Boolean
 )
 
 fun CustomerDebt.toJson(): JSONObject {
