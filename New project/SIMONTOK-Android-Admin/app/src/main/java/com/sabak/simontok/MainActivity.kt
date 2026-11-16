@@ -99,6 +99,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import java.io.File
+import java.io.IOException
 import java.util.Date
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -375,33 +376,56 @@ private fun SimontokApp(
 
     LaunchedEffect(session?.accessToken) {
         val current = session
-        if (current?.accessToken.isNullOrBlank()) {
+        if (current == null || current.accessToken.isBlank()) {
             screenState = ScreenState.Login
         } else if (AppMemoryCache.home?.accessToken == current.accessToken && screenState is ScreenState.Home) {
             return@LaunchedEffect
         } else {
-            val offline = offlineDataStore.read(current.username)
+            val authenticatedSession = requireNotNull(current)
+            val offline = offlineDataStore.read(authenticatedSession.username)
             if (offline != null) {
                 val rows = sortCustomerRows(offline.ownRows)
-                AppMemoryCache.home = CachedHome(current.accessToken, current.username, rows, offline.allRows, offline.meters, offline.dataVersion)
-                screenState = ScreenState.Home(username = current.username, rows = rows)
+                AppMemoryCache.home = CachedHome(authenticatedSession.accessToken, authenticatedSession.username, rows, offline.allRows, offline.meters, offline.dataVersion)
+                screenState = ScreenState.Home(username = authenticatedSession.username, rows = rows)
             } else {
                 screenState = ScreenState.Loading
                 thread {
-                    var shouldClearSession = false
-                    val nextState = runCatching {
-                        val cache = loadLoginCache(api, offlineDataStore, current.accessToken, current.username)
-                        AppMemoryCache.home = cache
-                        ScreenState.Home(username = current.username, rows = cache.rows)
-                    }.getOrElse {
-                        sessionEpoch.incrementAndGet()
-                        sessionStore.clear()
-                        shouldClearSession = true
-                        ScreenState.LoginWithError("Sesi habis atau gagal memuat data. Silakan login ulang.")
+                    var activeSession: UserSession = authenticatedSession
+                    val result = runCatching {
+                        loadLoginCacheWithRetry(api, offlineDataStore, activeSession.accessToken, activeSession.username)
+                    }.recoverCatching { error ->
+                        if (error !is SessionExpiredException) throw error
+                        activeSession = api.refreshSession(authenticatedSession)
+                        loadLoginCacheWithRetry(api, offlineDataStore, activeSession.accessToken, activeSession.username)
                     }
                     runOnMainThread {
-                        if (shouldClearSession) session = null
-                        screenState = nextState
+                        result.onSuccess { cache ->
+                            AppMemoryCache.home = cache
+                            if (activeSession.accessToken != authenticatedSession.accessToken) {
+                                sessionStore.save(activeSession)
+                                session = activeSession
+                            }
+                            screenState = ScreenState.Home(username = activeSession.username, rows = cache.rows)
+                        }.onFailure { error ->
+                            if (error is SessionExpiredException) {
+                                sessionEpoch.incrementAndGet()
+                                sessionStore.clear()
+                                session = null
+                                screenState = ScreenState.LoginWithError(error.message ?: "Sesi login habis. Silakan login ulang.")
+                            } else {
+                                val fallback = CachedHome(
+                                    accessToken = authenticatedSession.accessToken,
+                                    username = authenticatedSession.username,
+                                    rows = emptyList(),
+                                    allRows = emptyList(),
+                                    meters = emptyMap(),
+                                    dataVersion = null
+                                )
+                                AppMemoryCache.home = fallback
+                                syncState = SyncState.Done("Login berhasil, tetapi data belum termuat. Tekan refresh saat koneksi stabil.")
+                                screenState = ScreenState.Home(username = authenticatedSession.username, rows = emptyList())
+                            }
+                        }
                     }
                 }
             }
@@ -686,6 +710,26 @@ private fun loadLoginCache(
     return CachedHome(accessToken, username, ownRows, allRows, meters, dataVersion)
 }
 
+private fun loadLoginCacheWithRetry(
+    api: SupabaseApi,
+    offlineDataStore: OfflineDataStore,
+    accessToken: String,
+    username: String
+): CachedHome {
+    var lastError: Throwable? = null
+    repeat(2) { attempt ->
+        try {
+            return loadLoginCache(api, offlineDataStore, accessToken, username)
+        } catch (error: SessionExpiredException) {
+            throw error
+        } catch (error: Throwable) {
+            lastError = error
+            if (attempt == 0) Thread.sleep(500L)
+        }
+    }
+    throw lastError ?: IOException("Data petugas belum dapat dimuat.")
+}
+
 @Composable
 private fun LoadingScreen() {
     Box(
@@ -928,6 +972,7 @@ private fun HomeScreen(
     var printerDevices by remember { mutableStateOf(printer.pairedDevices()) }
     var scanningPrinter by remember { mutableStateOf(false) }
     var receiptPreview by remember { mutableStateOf<ReceiptPreview?>(null) }
+    var receiptPreviewRequestId by remember { mutableStateOf(0) }
     var premiumStatus by remember(username) {
         mutableStateOf(
             premiumStatusStore.read(username)
@@ -949,6 +994,22 @@ private fun HomeScreen(
     )
     val deviceId = remember { deviceStore.deviceId() }
     var lastNotifiedVersion by remember(accessToken) { mutableStateOf(dataVersion.orEmpty()) }
+
+    fun openReceiptPreview(row: CustomerDebt) {
+        val requestId = receiptPreviewRequestId + 1
+        receiptPreviewRequestId = requestId
+        prepareReceiptPreview(
+            row = row,
+            accessToken = accessToken,
+            api = api,
+            settings = receiptSettings,
+            premiumStatus = premiumStatus,
+            onReady = { preview ->
+                if (receiptPreviewRequestId == requestId) receiptPreview = preview
+            },
+            onMessage = { printMessage = it }
+        )
+    }
 
     LaunchedEffect(username) {
         ReceiptHistorySync.schedule(context)
@@ -1147,17 +1208,7 @@ private fun HomeScreen(
                                         marks[item.row.idpel] = next
                                         markStore.save(item.row.idpel, next)
                                     },
-                                    onPrint = {
-                                        prepareReceiptPreview(
-                                            row = item.row,
-                                            accessToken = accessToken,
-                                            api = api,
-                                            settings = receiptSettings,
-                                            premiumStatus = premiumStatus,
-                                            onReady = { receiptPreview = it },
-                                            onMessage = { printMessage = it }
-                                        )
-                                    }
+                                    onPrint = { openReceiptPreview(item.row) }
                                 )
                             }
                         }
@@ -1362,9 +1413,7 @@ private fun HomeScreen(
         PrintListDialog(
             rows = allSortedRows,
             onDismiss = { showPrintList = false },
-            onPrint = { row ->
-                prepareReceiptPreview(row, accessToken, api, receiptSettings, premiumStatus, { receiptPreview = it }) { printMessage = it }
-            },
+            onPrint = ::openReceiptPreview,
             onSearchIdpel = { idpel ->
                 searchReceiptByIdpel(
                     idpel = idpel,
@@ -1392,8 +1441,12 @@ private fun HomeScreen(
         ReceiptPreviewDialog(
             preview = preview,
             premiumStatus = premiumStatus,
-            onDismiss = { receiptPreview = null },
+            onDismiss = {
+                receiptPreviewRequestId += 1
+                receiptPreview = null
+            },
             onPrint = {
+                receiptPreviewRequestId += 1
                 receiptPreview = null
                 printPreparedReceipt(preview.snapshot, username, context, receiptSettings, printer) { printMessage = it }
             }
@@ -2526,17 +2579,18 @@ private fun prepareReceiptPreview(
     onReady: (ReceiptPreview) -> Unit,
     onMessage: (String) -> Unit
 ) {
-    thread {
-        val result = runCatching {
-            val meter = AppMemoryCache.home?.meters?.get(row.idpel)
-                ?: runCatching { api.fetchReceiptMeter(accessToken, row.idpel) }.getOrNull()
-            ReceiptPreview(row, meter, settings)
-        }
+    val cachedMeter = AppMemoryCache.home?.meters?.get(row.idpel)
+    val initialPreview = ReceiptPreview(row, cachedMeter, settings)
+    onReady(initialPreview)
+    if (cachedMeter != null) return
 
-        runOnMainThread {
-            result.onSuccess(onReady)
-                .onFailure { onMessage("Gagal menyiapkan preview: ${it.message ?: "periksa data stand meter."}") }
+    thread {
+        val meter = runCatching { api.fetchReceiptMeter(accessToken, row.idpel) }.getOrNull() ?: return@thread
+        val currentCache = AppMemoryCache.home
+        if (currentCache != null && currentCache.accessToken == accessToken) {
+            AppMemoryCache.home = currentCache.copy(meters = currentCache.meters + (row.idpel to meter))
         }
+        runOnMainThread { onReady(initialPreview.copy(meter = meter)) }
     }
 }
 

@@ -26,8 +26,8 @@ class OfflineDataStore(context: Context) {
     fun read(username: String): OfflineCache? {
         val savedUsername = prefs.getString("username", "").orEmpty()
         if (!savedUsername.equals(username, ignoreCase = true)) return null
+        if (!prefs.contains("own_rows")) return null
         val ownRows = parseRows(prefs.getString("own_rows", "[]").orEmpty())
-        if (ownRows.isEmpty()) return null
         return OfflineCache(
             ownRows = ownRows,
             allRows = parseRows(prefs.getString("all_rows", "[]").orEmpty()),

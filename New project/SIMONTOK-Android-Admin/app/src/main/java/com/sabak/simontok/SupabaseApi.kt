@@ -14,13 +14,25 @@ import okhttp3.WebSocketListener
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.net.SocketTimeoutException
 import java.net.URLEncoder
 import java.text.NumberFormat
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
+internal class SessionExpiredException : IOException("Sesi login habis. Silakan login ulang.")
+
 class SupabaseApi {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .build()
+    private val loginClient = client.newBuilder()
+        .callTimeout(20, TimeUnit.SECONDS)
+        .build()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val pageSize = 1000
@@ -90,33 +102,82 @@ class SupabaseApi {
             .post(payload.toRequestBody(jsonMediaType))
             .build()
 
-        client.newCall(request).enqueue(object : Callback {
+        enqueueLogin(request, normalizedUsername, callback, attempt = 0)
+    }
+
+    private fun enqueueLogin(
+        request: Request,
+        normalizedUsername: String,
+        callback: (Result<UserSession>) -> Unit,
+        attempt: Int
+    ) {
+        loginClient.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                post(callback, Result.failure(Exception("Tidak bisa terhubung ke server.")))
+                if (attempt == 0) {
+                    mainHandler.postDelayed(
+                        { enqueueLogin(request, normalizedUsername, callback, attempt + 1) },
+                        600L
+                    )
+                    return
+                }
+                val message = if (e is SocketTimeoutException) {
+                    "Koneksi ke server terlalu lambat. Silakan coba lagi."
+                } else {
+                    "Tidak bisa terhubung ke server. Periksa internet lalu coba lagi."
+                }
+                post(callback, Result.failure(IOException(message, e)))
             }
 
             override fun onResponse(call: Call, response: Response) {
-                val body = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    post(callback, Result.failure(Exception("Username atau password salah.")))
-                    return
-                }
+                response.use {
+                    val body = it.body?.string().orEmpty()
+                    if (!it.isSuccessful) {
+                        val retryable = it.code == 408 || it.code >= 500
+                        if (attempt == 0 && retryable) {
+                            mainHandler.postDelayed(
+                                { enqueueLogin(request, normalizedUsername, callback, attempt + 1) },
+                                600L
+                            )
+                            return
+                        }
+                        val message = when (it.code) {
+                            400, 401 -> "Username atau password salah."
+                            429 -> "Terlalu banyak percobaan login. Tunggu sebentar lalu coba lagi."
+                            in 500..599 -> "Server sedang sibuk. Silakan coba lagi."
+                            else -> "Login belum dapat diproses (kode ${it.code})."
+                        }
+                        post(callback, Result.failure(IOException(message)))
+                        return
+                    }
 
-                val json = JSONObject(body)
-                val accessToken = json.optString("access_token")
-                val refreshToken = json.optString("refresh_token")
-                if (accessToken.isBlank()) {
-                    post(callback, Result.failure(Exception("Token login tidak diterima.")))
-                    return
-                }
+                    val json = runCatching { JSONObject(body) }.getOrElse { error ->
+                        post(callback, Result.failure(IOException("Jawaban server tidak valid. Silakan coba lagi.", error)))
+                        return
+                    }
+                    val accessToken = json.optString("access_token")
+                    val refreshToken = json.optString("refresh_token")
+                    if (accessToken.isBlank()) {
+                        post(callback, Result.failure(IOException("Token login tidak diterima. Silakan coba lagi.")))
+                        return
+                    }
 
-                post(callback, Result.success(UserSession(username = username.uppercase(Locale.US), accessToken = accessToken, refreshToken = refreshToken)))
+                    post(
+                        callback,
+                        Result.success(
+                            UserSession(
+                                username = normalizedUsername.uppercase(Locale.US),
+                                accessToken = accessToken,
+                                refreshToken = refreshToken
+                            )
+                        )
+                    )
+                }
             }
         })
     }
 
     fun refreshSession(session: UserSession): UserSession {
-        if (session.refreshToken.isBlank()) throw IOException("Sesi login habis. Silakan logout lalu login ulang.")
+        if (session.refreshToken.isBlank()) throw SessionExpiredException()
         val payload = JSONObject()
             .put("refresh_token", session.refreshToken)
             .toString()
@@ -130,11 +191,13 @@ class SupabaseApi {
 
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
-            if (!response.isSuccessful) throw IOException("Sesi login habis. Silakan logout lalu login ulang.")
-            val json = JSONObject(body)
+            if (response.code == 400 || response.code == 401) throw SessionExpiredException()
+            if (!response.isSuccessful) throw IOException("Sesi belum dapat diperbarui. Periksa koneksi lalu coba lagi.")
+            val json = runCatching { JSONObject(body) }
+                .getOrElse { throw IOException("Jawaban server tidak valid saat memperbarui sesi.", it) }
             val accessToken = json.optString("access_token")
             val refreshToken = json.optString("refresh_token", session.refreshToken)
-            if (accessToken.isBlank()) throw IOException("Sesi login habis. Silakan logout lalu login ulang.")
+            if (accessToken.isBlank()) throw SessionExpiredException()
             return session.copy(accessToken = accessToken, refreshToken = refreshToken)
         }
     }
@@ -267,8 +330,13 @@ class SupabaseApi {
     }
 
     fun fetchAllRemainingCustomers(accessToken: String, onPage: (Int) -> Unit = {}): List<CustomerDebt> {
-        return runCatching { fetchRemainingCustomersInternal(accessToken, petugas = null, onPage = onPage) }
-            .getOrElse { fetchPrintRemainingCustomers(accessToken, onPage) }
+        return try {
+            fetchRemainingCustomersInternal(accessToken, petugas = null, onPage = onPage)
+        } catch (error: SessionExpiredException) {
+            throw error
+        } catch (_: Throwable) {
+            fetchPrintRemainingCustomers(accessToken, onPage)
+        }
     }
 
     private fun fetchRemainingCustomersInternal(
@@ -624,6 +692,7 @@ class SupabaseApi {
 
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
+            if (response.code == 401) throw SessionExpiredException()
             if (!response.isSuccessful) throw IOException("Gagal mengambil data cetak semua petugas.")
             val array = JSONArray(body)
             return List(array.length()) { index -> array.getJSONObject(index).toCustomerDebt() }
@@ -667,6 +736,7 @@ class SupabaseApi {
 
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
+            if (response.code == 401) throw SessionExpiredException()
             if (!response.isSuccessful) {
                 throw IOException(appUpdateMessage(body, "Gagal mengambil data tunggakan."))
             }
