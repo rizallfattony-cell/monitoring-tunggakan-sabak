@@ -113,13 +113,13 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 
-private val DeepTeal = Color(0xFF00546D)
-private val BrightTeal = Color(0xFF13AFC4)
-private val AppYellow = Color(0xFFF7D915)
-private val AppBg = Color(0xFFF6FBFE)
-private val TextMain = Color(0xFF0F172A)
-private val TextMuted = Color(0xFF667085)
-private val Line = Color(0xFFD7E0EA)
+private val DeepTeal = Color(0xFF004D56)
+private val BrightTeal = Color(0xFF006B75)
+private val AppYellow = Color(0xFFF59E0B)
+private val AppBg = Color(0xFFE8EEF3)
+private val TextMain = Color(0xFF090D16)
+private val TextMuted = Color(0xFF334155)
+private val Line = Color(0xFF0F172A)
 private const val PREMIUM_NOTIFICATION_CHANNEL_ID = "premium_requests"
 private val MarkColors = listOf(
     Color.White,
@@ -747,9 +747,9 @@ private fun LoginScreen(error: String?, onLogin: (String, String) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF7FCFF))
+            .background(AppBg)
     ) {
-        DecorativeLoginBackground()
+        Box(Modifier.fillMaxWidth().height(180.dp).background(DeepTeal))
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -758,15 +758,28 @@ private fun LoginScreen(error: String?, onLogin: (String, String) -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(2.dp, Line, RoundedCornerShape(8.dp)),
+                shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 26.dp, vertical = 34.dp),
+                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFE0F2F5), RoundedCornerShape(6.dp))
+                            .border(2.dp, Line, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("AKSES PETUGAS PLN ULP SABAK", color = DeepTeal, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                    }
+                    Spacer(Modifier.height(18.dp))
                     SimontokLogo()
                     Spacer(Modifier.height(14.dp))
                     Text(
@@ -774,11 +787,12 @@ private fun LoginScreen(error: String?, onLogin: (String, String) -> Unit) {
                         fontSize = 34.sp,
                         fontWeight = FontWeight.Black,
                         color = DeepTeal,
-                        letterSpacing = 4.sp
+                        letterSpacing = 0.sp
                     )
-                    Spacer(Modifier.height(16.dp))
+                    Text("MONITORING TUNGGAKAN PETUGAS", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
                     AccentDivider()
-                    Spacer(Modifier.height(26.dp))
+                    Spacer(Modifier.height(20.dp))
                     OutlinedTextField(
                         value = username,
                         onValueChange = { username = it.uppercase() },
@@ -786,11 +800,12 @@ private fun LoginScreen(error: String?, onLogin: (String, String) -> Unit) {
                         leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null, tint = DeepTeal) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(6.dp),
                         colors = loginFieldColors(),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(64.dp)
+                            .border(2.dp, Line, RoundedCornerShape(6.dp))
                     )
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
@@ -809,11 +824,12 @@ private fun LoginScreen(error: String?, onLogin: (String, String) -> Unit) {
                         },
                         singleLine = true,
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(6.dp),
                         colors = loginFieldColors(),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(64.dp)
+                            .border(2.dp, Line, RoundedCornerShape(6.dp))
                     )
                     if (!error.isNullOrBlank()) {
                         Spacer(Modifier.height(10.dp))
@@ -823,18 +839,16 @@ private fun LoginScreen(error: String?, onLogin: (String, String) -> Unit) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(60.dp)
-                            .background(
-                                Brush.horizontalGradient(listOf(BrightTeal, DeepTeal)),
-                                RoundedCornerShape(12.dp)
-                            )
+                            .height(56.dp)
+                            .background(DeepTeal, RoundedCornerShape(6.dp))
+                            .border(2.dp, Line, RoundedCornerShape(6.dp))
                             .clickable { onLogin(username.trim(), password) },
                         contentAlignment = Alignment.Center
                     ) {
                         Text("LOGIN", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.height(18.dp))
-                    Text("Built BY Rizal Fatoni", color = TextMuted, fontSize = 12.sp)
+                    Text("Built by Rizal Fatoni", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -1165,14 +1179,18 @@ private fun HomeScreen(
                 petugasName = petugasName,
                 count = allSortedRows.size,
                 total = total,
-                searchQuery = listSearchQuery,
-                onSearchQueryChange = { listSearchQuery = it },
+                printerName = receiptSettings.printerName,
+                onPrinter = { showPrinter = true }
             )
             SyncProgressBanner(syncState)
             DataUpdateBanner(dataNotice = dataNotice, syncState = syncState, onRefresh = onRefresh)
             PremiumWarningBar(
                 premiumStatus = premiumStatus,
                 onOpen = { showMoreMenu = true }
+            )
+            HighContrastSearch(
+                searchQuery = listSearchQuery,
+                onSearchQueryChange = { listSearchQuery = it }
             )
 
             if (allSortedRows.isEmpty()) {
@@ -1221,6 +1239,7 @@ private fun HomeScreen(
             BottomNavigationBar(
                 onHome = { },
                 onStruk = { showPrintList = true },
+                onHistory = { showReceiptHistory = true },
                 onMenu = { showMoreMenu = true }
             )
         }
@@ -1468,61 +1487,95 @@ private fun HeaderPanel(
     petugasName: String,
     count: Int,
     total: Double,
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit
+    printerName: String,
+    onPrinter: () -> Unit
 ) {
-    Column(Modifier.fillMaxWidth()) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(126.dp)
-                .background(Brush.linearGradient(listOf(DeepTeal, Color(0xFF007E9D))))
-        ) {
-            HeaderDecorations()
-            Column(
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(DeepTeal)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(petugasName.uppercase(), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Box(
+                        Modifier
+                            .background(Color.White, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                    ) {
+                        Text("PETUGAS", color = DeepTeal, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                    }
+                    Text("PLN ULP SABAK", color = Color(0xFFDFF7F8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            Row(
                 Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp)
-                    .align(Alignment.BottomStart)
+                    .background(Color.White, RoundedCornerShape(6.dp))
+                    .border(2.dp, Line, RoundedCornerShape(6.dp))
+                    .clickable { onPrinter() }
+                    .padding(horizontal = 9.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(petugasName, color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Black)
-                Spacer(Modifier.height(7.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SummaryCard("Pelanggan", count.toString(), SummaryIcon.People, Modifier.weight(1f))
-                    SummaryCard("Total Tagihan", formatRupiah(total), SummaryIcon.Bill, Modifier.weight(1f))
+                Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = DeepTeal, modifier = Modifier.size(17.dp))
+                Spacer(Modifier.width(5.dp))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("PRINTER", color = TextMuted, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        printerName.ifBlank { "Belum dipilih" },
+                        color = TextMain,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-        ) {
-            TextField(
-                value = searchQuery,
-                onValueChange = onSearchQueryChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp)
-                    .border(1.dp, Line, RoundedCornerShape(9.dp)),
-                placeholder = { Text("Cari IDPEL / Nama Pelanggan", fontSize = 12.sp, color = TextMuted) },
-                leadingIcon = {
-                    Icon(Icons.Outlined.Search, contentDescription = null, tint = BrightTeal, modifier = Modifier.size(18.dp))
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold),
-                colors = androidx.compose.material3.TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    disabledContainerColor = Color.White,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = BrightTeal
-                )
-            )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SummaryCard("Pelanggan", count.toString(), SummaryIcon.People, Modifier.weight(1f))
+            SummaryCard("Total Tagihan", formatRupiah(total), SummaryIcon.Bill, Modifier.weight(1f))
         }
+    }
+}
+
+@Composable
+private fun HighContrastSearch(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(AppBg)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        TextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp)
+                .border(2.dp, Line, RoundedCornerShape(8.dp)),
+            placeholder = { Text("Cari IDPEL / Nama Pelanggan", fontSize = 13.sp, color = TextMuted) },
+            leadingIcon = {
+                Icon(Icons.Outlined.Search, contentDescription = null, tint = DeepTeal, modifier = Modifier.size(20.dp))
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold),
+            shape = RoundedCornerShape(8.dp),
+            colors = androidx.compose.material3.TextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                disabledContainerColor = Color.White,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                cursorColor = DeepTeal
+            )
+        )
     }
 }
 
@@ -1534,17 +1587,20 @@ private fun SyncProgressBanner(syncState: SyncState) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .background(AppBg)
+                    .padding(horizontal = 12.dp, vertical = 5.dp)
             ) {
                 LinearProgressIndicator(
                     progress = { syncState.progress.coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = BrightTeal,
-                    trackColor = Color(0xFFE6EEF4)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .border(1.dp, Line, RoundedCornerShape(4.dp)),
+                    color = DeepTeal,
+                    trackColor = Color.White
                 )
                 Spacer(Modifier.height(4.dp))
-                Text(syncState.message, fontSize = 11.sp, color = TextMuted)
+                Text(syncState.message, fontSize = 11.sp, color = TextMain, fontWeight = FontWeight.Bold)
             }
         }
         is SyncState.Done -> Unit
@@ -1574,25 +1630,34 @@ private fun DataUpdateBanner(
     Row(
         Modifier
             .fillMaxWidth()
-            .background(bg)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .background(AppBg)
+            .padding(horizontal = 12.dp, vertical = 5.dp)
+            .background(bg, RoundedCornerShape(7.dp))
+            .border(2.dp, Line, RoundedCornerShape(7.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = if (isLoading) "Memperbarui data..." else message,
             modifier = Modifier.weight(1f),
-            color = fg,
+            color = TextMain,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
         if (isLoading) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = BrightTeal)
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = DeepTeal)
         } else {
-            IconButton(onClick = onRefresh, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh data", tint = BrightTeal, modifier = Modifier.size(19.dp))
+            IconButton(
+                onClick = onRefresh,
+                modifier = Modifier
+                    .size(34.dp)
+                    .background(Color.White, RoundedCornerShape(6.dp))
+                    .border(2.dp, Line, RoundedCornerShape(6.dp))
+            ) {
+                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh data", tint = DeepTeal, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -1604,15 +1669,18 @@ private fun PremiumWarningBar(premiumStatus: PremiumStatus, onOpen: () -> Unit) 
     Row(
         Modifier
             .fillMaxWidth()
-            .background(Color(0xFFFFF8E1))
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .background(AppBg)
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .background(Color(0xFFFEF3C7), RoundedCornerShape(7.dp))
+            .border(2.dp, Line, RoundedCornerShape(7.dp))
+            .padding(horizontal = 10.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             "! Premium aktif di perangkat lain",
             modifier = Modifier.weight(1f),
-            color = Color(0xFF8A5700),
+            color = Color(0xFF92400E),
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -1620,7 +1688,7 @@ private fun PremiumWarningBar(premiumStatus: PremiumStatus, onOpen: () -> Unit) 
         )
         Text(
             "Periksa",
-            color = BrightTeal,
+            color = DeepTeal,
             fontSize = 12.sp,
             fontWeight = FontWeight.Black,
             modifier = Modifier.clickable { onOpen() }.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -1632,25 +1700,29 @@ private fun PremiumWarningBar(premiumStatus: PremiumStatus, onOpen: () -> Unit) 
 private fun BottomNavigationBar(
     onHome: () -> Unit,
     onStruk: () -> Unit,
+    onHistory: () -> Unit,
     onMenu: () -> Unit
 ) {
     Row(
         Modifier
             .fillMaxWidth()
             .background(Color.White)
-            .border(1.dp, Line)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .border(2.dp, Line)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         BottomNavItem("Home", selected = true, onClick = onHome, modifier = Modifier.weight(1f)) {
-            Icon(Icons.Outlined.Groups, contentDescription = null, tint = if (it) BrightTeal else TextMuted, modifier = Modifier.size(20.dp))
+            Icon(Icons.Outlined.Groups, contentDescription = null, tint = if (it) DeepTeal else TextMuted, modifier = Modifier.size(20.dp))
         }
-        BottomNavItem("All Pelanggan", selected = false, onClick = onStruk, modifier = Modifier.weight(1f)) {
-            Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = if (it) BrightTeal else TextMuted, modifier = Modifier.size(20.dp))
+        BottomNavItem("Semua", selected = false, onClick = onStruk, modifier = Modifier.weight(1f)) {
+            Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = if (it) DeepTeal else TextMuted, modifier = Modifier.size(20.dp))
+        }
+        BottomNavItem("Riwayat", selected = false, onClick = onHistory, modifier = Modifier.weight(1f)) {
+            Icon(Icons.Outlined.ContentCopy, contentDescription = null, tint = if (it) DeepTeal else TextMuted, modifier = Modifier.size(20.dp))
         }
         BottomNavItem("Menu", selected = false, onClick = onMenu, modifier = Modifier.weight(1f)) {
-            Icon(Icons.Outlined.Settings, contentDescription = null, tint = if (it) BrightTeal else TextMuted, modifier = Modifier.size(20.dp))
+            Icon(Icons.Outlined.Settings, contentDescription = null, tint = if (it) DeepTeal else TextMuted, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -1665,14 +1737,15 @@ private fun BottomNavItem(
 ) {
     Column(
         modifier
-            .height(46.dp)
-            .background(if (selected) Color(0xFFE8F8FB) else Color.White, RoundedCornerShape(14.dp))
+            .height(48.dp)
+            .background(if (selected) Color(0xFFE0F2F5) else Color.White, RoundedCornerShape(7.dp))
+            .then(if (selected) Modifier.border(2.dp, Line, RoundedCornerShape(7.dp)) else Modifier)
             .clickable { onClick() },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         icon(selected)
-        Text(label, color = if (selected) BrightTeal else TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = if (selected) DeepTeal else TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Black)
     }
 }
 
@@ -1693,15 +1766,29 @@ private fun MoreMenuDialog(
     onLogout: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
-        Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Card(
+            modifier = Modifier.border(2.dp, Line, RoundedCornerShape(8.dp)),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
             Column(
                 Modifier
-                    .padding(16.dp)
+                    .padding(14.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                Text("Menu", fontSize = 20.sp, fontWeight = FontWeight.Black, color = TextMain)
-                Text("Fitur tambahan aplikasi", color = TextMuted, fontSize = 12.sp)
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(DeepTeal, RoundedCornerShape(6.dp))
+                        .border(2.dp, Line, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Column {
+                        Text("MENU PETUGAS", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.White)
+                        Text("Data, printer, dan pengaturan aplikasi", color = Color(0xFFDFF7F8), fontSize = 11.sp)
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 Text("DATA & TOOLS", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Black)
                 MoreMenuItem("Riwayat Cetak", "Struk asli dan cetak ulang", onClick = onReceiptHistory) {
@@ -1894,13 +1981,20 @@ private fun MoreMenuItem(
     Row(
         Modifier
             .fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(12.dp))
+            .background(if (danger) Color(0xFFFFF1F2) else Color.White, RoundedCornerShape(7.dp))
+            .border(2.dp, Line, RoundedCornerShape(7.dp))
             .clickable { onClick() }
-            .padding(vertical = 10.dp),
+            .padding(horizontal = 9.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(38.dp).background(if (danger) Color(0xFFFFECEC) else Color(0xFFEAF5F9), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .size(38.dp)
+                .background(if (danger) Color(0xFFFECACA) else Color(0xFFE0F2F5), RoundedCornerShape(6.dp))
+                .border(1.dp, Line, RoundedCornerShape(6.dp)),
+            contentAlignment = Alignment.Center
+        ) {
             icon()
         }
         Column(Modifier.weight(1f)) {
@@ -1979,29 +2073,30 @@ private fun CompactMenuButton(
 @Composable
 private fun SummaryCard(title: String, value: String, icon: SummaryIcon, modifier: Modifier = Modifier) {
     Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
+        modifier = modifier.border(2.dp, Line, RoundedCornerShape(8.dp)),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(horizontal = 9.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
-                    .size(34.dp)
-                    .background(Color(0xFFEAF5F9), RoundedCornerShape(50)),
+                    .size(35.dp)
+                    .background(Color(0xFFE0F2F5), RoundedCornerShape(6.dp))
+                    .border(1.dp, Line, RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (icon == SummaryIcon.People) Icons.Outlined.Groups else Icons.Outlined.ReceiptLong,
                     contentDescription = null,
-                    tint = BrightTeal,
+                    tint = DeepTeal,
                     modifier = Modifier.size(20.dp)
                 )
             }
             Spacer(Modifier.width(8.dp))
             Column {
-                Text(title, fontSize = 11.sp, color = TextMuted)
-                Text(value, fontSize = 15.sp, fontWeight = FontWeight.Black, color = TextMain, maxLines = 1)
+                Text(title.uppercase(), fontSize = 9.sp, color = TextMuted, fontWeight = FontWeight.Black)
+                Text(value, fontSize = 15.sp, fontWeight = FontWeight.Black, color = TextMain, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -2013,9 +2108,10 @@ private fun KolokHeader(header: DisplayRow.GroupHeader, collapsed: Boolean, onTo
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 2.dp)
+            .border(2.dp, Line, RoundedCornerShape(8.dp))
             .clickable { onToggle() },
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF6FB)),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F2F5)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
@@ -2026,19 +2122,19 @@ private fun KolokHeader(header: DisplayRow.GroupHeader, collapsed: Boolean, onTo
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text("KOLOK", fontSize = 11.sp, color = BrightTeal, fontWeight = FontWeight.Bold)
+                Text("KOLOK", fontSize = 10.sp, color = DeepTeal, fontWeight = FontWeight.Black)
                 Text(header.kolok.ifBlank { "-" }, fontSize = 17.sp, color = TextMain, fontWeight = FontWeight.Black)
             }
             Box(Modifier.width(1.dp).height(36.dp).background(Line))
             Column(horizontalAlignment = Alignment.End) {
                 Text("${header.count} pelanggan", fontSize = 12.sp, color = TextMuted)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(formatRupiah(header.total), fontSize = 16.sp, color = BrightTeal, fontWeight = FontWeight.Black)
+                Text(formatRupiah(header.total), fontSize = 16.sp, color = DeepTeal, fontWeight = FontWeight.Black)
                     Spacer(Modifier.width(6.dp))
                     Icon(
                         if (collapsed) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess,
                         contentDescription = if (collapsed) "Buka KOLOK" else "Tutup KOLOK",
-                        tint = BrightTeal,
+                        tint = DeepTeal,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -2056,80 +2152,102 @@ private fun CustomerCard(
 ) {
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
-    val background = MarkColors.getOrElse(mark.colorIndex) { Color.White }
+    val markColor = MarkColors.getOrElse(mark.colorIndex) { Color.White }
+    val accentColor = if (markColor == Color.White) DeepTeal else markColor
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
-            .border(1.dp, Line, RoundedCornerShape(10.dp)),
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = background),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .border(2.dp, Line, RoundedCornerShape(8.dp)),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(Modifier.fillMaxWidth()) {
+            Box(Modifier.width(7.dp).height(188.dp).background(accentColor))
+            Column(
+                Modifier
+                    .weight(1f)
+                    .padding(horizontal = 11.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("ID PEL", fontSize = 11.sp, color = BrightTeal, fontWeight = FontWeight.Bold)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(row.idpel, fontSize = 16.sp, color = TextMain, fontWeight = FontWeight.Black)
-                            IconButton(onClick = {
-                                clipboard.setText(AnnotatedString(row.idpel))
-                                Toast.makeText(context, "IDPEL disalin", Toast.LENGTH_SHORT).show()
-                            }, modifier = Modifier.size(34.dp)) {
-                                Icon(Icons.Outlined.ContentCopy, contentDescription = "Salin IDPEL", tint = BrightTeal, modifier = Modifier.size(20.dp))
-                            }
-                        }
-                    }
-                    Text(formatRupiah(row.rptag), fontWeight = FontWeight.Black, color = BrightTeal, fontSize = 16.sp)
-                }
-                Text(row.nama.ifBlank { "-" }, fontSize = 15.sp, fontWeight = FontWeight.Black, color = TextMain, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "${row.tarif} / ${row.daya} | Lembar ${row.lembar} | KOLOK ${row.kolok.ifBlank { "-" }} | KOKED ${row.koked.ifBlank { "-" }}",
-                        fontSize = 12.sp,
-                        color = TextMuted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        row.alamat.ifBlank { "-" },
-                        modifier = Modifier.weight(1f),
-                        fontSize = 12.sp,
-                        color = TextMuted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Text(row.nama.ifBlank { "-" }, modifier = Modifier.weight(1f), fontSize = 16.sp, fontWeight = FontWeight.Black, color = TextMain, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.width(8.dp))
-                    Row(
-                        Modifier
-                            .background(Color(0xFFE8F8FB), RoundedCornerShape(8.dp))
-                            .clickable { onPrint() }
-                            .padding(horizontal = 9.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = BrightTeal, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Cetak", color = BrightTeal, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(formatRupiah(row.rptag), fontWeight = FontWeight.Black, color = DeepTeal, fontSize = 17.sp)
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFF1F5F9), RoundedCornerShape(6.dp))
+                        .border(1.dp, Line, RoundedCornerShape(6.dp))
+                        .padding(start = 10.dp, end = 3.dp, top = 5.dp, bottom = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("ID PELANGGAN", fontSize = 9.sp, color = TextMuted, fontWeight = FontWeight.Black)
+                        Text(row.idpel, fontSize = 16.sp, color = TextMain, fontWeight = FontWeight.Black)
                     }
-                    Spacer(Modifier.width(6.dp))
-                    Row(
-                        Modifier
-                            .background(Color(0xFFFFF4DF), RoundedCornerShape(8.dp))
-                            .clickable { onColorChange() }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Outlined.WaterDrop, contentDescription = null, tint = Color(0xFFF39C12), modifier = Modifier.size(15.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Warna", color = Color(0xFFF39C12), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    IconButton(onClick = {
+                        clipboard.setText(AnnotatedString(row.idpel))
+                        Toast.makeText(context, "IDPEL disalin", Toast.LENGTH_SHORT).show()
+                    }, modifier = Modifier.size(38.dp)) {
+                        Icon(Icons.Outlined.ContentCopy, contentDescription = "Salin IDPEL", tint = DeepTeal, modifier = Modifier.size(20.dp))
                     }
+                }
+                Text(
+                    "${row.tarif} / ${row.daya}  |  Lembar ${row.lembar}  |  KOLOK ${row.kolok.ifBlank { "-" }}  |  KOKED ${row.koked.ifBlank { "-" }}",
+                    fontSize = 11.sp,
+                    color = TextMuted,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(row.alamat.ifBlank { "-" }, fontSize = 11.sp, color = TextMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    CustomerActionButton(
+                        text = "Warna",
+                        filled = false,
+                        onClick = onColorChange,
+                        modifier = Modifier.weight(5f),
+                        icon = { Icon(Icons.Outlined.WaterDrop, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp)) }
+                    )
+                    CustomerActionButton(
+                        text = "Cetak",
+                        filled = true,
+                        onClick = onPrint,
+                        modifier = Modifier.weight(7f),
+                        icon = { Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp)) }
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CustomerActionButton(
+    text: String,
+    filled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: @Composable () -> Unit
+) {
+    val background = if (filled) DeepTeal else Color(0xFFFEF3C7)
+    val foreground = if (filled) Color.White else Color(0xFF92400E)
+    Row(
+        modifier
+            .height(42.dp)
+            .background(background, RoundedCornerShape(6.dp))
+            .border(2.dp, Line, RoundedCornerShape(6.dp))
+            .clickable { onClick() },
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        icon()
+        Spacer(Modifier.width(6.dp))
+        Text(text, color = foreground, fontSize = 13.sp, fontWeight = FontWeight.Black)
     }
 }
 
@@ -2244,10 +2362,30 @@ private fun PrintListDialog(
     }
 
     Dialog(onDismissRequest = onDismiss) {
-        Card(shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Card(
+            modifier = Modifier.border(2.dp, Line, RoundedCornerShape(8.dp)),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Cetak Struk", fontSize = 18.sp, fontWeight = FontWeight.Black, color = TextMain)
-                TextField(value = query, onValueChange = { query = it }, label = { Text("IDPEL") }, modifier = Modifier.fillMaxWidth())
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(DeepTeal, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 11.dp, vertical = 9.dp)
+                ) {
+                    Column {
+                        Text("SEMUA PELANGGAN", fontSize = 17.sp, fontWeight = FontWeight.Black, color = Color.White)
+                        Text("Cari dan cetak struk dari saldo akhir", color = Color(0xFFDFF7F8), fontSize = 10.sp)
+                    }
+                }
+                TextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    label = { Text("IDPEL / Nama") },
+                    modifier = Modifier.fillMaxWidth().border(2.dp, Line, RoundedCornerShape(8.dp)),
+                    shape = RoundedCornerShape(8.dp)
+                )
                 DialogButton(
                     "CARI IDPEL",
                     filled = true,
@@ -2257,13 +2395,13 @@ private fun PrintListDialog(
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Text("Bisa cetak IDPEL saldo akhir walaupun tidak tampil di list petugas.", color = TextMuted, fontSize = 11.sp)
                 LazyColumn(Modifier.height(360.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(visibleRows, key = { it.idpel }) { row ->
                         Row(
                             Modifier
                                 .fillMaxWidth()
-                                .border(1.dp, Line, RoundedCornerShape(8.dp))
+                                .background(Color.White, RoundedCornerShape(7.dp))
+                                .border(2.dp, Line, RoundedCornerShape(7.dp))
                                 .clickable { onPrint(row) }
                                 .padding(9.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -2272,7 +2410,7 @@ private fun PrintListDialog(
                                 Text(row.idpel, fontWeight = FontWeight.Black, color = TextMain)
                                 Text(row.nama, color = TextMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
-                            Text("Cetak", color = BrightTeal, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("CETAK", color = DeepTeal, fontWeight = FontWeight.Black, fontSize = 12.sp)
                         }
                     }
                 }
@@ -2503,9 +2641,13 @@ internal fun ReceiptPreviewDialog(
     val previewText = snapshot.text
 
     Dialog(onDismissRequest = onDismiss) {
-        Card(shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Card(
+            modifier = Modifier.border(2.dp, Line, RoundedCornerShape(8.dp)),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = AppBg)
+        ) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Print Preview", fontSize = 18.sp, fontWeight = FontWeight.Black, color = TextMain)
+                Text("PREVIEW STRUK", fontSize = 18.sp, fontWeight = FontWeight.Black, color = TextMain)
                 Text("${preview.row.idpel} - ${preview.row.nama}", color = TextMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (premiumStatus.isActive()) {
                     TextField(
@@ -2538,8 +2680,8 @@ internal fun ReceiptPreviewDialog(
                     modifier = Modifier
                         .height(320.dp)
                         .fillMaxWidth()
-                        .background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp))
-                        .border(1.dp, Line, RoundedCornerShape(8.dp))
+                        .background(Color.White, RoundedCornerShape(6.dp))
+                        .border(2.dp, Line, RoundedCornerShape(6.dp))
                         .padding(10.dp)
                 ) {
                     item {
@@ -2562,13 +2704,13 @@ internal fun ReceiptPreviewDialog(
 private fun DialogButton(text: String, filled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier
-            .height(42.dp)
-            .background(if (filled) BrightTeal else Color.White, RoundedCornerShape(9.dp))
-            .border(1.dp, BrightTeal, RoundedCornerShape(9.dp))
+            .height(44.dp)
+            .background(if (filled) DeepTeal else Color.White, RoundedCornerShape(6.dp))
+            .border(2.dp, Line, RoundedCornerShape(6.dp))
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = if (filled) Color.White else BrightTeal, fontWeight = FontWeight.Bold)
+        Text(text, color = if (filled) Color.White else DeepTeal, fontWeight = FontWeight.Black)
     }
 }
 
