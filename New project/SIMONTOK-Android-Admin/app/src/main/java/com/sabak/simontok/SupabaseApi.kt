@@ -346,15 +346,24 @@ class SupabaseApi {
 
     fun fetchOfflineSyncData(
         accessToken: String,
+        currentVersion: String? = null,
+        requiredVersion: String? = null,
+        onOwnReady: (OfflineSyncData) -> Unit = {},
         onPage: (count: Int, meters: Map<String, ReceiptMeter>) -> Unit = { _, _ -> }
     ): OfflineSyncData {
         if (BuildConfig.OFFLINE_SNAPSHOT_URL.isNotBlank()) {
             try {
-                return fetchOfflineSnapshot(accessToken, onPage)
+                return fetchOfflineSnapshot(
+                    accessToken = accessToken,
+                    currentVersion = currentVersion,
+                    requiredVersion = requiredVersion,
+                    onOwnReady = onOwnReady,
+                    onPage = onPage
+                )
             } catch (error: SessionExpiredException) {
                 throw error
             } catch (_: Throwable) {
-                // R2 is an acceleration layer. Supabase remains the safe fallback.
+                // Cloudflare is an acceleration layer. Supabase remains the safe fallback.
             }
         }
         return fetchOfflineSyncDataFromSupabase(accessToken, onPage)
@@ -398,28 +407,97 @@ class SupabaseApi {
 
     private fun fetchOfflineSnapshot(
         accessToken: String,
+        currentVersion: String?,
+        requiredVersion: String?,
+        onOwnReady: (OfflineSyncData) -> Unit,
         onPage: (count: Int, meters: Map<String, ReceiptMeter>) -> Unit
     ): OfflineSyncData {
         val baseUrl = BuildConfig.OFFLINE_SNAPSHOT_URL.trim().trimEnd('/')
-        val manifestRequest = Request.Builder()
+        val manifestRequestBuilder = Request.Builder()
             .url("$baseUrl/v1/manifest")
             .addHeader("Authorization", "Bearer $accessToken")
             .addHeader("Accept", "application/json")
-            .build()
-        val manifest = snapshotClient.newCall(manifestRequest).execute().use { response ->
+        if (requiredVersion.isNullOrBlank() && !currentVersion.isNullOrBlank()) {
+            manifestRequestBuilder.addHeader("If-None-Match", "\"$currentVersion\"")
+        }
+        val manifestJson = snapshotClient.newCall(manifestRequestBuilder.build()).execute().use { response ->
             val body = response.body?.string().orEmpty()
             if (response.code == 401) throw SessionExpiredException()
+            if (response.code == 304) return OfflineSyncData(
+                rows = emptyList(),
+                meters = emptyMap(),
+                dataVersion = currentVersion,
+                notModified = true
+            )
             if (!response.isSuccessful) throw IOException("Snapshot offline belum tersedia.")
             JSONObject(body)
         }
-        val version = manifest.optString("version").ifBlank {
+        val version = manifestJson.optString("version").ifBlank {
             throw IOException("Versi snapshot offline tidak valid.")
         }
-        val downloadPath = manifest.optString("downloadPath")
+        if (!requiredVersion.isNullOrBlank() && version != requiredVersion) {
+            throw IOException("Snapshot terbaru masih disiapkan.")
+        }
+        if (!currentVersion.isNullOrBlank() && version == currentVersion) {
+            return OfflineSyncData(
+                rows = emptyList(),
+                meters = emptyMap(),
+                dataVersion = version,
+                notModified = true
+            )
+        }
+
+        val legacyPath = manifestJson.optString("downloadPath")
+        val legacySha256 = manifestJson.optString("sha256")
+        val legacyCount = manifestJson.optInt("count", -1)
+        val manifest = OfflineSnapshotManifest(
+            version = version,
+            ownPath = manifestJson.optString("ownDownloadPath").ifBlank { legacyPath },
+            ownSha256 = manifestJson.optString("ownSha256").ifBlank { legacySha256 },
+            ownCount = if (manifestJson.has("ownCount")) manifestJson.optInt("ownCount", -1) else legacyCount,
+            allPath = manifestJson.optString("allDownloadPath").ifBlank { legacyPath },
+            allSha256 = manifestJson.optString("allSha256").ifBlank { legacySha256 },
+            allCount = if (manifestJson.has("allCount")) manifestJson.optInt("allCount", -1) else legacyCount
+        )
+
+        val ownData = fetchOfflineSnapshotPackage(
+            baseUrl = baseUrl,
+            accessToken = accessToken,
+            version = manifest.version,
+            downloadPath = manifest.ownPath,
+            expectedSha256 = manifest.ownSha256,
+            expectedCount = manifest.ownCount
+        )
+        onPage(ownData.rows.size, ownData.meters)
+        onOwnReady(ownData)
+
+        if (manifest.ownPath == manifest.allPath && manifest.ownSha256 == manifest.allSha256) {
+            return ownData
+        }
+
+        val allData = fetchOfflineSnapshotPackage(
+            baseUrl = baseUrl,
+            accessToken = accessToken,
+            version = manifest.version,
+            downloadPath = manifest.allPath,
+            expectedSha256 = manifest.allSha256,
+            expectedCount = manifest.allCount
+        )
+        onPage(allData.rows.size, allData.meters)
+        return allData
+    }
+
+    private fun fetchOfflineSnapshotPackage(
+        baseUrl: String,
+        accessToken: String,
+        version: String,
+        downloadPath: String,
+        expectedSha256: String,
+        expectedCount: Int
+    ): OfflineSyncData {
         if (!downloadPath.startsWith("/v1/snapshot")) {
             throw IOException("Alamat snapshot offline tidak valid.")
         }
-        val expectedSha256 = manifest.optString("sha256")
 
         val snapshotRequest = Request.Builder()
             .url("$baseUrl$downloadPath")
@@ -442,6 +520,9 @@ class SupabaseApi {
         }
         val array = payload.optJSONArray("rows") ?: JSONArray()
         if (array.length() > 50_000) throw IOException("Jumlah data sinkronisasi melewati batas pengaman.")
+        if (expectedCount >= 0 && array.length() != expectedCount) {
+            throw IOException("Jumlah data paket offline tidak lengkap.")
+        }
 
         val rows = linkedMapOf<String, CustomerDebt>()
         val meters = linkedMapOf<String, ReceiptMeter>()
@@ -457,7 +538,6 @@ class SupabaseApi {
                 }
             }
         }
-        onPage(rows.size, meters)
         return OfflineSyncData(rows.values.toList(), meters, version)
     }
 
@@ -914,12 +994,19 @@ class SupabaseApi {
 
             val item = array.getJSONObject(0)
             val payloadValue = item.opt("payload")
-            val uploadedAt = when (payloadValue) {
-                is JSONObject -> payloadValue.optString("uploadedAt")
-                is String -> runCatching { JSONObject(payloadValue).optString("uploadedAt") }.getOrDefault("")
-                else -> ""
+            val payload = when (payloadValue) {
+                is JSONObject -> payloadValue
+                is String -> runCatching { JSONObject(payloadValue) }.getOrNull()
+                else -> null
             }
-            return uploadedAt.ifBlank { item.optString("updated_at").ifBlank { null } }
+            val snapshotVersion = payload
+                ?.optJSONObject("offlineSnapshot")
+                ?.optString("version")
+                .orEmpty()
+            val uploadedAt = payload?.optString("uploadedAt").orEmpty()
+            return snapshotVersion.ifBlank {
+                uploadedAt.ifBlank { item.optString("updated_at").ifBlank { null } }
+            }
         }
     }
 
@@ -1102,8 +1189,12 @@ class RealtimeDebtSignalSubscription(
         val envelope = json.optJSONObject("payload") ?: return
         if (envelope.optString("event") != "debt-update") return
         val payload = envelope.optJSONObject("payload")
+        val snapshotVersion = payload
+            ?.optJSONObject("offlineSnapshot")
+            ?.optString("version")
+            .orEmpty()
         val uploadedAt = payload?.optString("uploadedAt").orEmpty()
-        onUpdate(uploadedAt)
+        onUpdate(snapshotVersion.ifBlank { uploadedAt })
     }
 
     @Synchronized
@@ -1187,7 +1278,18 @@ data class CustomerDebt(
 data class OfflineSyncData(
     val rows: List<CustomerDebt>,
     val meters: Map<String, ReceiptMeter>,
-    val dataVersion: String? = null
+    val dataVersion: String? = null,
+    val notModified: Boolean = false
+)
+
+private data class OfflineSnapshotManifest(
+    val version: String,
+    val ownPath: String,
+    val ownSha256: String,
+    val ownCount: Int,
+    val allPath: String,
+    val allSha256: String,
+    val allCount: Int
 )
 
 private data class OfflineSyncItem(

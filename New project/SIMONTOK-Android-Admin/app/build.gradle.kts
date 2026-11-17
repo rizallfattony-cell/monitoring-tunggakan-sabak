@@ -13,8 +13,8 @@ android {
         applicationId = "com.sabak.simontok"
         minSdk = 23
         targetSdk = 35
-        versionCode = 20
-        versionName = "1.7.10-preview"
+        versionCode = 21
+        versionName = "1.7.11-preview"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "SUPABASE_URL", "\"https://qkruxwirngbiscxdyjgc.supabase.co\"")
