@@ -5293,8 +5293,8 @@ function handleKogolMonthChange(event) {
   scheduleKogolDashboardSave();
 }
 
-async function saveKogolSnapshot(date, snapshots, fileName, uploadKey) {
-  const saved = await kogolDashboardController.saveSnapshots(date, snapshots, fileName);
+async function saveKogolSnapshot(date, snapshots, fileName, uploadKey, receiptCustomers = []) {
+  const saved = await kogolDashboardController.saveSnapshots(date, snapshots, fileName, receiptCustomers);
   if (!saved) return false;
   state.kogolDashboard.uploads[uploadKey] = { uploadedAt: new Date().toISOString(), fileName, month: date.slice(0, 7) };
   if (uploadKey.endsWith("akhir") && state.kogolDashboard.selectedMonth !== date.slice(0, 7)) {
@@ -5325,6 +5325,14 @@ function summarizeKogolRows(rows) {
   };
 }
 
+function getKogolUploadGroupKey(row, kind) {
+  if (kind === "kogol4") return "KOGOL_4";
+  const satker = cleanText(getValue(row, ["SATKER_MIV", "SATKER MIV"], ["SATKERMIV", "SATKER"])).toUpperCase();
+  return satker.includes("14032800") || satker.includes("LPJU MUARA SABAK")
+    ? "KOGOL_3_LPJU"
+    : "KOGOL_3_PERKANTORAN";
+}
+
 function parseKogolUploadRows(rows, kind) {
   const groups = new Map();
   const hasSatker = (rows || []).some((row) => cleanText(getValue(row, ["SATKER_MIV", "SATKER MIV"], ["SATKERMIV", "SATKER"])).length > 0);
@@ -5337,12 +5345,7 @@ function parseKogolUploadRows(rows, kind) {
     if (!idpel) continue;
     const rptag = parseCurrency(getValue(row, ["RPTAG", "RP TAG", "RP TAGIHAN", "TAGIHAN"], ["RPTAG"]));
     const rpbk = parseCurrency(getValue(row, ["RPBK", "RP BK", "BIAYA KETERLAMBATAN"], ["RPBK"]));
-    const satker = cleanText(getValue(row, ["SATKER_MIV", "SATKER MIV"], ["SATKERMIV", "SATKER"])).toUpperCase();
-    const kogolKey = kind === "kogol4"
-      ? "KOGOL_4"
-      : (satker.includes("14032800") || satker.includes("LPJU MUARA SABAK")
-        ? "KOGOL_3_LPJU"
-        : "KOGOL_3_PERKANTORAN");
+    const kogolKey = getKogolUploadGroupKey(row, kind);
     const group = groups.get(kogolKey) || new Map();
     group.set(idpel, (group.get(idpel) || 0) + Math.max(0, rptag + rpbk));
     groups.set(kogolKey, group);
@@ -5359,6 +5362,39 @@ function parseKogolUploadRows(rows, kind) {
       saldoRupiah: [...customers.values()].reduce((total, value) => total + value, 0),
     };
   });
+}
+
+function parseKogolReceiptRows(rows, kind) {
+  const customers = new Map();
+  for (const row of rows || []) {
+    const idpel = normalizeId(getValue(row, ["IDPEL", "ID PEL", "ID_PEL", "ID PELANGGAN", "NO IDPEL"]));
+    if (!/^\d{10,16}$/.test(idpel)) continue;
+    const rptag = parseCurrency(getValue(row, ["RPTAG", "RP TAG", "RP TAGIHAN", "TAGIHAN"], ["RPTAG"]));
+    const rpbk = parseCurrency(getValue(row, ["RPBK", "RP BK", "BIAYA KETERLAMBATAN"], ["RPBK"]));
+    const amount = Math.max(0, Math.round(rptag + rpbk));
+    if (!amount) continue;
+    const kogolKey = getKogolUploadGroupKey(row, kind);
+    const mapKey = `${kogolKey}:${idpel}`;
+    const current = customers.get(mapKey) || {
+      kogolKey,
+      idpel,
+      nama: "",
+      tarif: "",
+      daya: "",
+      rptag: 0,
+      billingPeriods: [],
+      standAwal: "",
+      standAkhir: "",
+    };
+    current.nama ||= cleanText(getValue(row, ["NAMA", "NAMA PELANGGAN", "NAMA PEL"], ["NAMA"])).slice(0, 255);
+    current.tarif ||= cleanText(getValue(row, ["TARIF", "TARIP"], ["TARIF"])).slice(0, 64);
+    current.daya ||= cleanText(getValue(row, ["DAYA"], ["DAYA"])).slice(0, 64);
+    current.standAwal ||= cleanText(getValue(row, ["STANDAWAL", "STAND AWAL", "STAND_AWAL"])).slice(0, 64);
+    current.standAkhir ||= cleanText(getValue(row, ["STANDAKHIR", "STAND AKHIR", "STAND_AKHIR"])).slice(0, 64);
+    current.rptag += amount;
+    customers.set(mapKey, current);
+  }
+  return [...customers.values()];
 }
 
 async function handleKogolUpload(event, kind, mode) {
@@ -5382,11 +5418,15 @@ async function handleKogolUpload(event, kind, mode) {
     if (!snapshots.some((snapshot) => snapshot.saldoId > 0)) {
       throw new Error("Tidak ada IDPEL yang dapat dibaca pada file ini.");
     }
-    updateProgress(75, "Menyimpan snapshot dashboard Kogol...");
-    const saved = await saveKogolSnapshot(selectedDate, snapshots, file.name, `${kind}${mode}`);
+    const receiptCustomers = mode === "akhir" ? parseKogolReceiptRows(rows, kind) : [];
+    updateProgress(75, mode === "akhir"
+      ? "Menyimpan dashboard dan detail pelanggan untuk cetak struk..."
+      : "Menyimpan snapshot dashboard Kogol...");
+    const saved = await saveKogolSnapshot(selectedDate, snapshots, file.name, `${kind}${mode}`, receiptCustomers);
     if (!saved) throw new Error("Snapshot Kogol belum tersimpan. Pastikan migrasi dashboard Kogol sudah diterapkan.");
     const total = snapshots.reduce((sum, snapshot) => sum + snapshot.saldoId, 0);
-    finishProgress(`${title} tersimpan: ${formatNumber(total)} IDPEL pada ${formatShortDate(selectedDate)}.`);
+    const receiptNote = mode === "akhir" ? " Detail pelanggan juga tersedia di web cetak struk." : "";
+    finishProgress(`${title} tersimpan: ${formatNumber(total)} IDPEL pada ${formatShortDate(selectedDate)}.${receiptNote}`);
   } catch (error) {
     failProgress(`Gagal ${title.toLowerCase()}: ${error.message}`);
     alert(`Gagal ${title.toLowerCase()}: ${error.message}`);

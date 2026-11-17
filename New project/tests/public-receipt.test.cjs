@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { parseIdpels, escapeHtml, money, receiptMoney, parseAdminFee, updateReceiptAdminFee, receiptHeaderTime, periodsLabel, compactPeriodsLabel, receiptPrintMonth, receiptMarkup, printSheets, makeReceipt, prepareCustomers } = require('../cetak-struk.js');
+const { parseIdpels, escapeHtml, money, receiptMoney, parseAdminFee, updateReceiptAdminFee, receiptHeaderTime, periodsLabel, compactPeriodsLabel, receiptPrintMonth, receiptMarkup, printSheets, makeReceipt, prepareCustomers, lookupCustomers } = require('../cetak-struk.js');
 
 assert.deepEqual(parseIdpels('143900000001\n143900000002,143900000003'), ['143900000001', '143900000002', '143900000003']);
 assert.throws(() => parseIdpels('143900000001 143900000001'), /unik/);
@@ -40,4 +40,19 @@ assert.equal((printSheets([receipt, receipt, receipt]).match(/class="receipt-slo
 assert.throws(() => makeReceipt({ ...base, rptag: -1 }), /tidak valid/);
 assert.deepEqual(prepareCustomers(['143900000001', '143900000002'], [{ ...base, rptag: 0 }, { ...base, rptag: 200, uploaded_at: '2026-11-12T00:00:00Z' }], [], null).map(row => row.rptag), [200]);
 
-console.log('PASS public receipt: validation, exact values, escaping and A4 grouping');
+(async () => {
+  const calls = [];
+  const kogolCustomer = { idpel: '143900000009', nama: 'KOGOL 3', rptag: 765432, admin_fee: 5000 };
+  const client = {
+    rpc: async (name, args) => {
+      calls.push({ name, args });
+      return { data: [kogolCustomer], error: null };
+    },
+  };
+  assert.deepEqual(await lookupCustomers(client, [kogolCustomer.idpel], 'receipt_operator'), [kogolCustomer]);
+  assert.deepEqual(calls, [{ name: 'lookup_receipt_customers', args: { p_idpels: [kogolCustomer.idpel] } }]);
+  console.log('PASS public receipt: validation, exact values, Kogol lookup, escaping and A4 grouping');
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

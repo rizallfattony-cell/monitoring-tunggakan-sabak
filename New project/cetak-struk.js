@@ -178,23 +178,9 @@ function prepareCustomers(ids, customers, meters, settings) {
 }
 
 async function lookupCustomers(client, ids, role) {
-  if (role === "receipt_operator") {
-    const { data, error } = await client.rpc("lookup_receipt_operator_customers", { p_idpels: ids });
-    if (error) throw error;
-    return data || [];
-  }
-  const { data: customers, error: customerError } = await client.from("monitoring_remaining_customers")
-    .select("*").eq("report_id", "main").in("idpel", ids);
-  if (customerError) throw customerError;
-  const visibleIds = [...new Set((customers || []).filter((row) => Number(row.rptag) > 0).map((row) => row.idpel))];
-  if (!visibleIds.length) return [];
-  const [meterResult, settingsResult] = await Promise.all([
-    client.from("monitoring_receipt_meters").select("idpel,stand_awal,stand_akhir").eq("report_id", "main").in("idpel", visibleIds),
-    client.from("monitoring_receipt_settings").select("admin_fee,nama_toko,alamat_toko").eq("id", "main").maybeSingle(),
-  ]);
-  if (meterResult.error) throw meterResult.error;
-  if (settingsResult.error) throw settingsResult.error;
-  return prepareCustomers(ids, customers || [], meterResult.data || [], settingsResult.data);
+  const { data, error } = await client.rpc("lookup_receipt_customers", { p_idpels: ids });
+  if (error) throw error;
+  return data || [];
 }
 
 function initPublicReceipt() {

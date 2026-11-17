@@ -298,7 +298,7 @@
       return records;
     }
 
-    async function saveSnapshots(date, snapshots, sourceFile) {
+    async function saveSnapshots(date, snapshots, sourceFile, receiptCustomers = []) {
       const context = syncContext();
       if (!context.client || !context.user || !context.isAdmin) return false;
       const snapshotDate = String(date || "").slice(0, 10);
@@ -309,12 +309,27 @@
       })).filter((snapshot) => GROUPS.some((group) => group.key === snapshot.kogol_key));
       if (!/^\d{4}-\d{2}-\d{2}$/.test(snapshotDate) || !rows.length) return false;
       const cleanFile = String(sourceFile || "").split(/[\\/]/).pop().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 255);
+      const customerRows = (Array.isArray(receiptCustomers) ? receiptCustomers : []).map((customer) => ({
+        kogol_key: String(customer?.kogolKey || customer?.kogol_key || "").trim().toUpperCase(),
+        idpel: String(customer?.idpel || "").replace(/\D/g, ""),
+        nama: String(customer?.nama || "").trim().slice(0, 255),
+        tarif: String(customer?.tarif || "").trim().slice(0, 64),
+        daya: String(customer?.daya || "").trim().slice(0, 64),
+        rptag: Math.max(0, Math.round(number(customer?.rptag))),
+        billing_periods: Array.isArray(customer?.billingPeriods || customer?.billing_periods)
+          ? (customer.billingPeriods || customer.billing_periods).slice(0, 24)
+          : [],
+        stand_awal: String(customer?.standAwal || customer?.stand_awal || "").trim().slice(0, 64),
+        stand_akhir: String(customer?.standAkhir || customer?.stand_akhir || "").trim().slice(0, 64),
+      })).filter((customer) => /^(KOGOL_3_PERKANTORAN|KOGOL_3_LPJU|KOGOL_4)$/.test(customer.kogol_key)
+        && /^\d{10,16}$/.test(customer.idpel) && customer.rptag > 0);
       let result;
       try {
-        result = await context.client.rpc("save_kogol_debt_snapshot", {
+        result = await context.client.rpc(customerRows.length ? "save_kogol_debt_upload" : "save_kogol_debt_snapshot", {
           p_snapshot_date: snapshotDate,
           p_source_file: cleanFile,
           p_rows: rows,
+          ...(customerRows.length ? { p_customers: customerRows } : {}),
         });
       } catch (error) {
         result = { error };
