@@ -5423,7 +5423,7 @@ async function handleKogolUpload(event, kind, mode) {
       ? "Menyimpan dashboard dan detail pelanggan untuk cetak struk..."
       : "Menyimpan snapshot dashboard Kogol...");
     const saved = await saveKogolSnapshot(selectedDate, snapshots, file.name, `${kind}${mode}`, receiptCustomers);
-    if (!saved) throw new Error("Snapshot Kogol belum tersimpan. Pastikan migrasi dashboard Kogol sudah diterapkan.");
+    if (!saved) throw new Error("Snapshot Kogol belum tersimpan.");
     const total = snapshots.reduce((sum, snapshot) => sum + snapshot.saldoId, 0);
     const receiptNote = mode === "akhir" ? " Detail pelanggan juga tersedia di web cetak struk." : "";
     finishProgress(`${title} tersimpan: ${formatNumber(total)} IDPEL pada ${formatShortDate(selectedDate)}.${receiptNote}`);

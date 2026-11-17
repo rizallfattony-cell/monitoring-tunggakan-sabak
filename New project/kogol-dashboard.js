@@ -180,7 +180,7 @@
 
   function describeError(error) {
     const message = [error?.message, error?.details, error?.hint, error?.code].filter(Boolean).join(" ");
-    if (/monitoring_kogol_debt_snapshots|save_kogol_debt_snapshot|schema cache|PGRST20/i.test(message)) {
+    if (/monitoring_kogol_debt_snapshots|monitoring_kogol_receipt_customers|save_kogol_debt_(snapshot|upload)|schema cache|PGRST20/i.test(message)) {
       return "Database dashboard Kogol belum diaktifkan.";
     }
     return message || "Data Kogol tidak dapat dimuat.";
@@ -335,8 +335,9 @@
         result = { error };
       }
       if (result?.error) {
-        elements.status.textContent = describeError(result.error);
-        return false;
+        const message = describeError(result.error);
+        elements.status.textContent = message;
+        throw new Error(message);
       }
       if (snapshotDate.startsWith(`${validMonth(elements.month.value)}-`)) await load({ silent: true, force: true });
       return true;
