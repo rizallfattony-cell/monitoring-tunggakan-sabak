@@ -8,6 +8,8 @@ psql -h /tmp -U postgres -v ON_ERROR_STOP=1 \
  -f /project/tests/premium-billing-fixture.sql \
  -f /project/supabase-schema-step-21-receipt-history.sql \
  -f /project/supabase-schema-step-21-receipt-history.sql \
+ -f /project/supabase-schema-step-30-web-receipt-history.sql \
+ -f /project/supabase-schema-step-30-web-receipt-history.sql \
  -f /project/tests/receipt-history.sql \
  -f /project/supabase-schema-step-17-admin-premium.sql \
  -f /project/supabase-schema-step-18-premium-payments.sql \

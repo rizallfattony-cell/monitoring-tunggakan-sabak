@@ -11,13 +11,16 @@ cetak tidak menerima izin SELECT langsung ke tabel tunggakan.
    Jalankan sekali saja setelah tabel `monitoring_profiles`,
    `monitoring_remaining_customers`, `monitoring_receipt_meters`, dan
    `monitoring_receipt_settings` tersedia.
-2. Terbitkan halaman `cetak-struk.html` dan perubahan akun cetak ke web,
+2. Jalankan seluruh isi `supabase-schema-step-30-web-receipt-history.sql`.
+   Migrasi ini mengizinkan akun operator menyimpan snapshot struk tanpa memberi
+   akses tulis langsung ke tabel riwayat.
+3. Terbitkan halaman `cetak-struk.html` dan perubahan akun cetak ke web,
    lalu pastikan deployment Vercel berstatus Ready. Jangan ikut menerbitkan
    perubahan lain yang belum siap.
-3. Di Authentication > Users, buat **akun baru** dengan email khusus cetak struk.
+4. Di Authentication > Users, buat **akun baru** dengan email khusus cetak struk.
    Jangan gunakan email akun admin atau petugas yang sudah ada. Simpan password
    secara pribadi; jangan masukkan ke GitHub atau chat.
-4. Sebelum akun baru dipakai untuk login, di SQL Editor ganti
+5. Sebelum akun baru dipakai untuk login, di SQL Editor ganti
    `cetak@example.com` dengan email akun baru, lalu jalankan:
 
 ```sql
@@ -49,7 +52,10 @@ baru dengan email lain.
    `cetak-struk.html`.
 4. Cetak dua IDPEL ke PDF A4; keduanya harus berada pada satu lembar. Cetak
    ketiga harus memulai lembar berikutnya.
-5. Pastikan akun cetak tidak bisa SELECT langsung tabel
+5. Buka tab **Riwayat cetak**, lalu cetak ulang salah satu struk. Waktu cetak
+   pertama, nomor referensi, stand meter, tagihan, biaya admin, dan total harus
+   sama dengan struk pertama; hanya penghitung cetak ulang yang bertambah.
+6. Pastikan akun cetak tidak bisa SELECT langsung tabel
    `monitoring_remaining_customers`, `monitoring_receipt_meters`, dan
    `monitoring_receipt_settings` lewat Data API. Admin dan petugas lama harus
    tetap dapat memakai fitur mereka seperti sebelumnya.

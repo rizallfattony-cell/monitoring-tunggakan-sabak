@@ -1,8 +1,10 @@
-insert into auth.users(id) values('00000000-0000-0000-0000-000000000001'),('00000000-0000-0000-0000-000000000002'),('00000000-0000-0000-0000-000000000003');
+insert into auth.users(id) values('00000000-0000-0000-0000-000000000001'),('00000000-0000-0000-0000-000000000002'),('00000000-0000-0000-0000-000000000003'),('00000000-0000-0000-0000-000000000004');
 insert into public.monitoring_profiles(user_id,email,petugas,role,premium_package) values
  ('00000000-0000-0000-0000-000000000001','14390.anang@simontok.local','ANANG RIDWAN','petugas','P3'),
  ('00000000-0000-0000-0000-000000000002','14390.adri@simontok.local','ADRI','petugas','P3'),
  ('00000000-0000-0000-0000-000000000003','admin@simontok.local','ADMIN','admin','P3');
+insert into public.monitoring_receipt_operators(user_id,email) values
+ ('00000000-0000-0000-0000-000000000004','operator@monalisa.local');
 grant usage on schema auth to authenticated;
 set role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
@@ -55,5 +57,16 @@ do $$ declare summary jsonb; row jsonb; begin
  assert (public.list_receipt_history('2020-10-01')->>'total')::int=2,'admin sees all';
  assert (public.list_receipt_history('2020-10-01','',0,50,null,'ADRI')->>'total')::int=0,'staff filter';
 end $$;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
+do $$ declare snapshot jsonb; begin
+ snapshot:=jsonb_build_object('id','10000000-0000-0000-0000-000000000004','format_version',1,
+ 'source','monalisa_web','printed_at','2020-11-02T01:00:00Z','sent_at','2020-11-02T01:00:00Z',
+ 'transaction_id','WEB-0001','reference','WEB-REFERENCE','idpel','00143900004','customer_name','Operator Web',
+ 'base_amount',100000,'extra_amount',5000,'admin_amount',0,'total_amount',105000,'print_text','WEB RECEIPT',
+ 'web_receipt',jsonb_build_object('idpel','00143900004','total',105000));
+ perform public.save_receipt_history(snapshot);
+ assert (public.list_receipt_history('2020-11-01')->>'total')::int=1,'operator can save and list own web receipt';
+ assert public.get_receipt_snapshot('10000000-0000-0000-0000-000000000004')->>'source'='monalisa_web','web snapshot preserved';
+end $$;
 reset role;
-select 'PASS receipt history: immutability, ownership, RLS, idempotency, WIB, pagination, 17 staff and income';
+select 'PASS receipt history: immutability, ownership, operator web history, RLS, idempotency, WIB, pagination, 17 staff and income';

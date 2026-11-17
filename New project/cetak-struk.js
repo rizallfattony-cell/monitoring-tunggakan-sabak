@@ -93,6 +93,16 @@ function printCode() {
   return Array.from(bytes, (byte) => (byte % 10).toString()).join("");
 }
 
+function receiptUuid() {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 function makeReceipt(row, now = new Date()) {
   const base = Number(row.rptag);
   const admin = Number(row.admin_fee);
@@ -105,9 +115,78 @@ function makeReceipt(row, now = new Date()) {
     admin_fee: admin,
     total: base + admin,
     printedAt: now.toISOString(),
+    historyId: receiptUuid(),
     printId: printCode(),
     printReference: printCode() + printCode() + printCode(),
   };
+}
+
+function receiptHistorySnapshot(receipt) {
+  const historyId = String(receipt.historyId || "");
+  const printedAt = new Date(receipt.printedAt);
+  const base = Number(receipt.rptag);
+  const admin = Number(receipt.admin_fee);
+  const total = Number(receipt.total);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(historyId)
+    || Number.isNaN(printedAt.getTime()) || !/^\d{10,16}$/.test(String(receipt.idpel || ""))
+    || !Number.isSafeInteger(base) || base < 0 || !Number.isSafeInteger(admin) || admin < 0
+    || total !== base + admin || !String(receipt.printId || "") || !String(receipt.printReference || "")) {
+    throw new Error("Data struk belum valid untuk disimpan ke riwayat.");
+  }
+  const storedReceipt = {
+    historyId,
+    idpel: String(receipt.idpel),
+    nama: String(receipt.nama || "-"),
+    tarif: String(receipt.tarif || "-"),
+    daya: String(receipt.daya || "-"),
+    rptag: base,
+    admin_fee: admin,
+    total,
+    stand_awal: String(receipt.stand_awal || ""),
+    stand_akhir: String(receipt.stand_akhir || ""),
+    billing_periods: Array.isArray(receipt.billing_periods) ? receipt.billing_periods.map(String).slice(0, 24) : [],
+    nama_toko: String(receipt.nama_toko || "PLN MOBILE"),
+    alamat_toko: String(receipt.alamat_toko || "PLN ULP SABAK"),
+    printedAt: printedAt.toISOString(),
+    printId: String(receipt.printId),
+    printReference: String(receipt.printReference),
+  };
+  return {
+    id: historyId,
+    format_version: 1,
+    source: "monalisa_web",
+    printed_at: storedReceipt.printedAt,
+    sent_at: storedReceipt.printedAt,
+    transaction_id: storedReceipt.printId,
+    reference: storedReceipt.printReference,
+    idpel: storedReceipt.idpel,
+    customer_name: storedReceipt.nama,
+    base_amount: base,
+    extra_amount: admin,
+    admin_amount: 0,
+    total_amount: total,
+    print_text: [storedReceipt.idpel, storedReceipt.nama, storedReceipt.printReference, String(total)].join(" | "),
+    web_receipt: storedReceipt,
+  };
+}
+
+function receiptFromHistorySnapshot(snapshot) {
+  const stored = snapshot?.web_receipt;
+  if (!stored || typeof stored !== "object" || Array.isArray(stored)) {
+    throw new Error("Riwayat ini berasal dari format lain dan belum dapat dicetak ulang di web.");
+  }
+  const receipt = {
+    ...stored,
+    rptag: Number(stored.rptag),
+    admin_fee: Number(stored.admin_fee),
+    total: Number(stored.total),
+    historyId: String(snapshot.id || stored.historyId || ""),
+    printedAt: String(stored.printedAt || snapshot.printed_at || ""),
+    printId: String(stored.printId || snapshot.transaction_id || ""),
+    printReference: String(stored.printReference || snapshot.reference || ""),
+  };
+  receiptHistorySnapshot(receipt);
+  return receipt;
 }
 
 function receiptField(label, value) {
@@ -215,6 +294,12 @@ function initPublicReceipt() {
     uploadLogo: document.querySelector("#uploadLogo"), removeLogo: document.querySelector("#removeLogo"),
     adminFeeForm: document.querySelector("#adminFeeForm"), adminFeeInput: document.querySelector("#adminFeeInput"),
     adminFeeStatus: document.querySelector("#adminFeeStatus"),
+    newPrintTab: document.querySelector("#newPrintTab"), historyTab: document.querySelector("#historyTab"),
+    printView: document.querySelector("#printView"), historyView: document.querySelector("#historyView"),
+    historyMonth: document.querySelector("#historyMonth"), historySearch: document.querySelector("#historySearch"),
+    historyRefresh: document.querySelector("#historyRefresh"), historyStatus: document.querySelector("#historyStatus"),
+    historyRows: document.querySelector("#historyRows"), historyPage: document.querySelector("#historyPage"),
+    historyPrev: document.querySelector("#historyPrev"), historyNext: document.querySelector("#historyNext"),
   };
   if (!elements.form) return;
   const authFragment = new URLSearchParams(window.location.hash.slice(1));
@@ -227,6 +312,13 @@ function initPublicReceipt() {
   let selected = new Set();
   let previewId = "";
   let viewVersion = 0;
+  let workspaceView = "print";
+  let historyOffset = 0;
+  let historyTotal = 0;
+  let historyRevision = 0;
+  let historySearchTimer = 0;
+  let printBusy = false;
+  const printedHistoryIds = new Set();
   const recoveryStorageKey = "simontok-receipt-recovery-user";
   let recoveryLinkOpened = authFragment.get("type") === "recovery" || authFragment.has("error_code");
   let recoveryMode = false;
@@ -239,6 +331,10 @@ function initPublicReceipt() {
     const savedAdminFee = localStorage.getItem(adminFeeStorageKey);
     if (savedAdminFee !== null) adminFee = parseAdminFee(savedAdminFee);
   } catch { /* Keep the standard fee when browser storage is unavailable or invalid. */ }
+
+  const monthParts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit" })
+    .formatToParts(new Date()).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
+  elements.historyMonth.value = `${monthParts.year}-${monthParts.month}`;
 
   function showLogo(message = "Logo disimpan di browser perangkat ini.") {
     elements.logoPreview.hidden = !logoData;
@@ -275,8 +371,89 @@ function initPublicReceipt() {
     return (parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : source.slice(0, 2)).toUpperCase();
   }
 
+  function setHistoryStatus(message, isError = false) {
+    elements.historyStatus.textContent = message;
+    elements.historyStatus.classList.toggle("is-error", isError);
+  }
+
+  function setWorkspaceView(next, load = true) {
+    workspaceView = next === "history" ? "history" : "print";
+    elements.printView.hidden = workspaceView !== "print";
+    elements.historyView.hidden = workspaceView !== "history";
+    elements.newPrintTab.setAttribute("aria-selected", String(workspaceView === "print"));
+    elements.historyTab.setAttribute("aria-selected", String(workspaceView === "history"));
+    if (workspaceView === "history" && load) loadHistory(true);
+  }
+
+  function renderHistory(rows) {
+    elements.historyRows.innerHTML = rows.map((row) => {
+      const adminAmount = Number(row.extra_amount || 0) + Number(row.admin_amount || 0);
+      return `<tr>
+        <td>${escapeHtml(receiptTime(row.printed_at))}</td>
+        <td><strong>${escapeHtml(row.idpel)}</strong><small>${escapeHtml(row.customer_name || "-")}</small></td>
+        <td>${money(Number(row.base_amount))}</td>
+        <td>${money(adminAmount)}</td>
+        <td><strong>${money(Number(row.total_amount))}</strong></td>
+        <td>${Number(row.reprint_count || 0).toLocaleString("id-ID")} kali</td>
+        <td><button type="button" class="secondary-command history-reprint" data-history-id="${escapeHtml(row.id)}"><i data-lucide="printer" aria-hidden="true"></i>Cetak ulang</button></td>
+      </tr>`;
+    }).join("") || '<tr><td colspan="7">Belum ada riwayat cetak pada bulan ini.</td></tr>';
+    elements.historyPage.textContent = historyTotal
+      ? `${historyOffset + 1}-${Math.min(historyOffset + rows.length, historyTotal)} dari ${historyTotal} struk`
+      : "0 struk";
+    elements.historyPrev.disabled = historyOffset === 0;
+    elements.historyNext.disabled = historyOffset + rows.length >= historyTotal;
+    window.lucide?.createIcons();
+  }
+
+  async function loadHistory(resetPage = true) {
+    if (!identity || !client) return;
+    if (resetPage) historyOffset = 0;
+    const month = elements.historyMonth.value;
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      setHistoryStatus("Pilih bulan riwayat yang valid.", true);
+      return;
+    }
+    const version = ++historyRevision;
+    const userId = identity.user.id;
+    setHistoryStatus("Memuat riwayat cetak...");
+    elements.historyRefresh.disabled = true;
+    elements.historyPrev.disabled = true;
+    elements.historyNext.disabled = true;
+    try {
+      const { data, error } = await client.rpc("list_receipt_history", {
+        p_month: `${month}-01`,
+        p_query: elements.historySearch.value.trim(),
+        p_offset: historyOffset,
+        p_limit: 25,
+        p_user_id: userId,
+        p_petugas: null,
+      });
+      if (error) throw error;
+      if (version !== historyRevision || identity?.user?.id !== userId) return;
+      const rows = Array.isArray(data?.rows) ? data.rows : [];
+      historyTotal = Number(data?.total || 0);
+      renderHistory(rows);
+      setHistoryStatus(historyTotal
+        ? `${historyTotal.toLocaleString("id-ID")} struk tersimpan. Cetak ulang tidak mengubah data aslinya.`
+        : "Belum ada struk tersimpan pada bulan ini.");
+    } catch (error) {
+      if (version !== historyRevision || identity?.user?.id !== userId) return;
+      historyTotal = 0;
+      renderHistory([]);
+      setHistoryStatus(`${error.message || "Riwayat tidak dapat dimuat."} Pastikan migrasi riwayat cetak sudah diterapkan.`, true);
+    } finally {
+      if (version === historyRevision) elements.historyRefresh.disabled = false;
+    }
+  }
+
   function showGate(message, isError = false, view = "login") {
     identity = null;
+    historyRevision++;
+    historyOffset = 0;
+    historyTotal = 0;
+    printedHistoryIds.clear();
+    setWorkspaceView("print", false);
     setMode("single");
     elements.singleIdpel.value = "";
     elements.bulkIdpels.value = "";
@@ -402,14 +579,67 @@ function initPublicReceipt() {
   function updateSelection() {
     elements.selectAll.checked = receipts.length > 0 && selected.size === receipts.length;
     elements.selectAll.indeterminate = selected.size > 0 && selected.size < receipts.length;
-    elements.printSelected.disabled = selected.size === 0;
+    elements.printSelected.disabled = selected.size === 0 || printBusy;
     elements.printLabel.textContent = mode === "bulk" ? `Cetak kolektif (${selected.size})` : "Cetak struk";
   }
 
-  function doPrint(items) {
-    if (!items.length || !identity) return;
-    elements.printArea.innerHTML = printSheets(items, logoData);
-    window.print();
+  async function saveReceiptHistory(receipt) {
+    const { error } = await client.rpc("save_receipt_history", { p_snapshot: receiptHistorySnapshot(receipt) });
+    if (error) throw error;
+  }
+
+  async function recordReceiptReprint(receiptId) {
+    const { error } = await client.rpc("record_receipt_reprint", {
+      p_event_id: receiptUuid(),
+      p_receipt_id: receiptId,
+      p_printed_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+  }
+
+  async function doPrint(items) {
+    if (!items.length || !identity || !client || printBusy) return;
+    printBusy = true;
+    updateSelection();
+    elements.printPreview.disabled = true;
+    setStatus(`Menyimpan ${items.length} struk ke riwayat...`);
+    try {
+      const reprintIds = new Set(items.filter((item) => printedHistoryIds.has(item.historyId)).map((item) => item.historyId));
+      await Promise.all(items.map((item) => saveReceiptHistory(item)));
+      await Promise.all([...reprintIds].map((id) => recordReceiptReprint(id)));
+      items.forEach((item) => printedHistoryIds.add(item.historyId));
+      elements.printArea.innerHTML = printSheets(items, logoData);
+      setStatus(`${items.length} struk tersimpan di riwayat dan siap dicetak.`);
+      window.print();
+    } catch (error) {
+      setStatus(`Struk belum dicetak: ${error.message || "gagal menyimpan riwayat."}`, true);
+    } finally {
+      printBusy = false;
+      elements.printPreview.disabled = false;
+      updateSelection();
+    }
+  }
+
+  async function reprintHistory(receiptId, button) {
+    if (!identity || !client || printBusy) return;
+    printBusy = true;
+    button.disabled = true;
+    setHistoryStatus("Mengambil data cetakan pertama...");
+    try {
+      const { data: snapshot, error: snapshotError } = await client.rpc("get_receipt_snapshot", { p_id: receiptId });
+      if (snapshotError) throw snapshotError;
+      const receipt = receiptFromHistorySnapshot(snapshot);
+      await recordReceiptReprint(receiptId);
+      elements.printArea.innerHTML = printSheets([receipt], logoData);
+      setHistoryStatus(`Struk ${receipt.idpel} memakai data cetakan pertama dan siap dicetak ulang.`);
+      window.print();
+      await loadHistory(false);
+    } catch (error) {
+      setHistoryStatus(`Cetak ulang gagal: ${error.message || "riwayat tidak dapat dibaca."}`, true);
+    } finally {
+      printBusy = false;
+      button.disabled = false;
+    }
   }
 
   elements.accountButton.addEventListener("click", () => {
@@ -472,7 +702,10 @@ function initPublicReceipt() {
       adminFee = nextAdminFee;
       if (receipts.length) {
         const currentSelection = new Set(selected);
-        const updatedReceipts = receipts.map((row) => updateReceiptAdminFee(row, adminFee));
+        const updatedReceipts = receipts.map((row) => {
+          const updated = updateReceiptAdminFee(row, adminFee);
+          return printedHistoryIds.has(row.historyId) ? makeReceipt(updated) : updated;
+        });
         renderResults(resultIds, updatedReceipts);
         selected = currentSelection;
         elements.rows.querySelectorAll("[data-select]").forEach((input) => { input.checked = selected.has(input.dataset.select); });
@@ -574,6 +807,26 @@ function initPublicReceipt() {
     if (event === "SIGNED_OUT") showGate("Anda sudah keluar. Masuk kembali untuk mencetak.");
   });
 
+  elements.newPrintTab.addEventListener("click", () => setWorkspaceView("print"));
+  elements.historyTab.addEventListener("click", () => setWorkspaceView("history"));
+  elements.historyMonth.addEventListener("change", () => loadHistory(true));
+  elements.historySearch.addEventListener("input", () => {
+    clearTimeout(historySearchTimer);
+    historySearchTimer = setTimeout(() => loadHistory(true), 300);
+  });
+  elements.historyRefresh.addEventListener("click", () => loadHistory(false));
+  elements.historyPrev.addEventListener("click", () => {
+    historyOffset = Math.max(0, historyOffset - 25);
+    loadHistory(false);
+  });
+  elements.historyNext.addEventListener("click", () => {
+    historyOffset += 25;
+    loadHistory(false);
+  });
+  elements.historyRows.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-history-id]");
+    if (button) reprintHistory(button.dataset.historyId, button);
+  });
   elements.singleTab.addEventListener("click", () => setMode("single"));
   elements.bulkTab.addEventListener("click", () => setMode("bulk"));
   elements.bulkIdpels.addEventListener("input", () => {
@@ -635,4 +888,4 @@ function initPublicReceipt() {
 }
 
 if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", initPublicReceipt);
-if (typeof module !== "undefined") module.exports = { parseIdpels, escapeHtml, money, receiptMoney, parseAdminFee, updateReceiptAdminFee, receiptTime, receiptHeaderTime, periodsLabel, compactPeriodsLabel, receiptPrintMonth, receiptMarkup, printSheets, makeReceipt, prepareCustomers, lookupCustomers };
+if (typeof module !== "undefined") module.exports = { parseIdpels, escapeHtml, money, receiptMoney, parseAdminFee, updateReceiptAdminFee, receiptTime, receiptHeaderTime, periodsLabel, compactPeriodsLabel, receiptPrintMonth, receiptMarkup, printSheets, makeReceipt, receiptHistorySnapshot, receiptFromHistorySnapshot, prepareCustomers, lookupCustomers };

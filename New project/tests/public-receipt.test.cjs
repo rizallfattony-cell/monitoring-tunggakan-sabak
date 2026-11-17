@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { parseIdpels, escapeHtml, money, receiptMoney, parseAdminFee, updateReceiptAdminFee, receiptHeaderTime, periodsLabel, compactPeriodsLabel, receiptPrintMonth, receiptMarkup, printSheets, makeReceipt, prepareCustomers, lookupCustomers } = require('../cetak-struk.js');
+const { parseIdpels, escapeHtml, money, receiptMoney, parseAdminFee, updateReceiptAdminFee, receiptHeaderTime, periodsLabel, compactPeriodsLabel, receiptPrintMonth, receiptMarkup, printSheets, makeReceipt, receiptHistorySnapshot, receiptFromHistorySnapshot, prepareCustomers, lookupCustomers } = require('../cetak-struk.js');
 
 assert.deepEqual(parseIdpels('143900000001\n143900000002,143900000003'), ['143900000001', '143900000002', '143900000003']);
 assert.throws(() => parseIdpels('143900000001 143900000001'), /unik/);
@@ -21,6 +21,16 @@ assert.equal(escapeHtml('<script>'), '&lt;script&gt;');
 const base = { idpel: '143900000001', nama: '<script>alert(1)</script>', tarif: 'R1', daya: '900', rptag: 359152, admin_fee: 5000, stand_awal: '100', stand_akhir: '120', billing_periods: ['202610'] };
 const receipt = makeReceipt(base, new Date('2026-11-12T03:04:05Z'));
 assert.equal(receipt.total, 364152);
+const historySnapshot = receiptHistorySnapshot(receipt);
+const historyReceipt = receiptFromHistorySnapshot(historySnapshot);
+assert.equal(historySnapshot.source, 'monalisa_web');
+assert.equal(historySnapshot.base_amount, 359152);
+assert.equal(historySnapshot.extra_amount, 5000);
+assert.equal(historySnapshot.total_amount, 364152);
+assert.equal(historyReceipt.printedAt, receipt.printedAt);
+assert.equal(historyReceipt.printReference, receipt.printReference);
+assert.equal(historyReceipt.total, receipt.total);
+assert.throws(() => receiptFromHistorySnapshot({ print_text: 'format Android' }), /format lain/);
 assert.equal(updateReceiptAdminFee(receipt, 7500).total, 366652);
 assert.equal(updateReceiptAdminFee(receipt, 7500).printReference, receipt.printReference);
 assert.match(receiptMarkup(receipt), /Rp364\.152/);

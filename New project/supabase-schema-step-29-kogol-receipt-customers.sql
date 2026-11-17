@@ -76,7 +76,7 @@ begin
     raise exception 'Isi detail saldo Kogol tidak valid';
   end if;
   if (
-    select count(*) <> count(distinct upper(trim(item->>'kogol_key')) || ':' || item->>'idpel')
+    select count(*) <> count(distinct (upper(trim(item->>'kogol_key')) || ':' || (item->>'idpel')))
     from jsonb_array_elements(p_customers) item
   ) then
     raise exception 'IDPEL pada kelompok Kogol yang sama tidak boleh duplikat';

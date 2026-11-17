@@ -9,11 +9,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./cetak-struk.css?v=20261113-v13" />
+    <link rel="stylesheet" href="./cetak-struk.css?v=20261117-history-v1" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./supabase-config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script src="./cetak-struk.js?v=20261117-kogol-receipt-v1" defer></script>
+    <script src="./cetak-struk.js?v=20261117-history-v1" defer></script>
   </head>
   <body>
     <header class="site-header no-print">
@@ -88,20 +88,41 @@
       </section>
 
       <div id="receiptWorkspace" hidden>
-        <section class="lookup surface-card" aria-labelledby="lookupTitle">
-          <div class="section-heading"><div><span class="eyebrow">Pencarian pelanggan</span><h2 id="lookupTitle">Cari tagihan listrik</h2><p>Gunakan IDPEL lengkap. Cetak kolektif menerima hingga 20 pembayaran sekaligus.</p></div></div>
-          <div class="mode-switch" role="tablist" aria-label="Mode pencarian"><button type="button" role="tab" id="singleTab" aria-selected="true" aria-controls="singleMode">Satu IDPEL</button><button type="button" role="tab" id="bulkTab" aria-selected="false" aria-controls="bulkMode">Cetak kolektif</button></div>
-          <form id="lookupForm" novalidate>
-            <div id="singleMode" role="tabpanel" aria-labelledby="singleTab"><label for="singleIdpel">ID pelanggan</label><div class="single-input-row"><div class="field-with-icon"><i data-lucide="search" aria-hidden="true"></i><input id="singleIdpel" inputmode="numeric" autocomplete="off" placeholder="Contoh: 143900000001" maxlength="16" /></div><button type="submit" class="primary-command">Cek tagihan<i data-lucide="arrow-right" aria-hidden="true"></i></button></div></div>
-            <div id="bulkMode" role="tabpanel" aria-labelledby="bulkTab" hidden><label for="bulkIdpels">Daftar ID pelanggan</label><textarea id="bulkIdpels" rows="5" spellcheck="false" placeholder="Satu IDPEL per baris, atau pisahkan dengan koma"></textarea><div class="bulk-actions"><button type="submit" class="primary-command">Cek tagihan<i data-lucide="arrow-right" aria-hidden="true"></i></button><span id="bulkCount">0 / 20 IDPEL</span></div></div>
-          </form>
-          <p class="lookup-status" id="lookupStatus" role="status" aria-live="polite">Belum ada tagihan yang diperiksa.</p>
-        </section>
+        <nav class="workspace-tabs" role="tablist" aria-label="Menu cetak struk">
+          <button type="button" id="newPrintTab" role="tab" aria-selected="true" aria-controls="printView"><i data-lucide="receipt-text" aria-hidden="true"></i>Cetak struk</button>
+          <button type="button" id="historyTab" role="tab" aria-selected="false" aria-controls="historyView"><i data-lucide="history" aria-hidden="true"></i>Riwayat cetak</button>
+        </nav>
 
-        <section class="results surface-card" id="results" aria-labelledby="resultsTitle" hidden>
-          <div class="section-heading results-heading"><div><span class="eyebrow">Data pembayaran</span><h2 id="resultsTitle">Hasil cek tagihan</h2><p id="resultsSummary"></p></div><button type="button" id="printSelected" class="primary-command" disabled><i data-lucide="printer" aria-hidden="true"></i><span id="printLabel">Cetak struk</span></button></div>
-          <div class="table-scroll"><table><thead><tr><th class="select-col"><input id="selectAll" type="checkbox" aria-label="Pilih semua pelanggan" /></th><th>IDPEL / Pelanggan</th><th>Tarif / Daya</th><th>Stand Meter</th><th>Tagihan</th><th>Admin</th><th>Total</th><th></th></tr></thead><tbody id="resultRows"></tbody></table></div>
-          <p class="missing-ids" id="missingIds" hidden></p>
+        <div id="printView" role="tabpanel" aria-labelledby="newPrintTab">
+          <section class="lookup surface-card" aria-labelledby="lookupTitle">
+            <div class="section-heading"><div><span class="eyebrow">Pencarian pelanggan</span><h2 id="lookupTitle">Cari tagihan listrik</h2><p>Gunakan IDPEL lengkap. Cetak kolektif menerima hingga 20 pembayaran sekaligus.</p></div></div>
+            <div class="mode-switch" role="tablist" aria-label="Mode pencarian"><button type="button" role="tab" id="singleTab" aria-selected="true" aria-controls="singleMode">Satu IDPEL</button><button type="button" role="tab" id="bulkTab" aria-selected="false" aria-controls="bulkMode">Cetak kolektif</button></div>
+            <form id="lookupForm" novalidate>
+              <div id="singleMode" role="tabpanel" aria-labelledby="singleTab"><label for="singleIdpel">ID pelanggan</label><div class="single-input-row"><div class="field-with-icon"><i data-lucide="search" aria-hidden="true"></i><input id="singleIdpel" inputmode="numeric" autocomplete="off" placeholder="Contoh: 143900000001" maxlength="16" /></div><button type="submit" class="primary-command">Cek tagihan<i data-lucide="arrow-right" aria-hidden="true"></i></button></div></div>
+              <div id="bulkMode" role="tabpanel" aria-labelledby="bulkTab" hidden><label for="bulkIdpels">Daftar ID pelanggan</label><textarea id="bulkIdpels" rows="5" spellcheck="false" placeholder="Satu IDPEL per baris, atau pisahkan dengan koma"></textarea><div class="bulk-actions"><button type="submit" class="primary-command">Cek tagihan<i data-lucide="arrow-right" aria-hidden="true"></i></button><span id="bulkCount">0 / 20 IDPEL</span></div></div>
+            </form>
+            <p class="lookup-status" id="lookupStatus" role="status" aria-live="polite">Belum ada tagihan yang diperiksa.</p>
+          </section>
+
+          <section class="results surface-card" id="results" aria-labelledby="resultsTitle" hidden>
+            <div class="section-heading results-heading"><div><span class="eyebrow">Data pembayaran</span><h2 id="resultsTitle">Hasil cek tagihan</h2><p id="resultsSummary"></p></div><button type="button" id="printSelected" class="primary-command" disabled><i data-lucide="printer" aria-hidden="true"></i><span id="printLabel">Cetak struk</span></button></div>
+            <div class="table-scroll"><table><thead><tr><th class="select-col"><input id="selectAll" type="checkbox" aria-label="Pilih semua pelanggan" /></th><th>IDPEL / Pelanggan</th><th>Tarif / Daya</th><th>Stand Meter</th><th>Tagihan</th><th>Admin</th><th>Total</th><th></th></tr></thead><tbody id="resultRows"></tbody></table></div>
+            <p class="missing-ids" id="missingIds" hidden></p>
+          </section>
+        </div>
+
+        <section id="historyView" class="history-panel surface-card" role="tabpanel" aria-labelledby="historyTab" hidden>
+          <div class="section-heading history-heading">
+            <div><span class="eyebrow">Arsip transaksi</span><h2>Riwayat cetak</h2><p>Cetak ulang memakai data yang tersimpan saat struk pertama dibuat.</p></div>
+            <button type="button" id="historyRefresh" class="icon-command" title="Muat ulang riwayat" aria-label="Muat ulang riwayat"><i data-lucide="refresh-cw" aria-hidden="true"></i></button>
+          </div>
+          <div class="history-filters">
+            <label for="historyMonth">Bulan cetak<input id="historyMonth" type="month" /></label>
+            <label for="historySearch">Cari riwayat<span class="field-with-icon"><i data-lucide="search" aria-hidden="true"></i><input id="historySearch" type="search" placeholder="IDPEL, nama, atau referensi" /></span></label>
+          </div>
+          <p id="historyStatus" class="lookup-status" role="status" aria-live="polite"></p>
+          <div class="table-scroll history-table-scroll"><table class="history-table"><thead><tr><th>Waktu cetak pertama</th><th>IDPEL / Pelanggan</th><th>Tagihan</th><th>Biaya admin</th><th>Total</th><th>Cetak ulang</th><th></th></tr></thead><tbody id="historyRows"></tbody></table></div>
+          <div class="history-pagination"><span id="historyPage">0 struk</span><div><button type="button" id="historyPrev" class="secondary-command"><i data-lucide="chevron-left" aria-hidden="true"></i>Sebelumnya</button><button type="button" id="historyNext" class="secondary-command">Berikutnya<i data-lucide="chevron-right" aria-hidden="true"></i></button></div></div>
         </section>
       </div>
     </main>

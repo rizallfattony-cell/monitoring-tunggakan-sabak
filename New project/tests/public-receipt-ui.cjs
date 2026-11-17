@@ -36,6 +36,8 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
       if (url.hostname === 'cdn.jsdelivr.net') {
         if (url.pathname.includes('supabase')) return route.fulfill({ body: `
           window.__mockUser = null;
+          window.__receiptHistory = [];
+          window.__receiptReprints = [];
           window.supabase = { createClient: () => ({
             auth: {
               getUser: async () => ({ data: { user: window.__mockUser }, error: null }),
@@ -43,7 +45,34 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
               signOut: async () => { window.__mockUser = null; window.__authCallback?.('SIGNED_OUT'); },
               onAuthStateChange: (callback) => { window.__authCallback = callback; },
             },
-            rpc: async (name, args) => ({ data: name === 'lookup_receipt_operator_customers' ? ${JSON.stringify(rows)}.filter(row => args.p_idpels.includes(row.idpel)) : [], error: null }),
+            rpc: async (name, args) => {
+              if (name === 'lookup_receipt_customers') return { data: ${JSON.stringify(rows)}.filter(row => args.p_idpels.includes(row.idpel) && (window.__mockUser.id !== 'petugas' || row.idpel === '143900000001')), error: null };
+              if (name === 'save_receipt_history') {
+                const existing = window.__receiptHistory.find(row => row.id === args.p_snapshot.id);
+                if (existing && JSON.stringify(existing) !== JSON.stringify(args.p_snapshot)) return { data: null, error: { message: 'Snapshot berubah' } };
+                if (!existing) window.__receiptHistory.push(structuredClone(args.p_snapshot));
+                return { data: null, error: null };
+              }
+              if (name === 'list_receipt_history') {
+                const query = String(args.p_query || '').toLowerCase();
+                const matches = window.__receiptHistory.filter(row => !query || [row.idpel, row.customer_name, row.reference].join(' ').toLowerCase().includes(query));
+                const page = matches.slice(args.p_offset, args.p_offset + args.p_limit).map(row => ({
+                  id: row.id, printed_at: row.printed_at, idpel: row.idpel, customer_name: row.customer_name,
+                  base_amount: row.base_amount, extra_amount: row.extra_amount, admin_amount: row.admin_amount,
+                  total_amount: row.total_amount, reprint_count: window.__receiptReprints.filter(item => item.receiptId === row.id).length,
+                }));
+                return { data: { rows: page, total: matches.length }, error: null };
+              }
+              if (name === 'get_receipt_snapshot') {
+                const snapshot = window.__receiptHistory.find(row => row.id === args.p_id);
+                return snapshot ? { data: structuredClone(snapshot), error: null } : { data: null, error: { message: 'Struk tidak ditemukan' } };
+              }
+              if (name === 'record_receipt_reprint') {
+                window.__receiptReprints.push({ id: args.p_event_id, receiptId: args.p_receipt_id, printedAt: args.p_printed_at });
+                return { data: null, error: null };
+              }
+              return { data: [], error: null };
+            },
             from: (table) => {
               window.__tableCalls = [...(window.__tableCalls || []), table];
               const filters = {};
@@ -102,7 +131,18 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
     assert.equal(await page.evaluate(() => window.__printCalls), 1);
     assert.equal(await page.locator('.print-sheet').count(), 1);
     assert.equal(await page.locator('.print-sheet .receipt-logo').count(), 1);
+    const originalPrintText = await page.locator('#printArea').innerText();
     await page.locator('#closePreview').click();
+
+    await page.locator('#historyTab').click();
+    await page.waitForFunction(() => document.querySelectorAll('#historyRows [data-history-id]').length === 1);
+    assert.match(await page.locator('#historyRows').innerText(), /143900000001/);
+    assert.match(await page.locator('#historyRows').innerText(), /Rp\s*366\.652/);
+    await page.locator('#historyRows [data-history-id]').click();
+    assert.equal(await page.evaluate(() => window.__printCalls), 2);
+    assert.equal(await page.locator('#printArea').innerText(), originalPrintText, 'Reprint must use the exact first-print snapshot');
+    assert.equal(await page.evaluate(() => window.__receiptReprints.length), 1);
+    await page.locator('#newPrintTab').click();
 
     await page.locator('#bulkTab').click();
     await page.locator('#bulkIdpels').fill('143900000001\n143900000002\n143900000003\n143900000004');
@@ -111,7 +151,7 @@ const rows = Array.from({ length: 3 }, (_, i) => ({
     assert.match(await page.locator('#missingIds').innerText(), /143900000004/);
     await page.locator('#printSelected').click();
     assert.equal(await page.locator('.print-sheet').count(), 2);
-    assert.equal(await page.evaluate(() => window.__printCalls), 2);
+    assert.equal(await page.evaluate(() => window.__printCalls), 3);
     await page.emulateMedia({ media: 'print' });
     const printSizes = await page.locator('.receipt').evaluateAll((items) => items.map((item) => ({
       scrollHeight: item.scrollHeight, clientHeight: item.clientHeight,
