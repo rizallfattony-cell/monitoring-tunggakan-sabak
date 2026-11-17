@@ -13,13 +13,14 @@ android {
         applicationId = "com.sabak.simontok"
         minSdk = 23
         targetSdk = 35
-        versionCode = 19
-        versionName = "1.7.9-preview2"
+        versionCode = 20
+        versionName = "1.7.10-preview"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "SUPABASE_URL", "\"https://qkruxwirngbiscxdyjgc.supabase.co\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"sb_publishable_EhRAUVuv6NVpzUOcId1J9w_H-gmJ6Bq\"")
         buildConfigField("String", "USERNAME_EMAIL_DOMAIN", "\"simontok.local\"")
+        buildConfigField("String", "OFFLINE_SNAPSHOT_URL", "\"https://monalisa-offline-snapshot.peli-sabak-rizal-2026.workers.dev\"")
     }
 
     buildFeatures {

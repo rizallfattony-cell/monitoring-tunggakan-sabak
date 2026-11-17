@@ -1,0 +1,13 @@
+name = "monalisa-offline-snapshot"
+main = "src/index.js"
+compatibility_date = "2026-11-17"
+
+[vars]
+SUPABASE_URL = "https://qkruxwirngbiscxdyjgc.supabase.co"
+SUPABASE_ANON_KEY = "sb_publishable_EhRAUVuv6NVpzUOcId1J9w_H-gmJ6Bq"
+MONALISA_ORIGIN = "https://monalisa-superweb.vercel.app"
+
+[[kv_namespaces]]
+binding = "OFFLINE_SNAPSHOTS"
+id = "0e56074f00f04d20ba50131b21924daa"
+preview_id = "ca671bf88b0d44ddb08939fb2b143431"

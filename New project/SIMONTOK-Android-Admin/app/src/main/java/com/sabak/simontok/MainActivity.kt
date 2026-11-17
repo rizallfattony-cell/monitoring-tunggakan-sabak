@@ -690,7 +690,9 @@ private fun refreshOnlineCache(
         allRows.filter { row -> candidates.any { it.equals(row.petugas, ignoreCase = true) } }
     }
     val meters = syncData.meters
-    val dataVersion = api.buildDebtFingerprint(allRows) ?: api.fetchLatestDebtUploadAt(accessToken, username)
+    val dataVersion = syncData.dataVersion
+        ?: api.buildDebtFingerprint(allRows)
+        ?: api.fetchLatestDebtUploadAt(accessToken, username)
     onProgress("Menyimpan data offline...", 0.95f)
     offlineDataStore.save(username, ownRows, allRows, meters, dataVersion, fullSyncComplete = true)
     onProgress("Selesai.", 1f)

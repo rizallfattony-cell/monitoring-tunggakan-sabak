@@ -2053,25 +2053,35 @@ async function saveCloudData(options = {}) {
     }
   }
 
+  let publishResult = null;
   if (!options.skipPublish) {
-    let publishResult = null;
     try {
       updateProgress(embeddedProgress ? 74 : 35, "Mempublish data pelanggan tersisa...");
       publishResult = await publishRemainingCustomers();
-      if (options.notifyDebtUpdate !== false) {
-        await writeDebtUpdateSignal(publishResult);
-      }
     } catch (publishError) {
       failProgress(`Gagal publish data petugas: ${publishError.message}`);
       setOnlineStatus(`Data utama tersimpan, tapi gagal publish data petugas: ${publishError.message}`);
       return false;
     }
-
   }
 
   if (options.publishReceiptMeters === true || (!options.skipPublish && options.publishReceiptMeters !== false)) {
     updateProgress(embeddedProgress ? 82 : 70, "Mempublish data stand meter struk...");
     await publishReceiptMeters();
+  }
+
+  if (!options.skipPublish || options.publishReceiptMeters === true) {
+    try {
+      updateProgress(embeddedProgress ? 90 : 82, "Menerbitkan paket offline cepat...");
+      const offlineSnapshot = await publishOfflineSnapshot();
+      if (publishResult && offlineSnapshot) publishResult.offlineSnapshot = offlineSnapshot;
+    } catch (snapshotError) {
+      setOnlineStatus(`Data Supabase tersimpan, tetapi snapshot R2 belum diperbarui: ${snapshotError.message}`);
+    }
+  }
+
+  if (publishResult && options.notifyDebtUpdate !== false) {
+    await writeDebtUpdateSignal(publishResult);
   }
 
   const savedMessage = stateSaveError
@@ -2302,10 +2312,11 @@ async function writeDebtUpdateSignal(publishResult) {
 
   const uploadedAt = publishResult?.uploadedAt || new Date().toISOString();
   const payload = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     type: "debt-update-signal",
     uploadedAt,
     count: publishResult?.count || 0,
+    offlineSnapshot: publishResult?.offlineSnapshot || null,
     uploadMeta: normalizeUploadMeta(state.uploadMeta),
     savedAt: new Date().toISOString(),
   };
@@ -2411,6 +2422,31 @@ async function publishReceiptMeters() {
   } catch (error) {
     setOnlineStatus(`Data utama tersimpan, tapi gagal upload stand meter: ${error.message}`);
   }
+}
+
+async function publishOfflineSnapshot() {
+  const baseUrl = String(window.MONITORING_SUPABASE?.offlineSnapshotUrl || "").trim().replace(/\/+$/, "");
+  if (!baseUrl) return null;
+
+  const { data, error } = await state.supabaseClient.auth.getSession();
+  if (error) throw new Error(`Sesi admin tidak dapat dibaca: ${error.message}`);
+  const accessToken = data?.session?.access_token;
+  if (!accessToken) throw new Error("Sesi admin sudah habis. Login ulang sebelum menerbitkan snapshot.");
+
+  const response = await fetch(`${baseUrl}/v1/publish`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ requestedAt: new Date().toISOString() }),
+  });
+  const text = await response.text();
+  const result = text ? safeJsonParse(text) : {};
+  if (!response.ok) {
+    throw new Error(result?.error || text || `Worker merespons HTTP ${response.status}`);
+  }
+  return result;
 }
 
 async function insertInChunks(tableName, rows, chunkSize = 500, progress = {}) {

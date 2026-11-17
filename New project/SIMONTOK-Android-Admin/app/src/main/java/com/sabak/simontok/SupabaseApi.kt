@@ -16,6 +16,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.URLEncoder
+import java.security.MessageDigest
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -32,6 +33,10 @@ class SupabaseApi {
         .build()
     private val loginClient = client.newBuilder()
         .callTimeout(20, TimeUnit.SECONDS)
+        .build()
+    private val snapshotClient = client.newBuilder()
+        .readTimeout(90, TimeUnit.SECONDS)
+        .callTimeout(120, TimeUnit.SECONDS)
         .build()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -343,6 +348,22 @@ class SupabaseApi {
         accessToken: String,
         onPage: (count: Int, meters: Map<String, ReceiptMeter>) -> Unit = { _, _ -> }
     ): OfflineSyncData {
+        if (BuildConfig.OFFLINE_SNAPSHOT_URL.isNotBlank()) {
+            try {
+                return fetchOfflineSnapshot(accessToken, onPage)
+            } catch (error: SessionExpiredException) {
+                throw error
+            } catch (_: Throwable) {
+                // R2 is an acceleration layer. Supabase remains the safe fallback.
+            }
+        }
+        return fetchOfflineSyncDataFromSupabase(accessToken, onPage)
+    }
+
+    private fun fetchOfflineSyncDataFromSupabase(
+        accessToken: String,
+        onPage: (count: Int, meters: Map<String, ReceiptMeter>) -> Unit
+    ): OfflineSyncData {
         val rows = linkedMapOf<String, CustomerDebt>()
         val meters = linkedMapOf<String, ReceiptMeter>()
         var offset = 0
@@ -373,6 +394,77 @@ class SupabaseApi {
         }
 
         return OfflineSyncData(rows.values.toList(), meters)
+    }
+
+    private fun fetchOfflineSnapshot(
+        accessToken: String,
+        onPage: (count: Int, meters: Map<String, ReceiptMeter>) -> Unit
+    ): OfflineSyncData {
+        val baseUrl = BuildConfig.OFFLINE_SNAPSHOT_URL.trim().trimEnd('/')
+        val manifestRequest = Request.Builder()
+            .url("$baseUrl/v1/manifest")
+            .addHeader("Authorization", "Bearer $accessToken")
+            .addHeader("Accept", "application/json")
+            .build()
+        val manifest = snapshotClient.newCall(manifestRequest).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (response.code == 401) throw SessionExpiredException()
+            if (!response.isSuccessful) throw IOException("Snapshot offline belum tersedia.")
+            JSONObject(body)
+        }
+        val version = manifest.optString("version").ifBlank {
+            throw IOException("Versi snapshot offline tidak valid.")
+        }
+        val downloadPath = manifest.optString("downloadPath")
+        if (!downloadPath.startsWith("/v1/snapshot")) {
+            throw IOException("Alamat snapshot offline tidak valid.")
+        }
+        val expectedSha256 = manifest.optString("sha256")
+
+        val snapshotRequest = Request.Builder()
+            .url("$baseUrl$downloadPath")
+            .addHeader("Authorization", "Bearer $accessToken")
+            .addHeader("Accept", "application/json")
+            .build()
+        val rawSnapshot = snapshotClient.newCall(snapshotRequest).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (response.code == 401) throw SessionExpiredException()
+            if (!response.isSuccessful) throw IOException("Paket offline tidak dapat diunduh.")
+            body
+        }
+        if (expectedSha256.isNotBlank() && sha256(rawSnapshot) != expectedSha256.lowercase(Locale.US)) {
+            throw IOException("Paket offline rusak atau belum lengkap.")
+        }
+
+        val payload = JSONObject(rawSnapshot)
+        if (payload.optInt("schemaVersion", 0) != 1) {
+            throw IOException("Format paket offline belum didukung aplikasi ini.")
+        }
+        val array = payload.optJSONArray("rows") ?: JSONArray()
+        if (array.length() > 50_000) throw IOException("Jumlah data sinkronisasi melewati batas pengaman.")
+
+        val rows = linkedMapOf<String, CustomerDebt>()
+        val meters = linkedMapOf<String, ReceiptMeter>()
+        repeat(array.length()) { index ->
+            val item = array.getJSONObject(index)
+            val row = item.toCustomerDebt()
+            if (row.idpel.isNotBlank()) {
+                rows[row.idpel] = row
+                val standAwal = item.optString("stand_awal")
+                val standAkhir = item.optString("stand_akhir")
+                if (standAwal.isNotBlank() || standAkhir.isNotBlank()) {
+                    meters[row.idpel] = ReceiptMeter(row.idpel, standAwal, standAkhir)
+                }
+            }
+        }
+        onPage(rows.size, meters)
+        return OfflineSyncData(rows.values.toList(), meters, version)
+    }
+
+    private fun sha256(value: String): String {
+        return MessageDigest.getInstance("SHA-256")
+            .digest(value.toByteArray(Charsets.UTF_8))
+            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
     }
 
     private fun fetchRemainingCustomersInternal(
@@ -1094,7 +1186,8 @@ data class CustomerDebt(
 
 data class OfflineSyncData(
     val rows: List<CustomerDebt>,
-    val meters: Map<String, ReceiptMeter>
+    val meters: Map<String, ReceiptMeter>,
+    val dataVersion: String? = null
 )
 
 private data class OfflineSyncItem(
