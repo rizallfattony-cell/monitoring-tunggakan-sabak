@@ -2862,9 +2862,16 @@ function sheetToObjects(sheet) {
     return `KOLOM_${index + 1}`;
   });
 
-  return matrix.slice(headerIndex + 1)
+  const rows = matrix.slice(headerIndex + 1)
     .filter((row) => row.some((cell) => String(cell).trim() !== ""))
     .map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])));
+  Object.defineProperty(rows, "headers", {
+    value: headers,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+  return rows;
 }
 
 function normalizeDil(rows) {
@@ -5397,15 +5404,39 @@ function getKogol3SatkerValue(row) {
 }
 
 function describeKogolHeaders(rows) {
-  const headers = [...new Set((rows || []).flatMap((row) => Object.keys(row || {})))]
+  const headers = getKogolUploadHeaders(rows)
     .filter((header) => !/^KOLOM_\d+$/i.test(header))
     .slice(0, 12);
   return headers.length ? ` Header yang terbaca: ${headers.join(", ")}.` : "";
 }
 
+function getKogolUploadHeaders(rows) {
+  return [...new Set([
+    ...((rows && Array.isArray(rows.headers)) ? rows.headers : []),
+    ...(rows || []).flatMap((row) => Object.keys(row || {})),
+  ])];
+}
+
+function hasKogolUploadStructure(rows, kind) {
+  const normalizedHeaders = getKogolUploadHeaders(rows).map(normalizeHeader);
+  const hasIdpel = normalizedHeaders.some((header) => ["IDPEL", "IDPELANGGAN", "NOIDPEL"].includes(header));
+  if (!hasIdpel) return false;
+  if (kind !== "kogol3") return true;
+  return normalizedHeaders.some((header) => header.includes("SATKER"));
+}
+
+function isEmptyKogolClosingBalance(rows, kind, mode) {
+  if (mode !== "akhir" || !hasKogolUploadStructure(rows, kind)) return false;
+  return !(rows || []).some((row) => normalizeId(getValue(
+    row,
+    ["IDPEL", "ID PEL", "ID_PEL", "ID PELANGGAN", "NO IDPEL"]
+  )));
+}
+
 function parseKogolUploadRows(rows, kind) {
   const groups = new Map();
-  const hasSatker = (rows || []).some((row) => getKogol3SatkerValue(row).length > 0);
+  const hasSatker = hasKogolUploadStructure(rows, kind)
+    || (rows || []).some((row) => getKogol3SatkerValue(row).length > 0);
   if (kind === "kogol3" && !hasSatker) {
     throw new Error(
       `Kolom SATKER_MIV atau nilai 14032800 - LPJU MUARA SABAK tidak ditemukan. File Kogol 3 diperlukan untuk memisahkan Perkantoran dan LPJU.${describeKogolHeaders(rows)}`
@@ -5487,7 +5518,8 @@ async function handleKogolUpload(event, kind, mode) {
     updateProgress(52, "Memisahkan saldo per kelompok Kogol...");
     await yieldUi();
     const snapshots = parseKogolUploadRows(rows, kind);
-    if (!snapshots.some((snapshot) => snapshot.saldoId > 0)) {
+    const emptyClosingBalance = isEmptyKogolClosingBalance(rows, kind, mode);
+    if (!snapshots.some((snapshot) => snapshot.saldoId > 0) && !emptyClosingBalance) {
       throw new Error("Tidak ada IDPEL yang dapat dibaca pada file ini.");
     }
     const receiptCustomers = mode === "akhir" ? parseKogolReceiptRows(rows, kind) : [];

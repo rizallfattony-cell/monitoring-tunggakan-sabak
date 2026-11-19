@@ -67,6 +67,22 @@ test('Excel parser inherits SATKER_MIV from the row above IDPEL', () => {
   assert.equal(parsed.SATKER_MIV, '14032800 - LPJU MUARA SABAK');
 });
 
+test('header-only Kogol 3 closing file becomes a zero balance for both groups', () => {
+  context.headerOnlySheet = XLSX.utils.aoa_to_sheet([
+    ['UNITAP', 'UNITUP', 'IDPEL', 'NAMA', 'TARIF', 'DAYA', 'KOGOL', 'SATKER_LEGALISASI', 'SATKER_MIV', 'SUBKOGOL'],
+  ]);
+  evaluate('headerOnlyRows = sheetToObjects(headerOnlySheet)');
+  assert.equal(evaluate('headerOnlyRows.length'), 0);
+  assert.equal(evaluate("hasKogolUploadStructure(headerOnlyRows, 'kogol3')"), true);
+  assert.equal(evaluate("isEmptyKogolClosingBalance(headerOnlyRows, 'kogol3', 'akhir')"), true);
+  assert.equal(evaluate("isEmptyKogolClosingBalance(headerOnlyRows, 'kogol3', 'awal')"), false);
+  const snapshots = evaluate("parseKogolUploadRows(headerOnlyRows, 'kogol3')");
+  assert.deepEqual(JSON.parse(JSON.stringify(snapshots)), [
+    { kogolKey: 'KOGOL_3_PERKANTORAN', saldoId: 0, saldoRupiah: 0 },
+    { kogolKey: 'KOGOL_3_LPJU', saldoId: 0, saldoRupiah: 0 },
+  ]);
+});
+
 test('missing SATKER error reports the headers that were actually read', () => {
   assert.throws(
     () => evaluate("parseKogolUploadRows([{ IDPEL: '003', RPTAG: '3000', NAMA: 'UJI' }], 'kogol3')"),
