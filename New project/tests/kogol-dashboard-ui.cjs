@@ -209,6 +209,25 @@ fs.mkdirSync(qa, { recursive: true });
       { kogolKey: 'KOGOL_3_LPJU', saldoId: 1, saldoRupiah: 1000 },
     ]);
 
+    const parsedWithoutReadableSatkerHeader = await page.evaluate(() => parseKogolUploadRows([
+      { IDPEL: '001', RPTAG: '1000', KOLOM_7: '14032800 - LPJU MUARA SABAK' },
+      { IDPEL: '002', RPTAG: '2000', KOLOM_7: '14040000 - KANTOR ULP SABAK' },
+    ], 'kogol3'));
+    assert.deepEqual(parsedWithoutReadableSatkerHeader, [
+      { kogolKey: 'KOGOL_3_PERKANTORAN', saldoId: 1, saldoRupiah: 2000 },
+      { kogolKey: 'KOGOL_3_LPJU', saldoId: 1, saldoRupiah: 1000 },
+    ]);
+
+    const inheritedHeader = await page.evaluate(() => {
+      const sheet = XLSX.utils.aoa_to_sheet([
+        ['', '', 'SATKER_MIV'],
+        ['IDPEL', 'RPTAG', ''],
+        ['001', '1000', '14032800 - LPJU MUARA SABAK'],
+      ]);
+      return sheetToObjects(sheet)[0];
+    });
+    assert.equal(inheritedHeader.SATKER_MIV, '14032800 - LPJU MUARA SABAK');
+
     const save = await page.evaluate(async () => {
       const ok = await kogolDashboardController.saveSnapshots('2026-10-20', [{ kogolKey: 'KOGOL_4', saldoId: 3, saldoRupiah: 30000 }], 'kogol4.xlsx');
       return { ok, call: window.__kogolRpcCalls.find((item) => item.name === 'save_kogol_debt_snapshot') };

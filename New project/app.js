@@ -2851,7 +2851,15 @@ function sheetToObjects(sheet) {
 
   const headers = matrix[headerIndex].map((header, index) => {
     const normalized = cleanText(header);
-    return normalized || `KOLOM_${index + 1}`;
+    if (normalized) return normalized;
+
+    // Beberapa ekspor XLS menaruh SATKER_MIV satu baris di atas IDPEL
+    // karena header digabung secara vertikal. Ambil label terdekat di atasnya.
+    for (let rowIndex = headerIndex - 1; rowIndex >= Math.max(0, headerIndex - 3); rowIndex -= 1) {
+      const inherited = cleanText(matrix[rowIndex]?.[index]);
+      if (inherited) return inherited;
+    }
+    return `KOLOM_${index + 1}`;
   });
 
   return matrix.slice(headerIndex + 1)
@@ -5363,17 +5371,45 @@ function summarizeKogolRows(rows) {
 
 function getKogolUploadGroupKey(row, kind) {
   if (kind === "kogol4") return "KOGOL_4";
-  const satker = cleanText(getValue(row, ["SATKER_MIV", "SATKER MIV"], ["SATKERMIV", "SATKER"])).toUpperCase();
-  return satker.includes("14032800") || satker.includes("LPJU MUARA SABAK")
+  const satker = getKogol3SatkerValue(row);
+  return isKogol3LpjuSatker(satker)
     ? "KOGOL_3_LPJU"
     : "KOGOL_3_PERKANTORAN";
 }
 
+function isKogol3LpjuSatker(value) {
+  const normalized = normalizeHeader(value);
+  return normalized.includes("14032800") || normalized.includes("LPJUMUARASABAK");
+}
+
+function getKogol3SatkerValue(row) {
+  const direct = cleanText(getValue(
+    row,
+    ["SATKER_MIV", "SATKER MIV", "NAMA SATKER", "KODE SATKER", "UNIT SATKER"],
+    ["SATKERMIV", "SATKER"]
+  ));
+  if (direct) return direct;
+
+  // Bila header hasil ekspor tidak terbaca, nilai LPJU tetap dapat dikenali
+  // dari isi baris tanpa menebak kelompok pelanggan lainnya.
+  const marker = Object.values(row || {}).find((value) => isKogol3LpjuSatker(value));
+  return cleanText(marker);
+}
+
+function describeKogolHeaders(rows) {
+  const headers = [...new Set((rows || []).flatMap((row) => Object.keys(row || {})))]
+    .filter((header) => !/^KOLOM_\d+$/i.test(header))
+    .slice(0, 12);
+  return headers.length ? ` Header yang terbaca: ${headers.join(", ")}.` : "";
+}
+
 function parseKogolUploadRows(rows, kind) {
   const groups = new Map();
-  const hasSatker = (rows || []).some((row) => cleanText(getValue(row, ["SATKER_MIV", "SATKER MIV"], ["SATKERMIV", "SATKER"])).length > 0);
+  const hasSatker = (rows || []).some((row) => getKogol3SatkerValue(row).length > 0);
   if (kind === "kogol3" && !hasSatker) {
-    throw new Error("Kolom SATKER_MIV tidak ditemukan. File Kogol 3 diperlukan untuk memisahkan Perkantoran dan LPJU.");
+    throw new Error(
+      `Kolom SATKER_MIV atau nilai 14032800 - LPJU MUARA SABAK tidak ditemukan. File Kogol 3 diperlukan untuk memisahkan Perkantoran dan LPJU.${describeKogolHeaders(rows)}`
+    );
   }
 
   for (const row of rows || []) {
