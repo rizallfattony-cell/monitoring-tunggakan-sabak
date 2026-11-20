@@ -28,7 +28,6 @@ const tabs = [
 ];
 
 async function exposeAdminShell(page, theme) {
-  await page.addStyleTag({ content: "#authGate{display:none!important}#appShell{display:block!important}" });
   await page.evaluate((selectedTheme) => {
     document.documentElement.dataset.theme = selectedTheme;
     const gate = document.querySelector("#authGate");
@@ -123,7 +122,11 @@ async function inspectInteractions(page, viewport, theme) {
       await page.waitForTimeout(500);
       const file = path.join(outputDir, `login-mobile-${theme}.png`);
       await page.screenshot({ path: file, fullPage: false });
-      loginScreenshots.push({ theme, file, pageErrors });
+      const visibility = await page.evaluate(() => ({
+        gateVisible: getComputedStyle(document.querySelector("#authGate")).display !== "none",
+        shellHidden: getComputedStyle(document.querySelector("#appShell")).display === "none",
+      }));
+      loginScreenshots.push({ theme, file, pageErrors, visibility });
       await page.close();
     }
 
@@ -137,13 +140,17 @@ async function inspectInteractions(page, viewport, theme) {
         await exposeAdminShell(page, theme);
         await page.waitForTimeout(100);
 
+        const shellVisibility = await page.evaluate(() => ({
+          gateHidden: getComputedStyle(document.querySelector("#authGate")).display === "none",
+          shellVisible: getComputedStyle(document.querySelector("#appShell")).display !== "none",
+        }));
         const layout = await inspectLayout(page);
         await page.waitForTimeout(250);
         const file = path.join(outputDir, `${viewport.name}-${theme}.png`);
         await page.screenshot({ path: file, fullPage: false });
         const appearance = viewport.name === "desktop" ? await inspectAppearance(page) : undefined;
         const interactions = await inspectInteractions(page, viewport, theme);
-        report.push({ viewport, theme, file, pageErrors, layout, appearance, interactions });
+        report.push({ viewport, theme, file, pageErrors, layout, appearance, interactions, shellVisibility });
         await page.close();
       }
     }
@@ -154,6 +161,16 @@ async function inspectInteractions(page, viewport, theme) {
   const failures = report.flatMap((item) => item.layout
     .filter((entry) => !entry.visible || entry.documentOverflow || entry.workspaceOverflow)
     .map((entry) => ({ viewport: item.viewport.name, theme: item.theme, ...entry })));
+  failures.push(...report
+    .filter((item) => !item.shellVisibility.gateHidden || !item.shellVisibility.shellVisible)
+    .map((item) => ({
+      viewport: item.viewport.name,
+      theme: item.theme,
+      shellVisibility: item.shellVisibility,
+    })));
+  failures.push(...loginScreenshots
+    .filter((item) => !item.visibility.gateVisible || !item.visibility.shellHidden)
+    .map((item) => ({ theme: item.theme, loginVisibility: item.visibility })));
 
   const screenshots = report.map((item) => ({
     viewport: item.viewport.name,
@@ -162,6 +179,7 @@ async function inspectInteractions(page, viewport, theme) {
     pageErrors: item.pageErrors,
     appearance: item.appearance,
     interactions: item.interactions,
+    shellVisibility: item.shellVisibility,
   }));
   console.log(JSON.stringify({ outputDir, failures, loginScreenshots, screenshots }, null, 2));
   if (failures.length) process.exitCode = 1;

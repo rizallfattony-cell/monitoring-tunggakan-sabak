@@ -99,6 +99,10 @@ html[data-ui="professional"] strong {
   color: var(--pro-text);
 }
 
+html[data-ui="professional"] [hidden] {
+  display: none !important;
+}
+
 html[data-ui="professional"] h1,
 html[data-ui="professional"] h2,
 html[data-ui="professional"] h3,
