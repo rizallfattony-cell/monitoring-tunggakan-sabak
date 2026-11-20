@@ -4,6 +4,7 @@ const {
   buildSummary,
   buildDonut,
   buildCards,
+  getStatusColor,
   validMonth,
   formatMonth,
   wibDate,
@@ -50,19 +51,31 @@ assert.equal(openingAddedLater.paidId, 4);
 assert.equal(openingAddedLater.rate, 40);
 assert.match(buildDonut(kogol0), /<svg/);
 assert.match(buildDonut(kogol0), /75%/);
-assert.match(buildDonut(kogol0), /IDPEL Lunas/);
+assert.match(buildDonut(kogol0), /IDPEL lunas/);
 assert.match(buildDonut({ available: false }), /Belum ada data/);
 const cards = buildCards(summaries);
 assert.match(cards, /Sisa Tunggakan/);
-assert.match(cards, /Kontribusi thd Total Tunggakan/);
+assert.match(cards, /Kontribusi thd total tunggakan/);
 assert.match(cards, /2x update/);
 assert.match(cards, /Periode: 01&ndash;05 Nov 2026/);
 assert.match(cards, /Total Saldo Awal/);
+assert.equal((cards.match(/class="kogol-card-drill/g) || []).length, 4, 'all Kogol cards keep the same footer action slot');
+assert.equal((cards.match(/aria-disabled="true"/g) || []).length, 3, 'only Kogol 0 detail is currently available');
+assert.match(cards, /width:max\(4px, /, 'small non-zero contributions remain visible');
 const staleCards = buildCards(buildSummary([
   ...rows,
   { snapshot_date: '2026-11-06', kogol_key: 'KOGOL_0', saldo_id: 20, saldo_rupiah: 250000 },
 ], '2026-11'));
-assert.match(staleCards, /Data tertinggal/);
+assert.doesNotMatch(staleCards, /Data tertinggal/);
+const completedCards = buildCards(buildSummary([
+  { snapshot_date: '2026-11-01', kogol_key: 'KOGOL_3_LPJU', saldo_id: 20, saldo_rupiah: 400000 },
+  { snapshot_date: '2026-11-05', kogol_key: 'KOGOL_3_LPJU', saldo_id: 0, saldo_rupiah: 0 },
+], '2026-11'));
+assert.match(completedCards, /is-complete/);
+assert.match(completedCards, />Tuntas</);
+assert.equal(getStatusColor(80), '#0b8f67');
+assert.equal(getStatusColor(50), '#d99100');
+assert.equal(getStatusColor(49.9), '#c44747');
 assert.equal(validMonth('2026-11'), '2026-11');
 assert.match(formatMonth('2026-11'), /November 2026/);
 assert.equal(wibDate(new Date('2026-11-04T17:30:00Z')), '2026-11-05');

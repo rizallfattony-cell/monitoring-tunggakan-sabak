@@ -90,7 +90,7 @@ fs.mkdirSync(qa, { recursive: true });
     assert.equal(await page.locator('.kogol-card svg.kogol-donut').count(), 4);
     assert.match(await page.locator('[data-kogol-key="KOGOL_0"] .kogol-donut-rate').textContent(), /70%/);
     assert.match(await page.locator('[data-kogol-key="KOGOL_3_LPJU"] .kogol-donut-rate').textContent(), /75%/);
-    assert.match(await page.locator('[data-kogol-key="KOGOL_4"]').innerText(), /Belum lunas/);
+    assert.match(await page.locator('[data-kogol-key="KOGOL_4"]').innerText(), /Belum Lunas/);
     assert.match(await page.locator('[data-kogol-key="KOGOL_0"] .kogol-card-figures strong').innerText(), /Rp\s*300\.000/);
     assert.match(await page.locator('[data-kogol-key="KOGOL_0"] .kogol-share').innerText(), /65,2%/);
     assert.equal(await page.locator('.kogol-share-track').count(), 4);
@@ -109,11 +109,21 @@ fs.mkdirSync(qa, { recursive: true });
     });
     assert.match(await page.locator('#kogol4Status').innerText(), /kogol4-akhir\.xlsx/i);
     assert.match(await page.locator('#kogolUploadStatus').innerText(), /4 dari 4 file/i);
-    const dashboardWidth = await page.evaluate(() => ({
-      panel: document.querySelector('.overview-panel').getBoundingClientRect().width,
-      kogol: document.querySelector('#kogolDashboardPanel').getBoundingClientRect().width,
-    }));
-    assert.ok(dashboardWidth.kogol >= dashboardWidth.panel * 0.95, 'Kogol dashboard fills the content width');
+    const dashboardBounds = await page.evaluate(() => {
+      const rect = (selector) => {
+        const value = document.querySelector(selector).getBoundingClientRect();
+        return { left: value.left, right: value.right, width: value.width };
+      };
+      return {
+        container: rect('.dashboard-container'),
+        kogol: rect('#kogolDashboardPanel'),
+        lpb: rect('.pln-operational-split'),
+        performance: rect('#debtPerformancePanel'),
+      };
+    });
+    assert.ok(dashboardBounds.container.width <= 1500, 'Dashboard container respects the 1500px maximum');
+    assert.ok(Math.abs(dashboardBounds.kogol.left - dashboardBounds.lpb.left) < 1, 'Kogol and LPB left edges align');
+    assert.ok(Math.abs(dashboardBounds.kogol.right - dashboardBounds.performance.right) < 1, 'Kogol and performance right edges align');
 
     await page.evaluate(() => {
       state.lpbMonitoring = normalizeLpbMonitoringState({
@@ -131,10 +141,10 @@ fs.mkdirSync(qa, { recursive: true });
     assert.equal(await page.locator('#lpbOverviewRealization').innerText(), '2');
     assert.equal(await page.locator('#lpbOverviewTarget').innerText(), '17');
     assert.equal(await page.locator('#lpbOverviewRemaining').innerText(), '15');
-    assert.match(await page.locator('#lpbOverviewChart').innerText(), /11,8%/);
-    assert.equal(await page.locator('.lpb-overview-pace-tick').count(), 1);
+    assert.match(await page.locator('#lpbOverviewChart').innerText(), /11,8\s*%/);
+    assert.equal(await page.locator('#lpbOverviewChart .lpb-progress-track').count(), 1);
     assert.match(await page.locator('#lpbOverviewPaceStatus').innerText(), /9 IDPEL/);
-    assert.match(await page.locator('#lpbOverviewPaceLegend').innerText(), /hari ke-20 dari 31/);
+    assert.match(await page.locator('#lpbOverviewPaceLegend').innerText(), /hari ke-20.*11 IDPEL/);
     assert.match(await page.locator('#lpbOverviewStatus').innerText(), /20 Oktober 2026/);
     await page.evaluate(() => { state.kogolDashboard.selectedMonth = '2026-11'; renderLpbOverview(); });
     assert.equal(await page.locator('#lpbOverviewRealization').innerText(), '-');
@@ -289,7 +299,7 @@ fs.mkdirSync(qa, { recursive: true });
       await kogolDashboardController.load({ force: true });
     });
     assert.match(await page.locator('[data-kogol-key="KOGOL_0"] .kogol-card-figures strong').innerText(), /Rp\s*5\.644\.198\.824/);
-    assert.match(await page.locator('[data-kogol-key="KOGOL_0"] .kogol-card-figures').innerText(), /Rp\s*502\.133\.805/);
+    assert.match(await page.locator('[data-kogol-key="KOGOL_0"] .kogol-breakdown').innerText(), /Rp\s*502\.133\.805/);
     assert.match(await page.locator('[data-kogol-key="KOGOL_3_PERKANTORAN"] .kogol-card-figures strong').innerText(), /Rp\s*417\.708\.103/);
     await page.locator('#kogolDashboardPanel').scrollIntoViewIfNeeded();
     await page.evaluate(() => { document.getElementById('progressPanel').hidden = true; });

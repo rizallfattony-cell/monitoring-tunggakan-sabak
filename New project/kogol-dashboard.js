@@ -142,10 +142,16 @@
     const rate = summary.rate === null ? "-" : formatPercent(summary.rate);
     return `<svg class="kogol-donut" viewBox="0 0 120 120" role="img" aria-label="${escapeHtml(`${summary.label}: ${rate} IDPEL lunas`)}">
       <circle class="kogol-donut-track" cx="60" cy="60" r="42"></circle>
-      <circle class="kogol-donut-paid" cx="60" cy="60" r="42" pathLength="${circumference}" stroke="${summary.color}" stroke-dasharray="${paidDash} ${remainingDash}" transform="rotate(-90 60 60)"></circle>
+      <circle class="kogol-donut-paid" cx="60" cy="60" r="42" pathLength="${circumference}" stroke-dasharray="${paidDash} ${remainingDash}" transform="rotate(-90 60 60)"></circle>
       <text x="60" y="56" text-anchor="middle" class="kogol-donut-rate">${escapeHtml(rate)}</text>
-      <text x="60" y="71" text-anchor="middle" class="kogol-donut-caption">IDPEL Lunas</text>
+      <text x="60" y="71" text-anchor="middle" class="kogol-donut-caption">IDPEL lunas</text>
     </svg>`;
+  }
+
+  function getStatusColor(rate) {
+    if (rate !== null && rate >= 80) return "#0b8f67";
+    if (rate !== null && rate >= 50) return "#d99100";
+    return "#c44747";
   }
 
   function formatPeriod(summary) {
@@ -162,18 +168,24 @@
 
   function buildCards(summaries) {
     const totalUnpaid = summaries.reduce((sum, summary) => sum + (summary.available ? summary.unpaidRupiah : 0), 0);
-    const latestClosingDate = summaries.reduce((latest, summary) => summary.closing?.snapshotDate > latest ? summary.closing.snapshotDate : latest, "");
     return summaries.map((summary) => {
-      const stale = Boolean(summary.closing?.snapshotDate && latestClosingDate && summary.closing.snapshotDate < latestClosingDate);
       const contribution = summary.available && totalUnpaid ? summary.unpaidRupiah * 100 / totalUnpaid : 0;
       const hasOpening = Boolean(summary.opening);
+      const complete = summary.available && summary.rate === 100 && summary.unpaidRupiah === 0;
+      const canOpenDetails = summary.key === "KOGOL_0" && summary.available;
+      const statusColor = getStatusColor(summary.rate);
+      const contributionWidth = contribution > 0
+        ? `max(4px, ${Math.max(0, Math.min(100, contribution))}%)`
+        : "0";
       return `
-      <article class="kogol-card${summary.key === "KOGOL_0" ? " kogol-card-openable" : ""}${stale ? " is-stale" : ""}" data-kogol-key="${summary.key}"${summary.key === "KOGOL_0" ? ' role="button" tabindex="0" aria-label="Lihat rincian Kogol 0 per petugas"' : ""}>
+      <article class="kogol-card${canOpenDetails ? " kogol-card-openable" : ""}${complete ? " is-complete" : ""}" data-kogol-key="${summary.key}" style="--kogol-status-color:${statusColor}"${canOpenDetails ? ' role="button" tabindex="0" aria-label="Lihat rincian Kogol 0 per petugas"' : ""}>
         <div class="kogol-card-head">
-          <h3>${escapeHtml(summary.label)}</h3>
-          <div class="kogol-card-badges">
+          <div class="kogol-card-title-row">
+            <h3>${escapeHtml(summary.label)}</h3>
             <span class="kogol-snapshot-count">${summary.available ? `${summary.snapshotCount}x update` : "Belum upload"}</span>
-            ${stale ? `<span class="kogol-stale-badge" title="Update terakhir ${escapeHtml(formatDate(summary.closing.snapshotDate))}; data terbaru unit ${escapeHtml(formatDate(latestClosingDate))}">Data tertinggal</span>` : ""}
+          </div>
+          <div class="kogol-status-slot">
+            ${complete ? '<span class="kogol-complete-badge">Tuntas</span>' : ""}
           </div>
         </div>
         <div class="kogol-card-body">
@@ -191,10 +203,10 @@
           </div>
         </div>
         <div class="kogol-share">
-          <div><span>Kontribusi thd Total Tunggakan</span><strong>${summary.available && totalUnpaid ? formatPercent(contribution) : "-"}</strong></div>
-          <div class="kogol-share-track" role="progressbar" aria-label="Kontribusi ${escapeHtml(summary.label)} terhadap total tunggakan unit" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${summary.available && totalUnpaid ? Math.round(contribution) : 0}"><i style="width:${summary.available && totalUnpaid ? Math.max(0, Math.min(100, contribution)) : 0}%"></i></div>
+          <div><span>Kontribusi thd total tunggakan</span><strong>${summary.available && totalUnpaid ? formatPercent(contribution) : "-"}</strong></div>
+          <div class="kogol-share-track" role="progressbar" aria-label="Kontribusi ${escapeHtml(summary.label)} terhadap total tunggakan unit" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${summary.available && totalUnpaid ? Math.round(contribution) : 0}"><i style="width:${contributionWidth}"></i></div>
         </div>
-        <footer><span class="kogol-period">${formatPeriod(summary)}</span>${summary.key === "KOGOL_0" ? '<span class="kogol-card-drill">Rincian petugas <i aria-hidden="true">&rarr;</i></span>' : ""}</footer>
+        <footer><span class="kogol-period">${formatPeriod(summary)}</span><span class="kogol-card-drill${canOpenDetails ? "" : " is-disabled"}" aria-disabled="${canOpenDetails ? "false" : "true"}"${canOpenDetails ? "" : ' title="Rincian petugas belum tersedia untuk kelompok ini"'}>Rincian petugas <i aria-hidden="true">&rarr;</i></span></footer>
       </article>
     `;
     }).join("");
@@ -244,12 +256,12 @@
     });
     elements.refresh?.addEventListener("click", () => load({ force: true }));
     elements.cards.addEventListener("click", (event) => {
-      if (event.target.closest('[data-kogol-key="KOGOL_0"]')) {
+      if (event.target.closest(".kogol-card-openable")) {
         onOpenGroup(buildSummary(records, validMonth(elements.month.value))[0]);
       }
     });
     elements.cards.addEventListener("keydown", (event) => {
-      if ((event.key === "Enter" || event.key === " ") && event.target.matches('[data-kogol-key="KOGOL_0"]')) {
+      if ((event.key === "Enter" || event.key === " ") && event.target.matches(".kogol-card-openable")) {
         event.preventDefault();
         onOpenGroup(buildSummary(records, validMonth(elements.month.value))[0]);
       }
@@ -387,5 +399,5 @@
     return { load, saveSnapshots, setMonth, syncContext, reset };
   }
 
-  return { GROUPS, normalizeRows, buildSummary, buildDonut, buildCards, create, wibMonth, wibDate, validMonth, formatMonth };
+  return { GROUPS, normalizeRows, buildSummary, buildDonut, buildCards, getStatusColor, create, wibMonth, wibDate, validMonth, formatMonth };
 });
