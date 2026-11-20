@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="./kogol0-detail.css?v=20261106-kogol-v5" />
     <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <link rel="stylesheet" href="./dashboard-redesign.css?v=20261113-dashboard-hero-v1" />
-    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261120-pln-corporate-v1" />
+    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261120-prototype-match-v2" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -48,17 +48,16 @@
 
     <main class="app-shell" id="appShell" hidden>
       <header class="top-app-bar">
-        <div class="top-app-identity">
-          <button class="top-menu-button" id="menuToggleButton" type="button" aria-label="Buka atau tutup menu" aria-expanded="true"><i data-lucide="menu" aria-hidden="true"></i></button>
-          <img class="brand-logo-mark" src="./monalisa-logo-mark.png?v=20261112-logo" alt="" />
-          <div class="brand-copy">
-            <strong>MONALISA</strong>
-            <span>Monitoring Tunggakan dan Analisis Kinerja</span>
-          </div>
-        </div>
         <div class="top-app-context">
-          <strong>Monitoring Operasional</strong>
-          <span><b id="workspaceTabTitle">Dashboard</b> · ULP Sabak</span>
+          <button class="top-menu-button" id="menuToggleButton" type="button" aria-label="Buka atau tutup menu" aria-expanded="true"><i data-lucide="menu" aria-hidden="true"></i></button>
+          <div class="pln-unit-badge">
+            <span class="pln-unit-icon" aria-hidden="true"><i data-lucide="zap"></i></span>
+            <span>Monitoring Operasional</span>
+            <i aria-hidden="true">&bull;</i>
+            <strong>PT PLN (Persero)</strong>
+            <b>ULP Sabak</b>
+            <span id="workspaceTabTitle" hidden>Dashboard</span>
+          </div>
         </div>
         <div class="top-app-user">
           <span class="user-avatar" aria-hidden="true">AG</span>
@@ -66,7 +65,7 @@
             <strong>Admin Ganteng</strong>
             <span>Administrator</span>
           </div>
-          <button class="legacy-logout-button" id="logoutButton" type="button">Keluar</button>
+          <button class="legacy-logout-button" id="logoutButton" type="button" aria-label="Keluar sesi" title="Keluar"><i data-lucide="log-out" aria-hidden="true"></i></button>
         </div>
       </header>
 
@@ -75,27 +74,35 @@
           <div class="pln-sidebar-brand">
             <div class="pln-tricolor" aria-hidden="true"><i></i><i></i><i></i></div>
             <div class="pln-sidebar-brand-row">
-              <img src="./monalisa-logo-mark.png?v=20261112-logo" alt="" />
+              <span class="pln-emblem" aria-hidden="true">
+                <svg viewBox="0 0 32 32" fill="none">
+                  <rect x="4" y="8" width="24" height="3" rx="1.5" fill="#00a2b9" />
+                  <rect x="4" y="14.5" width="24" height="3" rx="1.5" fill="#38bdf8" />
+                  <rect x="4" y="21" width="24" height="3" rx="1.5" fill="#e11d48" />
+                  <path d="M18.6 3 9.5 16.8h6.6L13.4 29l9.1-13.8h-6.6L18.6 3Z" fill="#ffd100" stroke="#062b3d" stroke-width="1.2" stroke-linejoin="round" />
+                </svg>
+              </span>
               <div>
-                <strong>MONALISA</strong>
-                <span>Monitoring Tunggakan<br />dan Analisis Kinerja</span>
+                <strong>MONALISA <b>PLN</b></strong>
+                <span>Monitoring Tunggakan dan Analisis Kinerja</span>
               </div>
             </div>
-            <p><i data-lucide="building-2" aria-hidden="true"></i> PT PLN (Persero) · ULP Sabak</p>
           </div>
           <div class="side-menu-title">
-            <span>Navigasi</span>
+            <span>Menu Operasional</span>
             <button class="collapse-menu-button" type="button" aria-label="Tutup menu">&times;</button>
           </div>
           <nav class="tree-menu">
             <button class="tree-parent dashboard-menu-button is-active" type="button" data-tab="overview">
               <i class="tree-menu-icon" data-lucide="layout-dashboard" aria-hidden="true"></i>
               Dashboard
+              <b class="tree-index">01</b>
             </button>
             <section class="tree-group">
               <button class="tree-parent" type="button" data-tree-toggle="database">
                 <i class="tree-menu-icon" data-lucide="database" aria-hidden="true"></i>
                 Database
+                <b class="tree-index">02</b>
                 <i class="tree-arrow" data-lucide="chevron-right" aria-hidden="true"></i>
               </button>
               <div class="tree-children">
@@ -108,6 +115,7 @@
               <button class="tree-parent" type="button" data-tree-toggle="tunggakan">
                 <i class="tree-menu-icon" data-lucide="badge-dollar-sign" aria-hidden="true"></i>
                 Tunggakan
+                <b class="tree-index">03</b>
                 <i class="tree-arrow" data-lucide="chevron-right" aria-hidden="true"></i>
               </button>
               <div class="tree-children">
@@ -122,6 +130,7 @@
               <button class="tree-parent" type="button" data-tree-toggle="lpb">
                 <i class="tree-menu-icon" data-lucide="receipt-text" aria-hidden="true"></i>
                 LPB
+                <b class="tree-index">04</b>
                 <i class="tree-arrow" data-lucide="chevron-right" aria-hidden="true"></i>
               </button>
               <div class="tree-children">
@@ -133,6 +142,7 @@
               <button class="tree-parent" type="button" data-tree-toggle="simontok-app">
                 <i class="tree-menu-icon" data-lucide="smartphone" aria-hidden="true"></i>
                 Aplikasi Mobile
+                <b class="tree-index">05</b>
                 <i class="tree-arrow" data-lucide="chevron-right" aria-hidden="true"></i>
               </button>
               <div class="tree-children">
@@ -144,7 +154,7 @@
             </section>
           </nav>
           <div class="pln-sidebar-folio" aria-label="Tanggal laporan hari ini">
-            <span>Laporan Snapshot</span>
+            <span>Laporan Snapshot <i data-lucide="zap" aria-hidden="true"></i></span>
             <strong id="sidebarFolioDay">--</strong>
             <p><b id="sidebarFolioMonth">Memuat</b><small id="sidebarFolioYear">----</small></p>
           </div>
@@ -177,10 +187,13 @@
 
                 <section class="kogol-dashboard" id="kogolDashboardPanel" aria-labelledby="kogolDashboardTitle">
                   <header class="kogol-dashboard-head">
-                    <div>
-                      <span class="overview-eyebrow">Kolektibilitas</span>
-                      <h1 id="kogolDashboardTitle">Dashboard Tunggakan per Kogol</h1>
-                      <p id="kogolDashboardStatus">Memuat snapshot Kogol...</p>
+                    <div class="kogol-hero-copy">
+                      <span class="page-index-badge" aria-hidden="true">01</span>
+                      <div>
+                        <span class="overview-eyebrow"><i data-lucide="layers" aria-hidden="true"></i> Kolektibilitas</span>
+                        <h1 id="kogolDashboardTitle">Dashboard Tunggakan per Kogol</h1>
+                        <p id="kogolDashboardStatus">Memuat snapshot Kogol...</p>
+                      </div>
                     </div>
                     <div class="kogol-dashboard-actions">
                       <label class="field compact-field" for="kogolDashboardMonth">
@@ -249,35 +262,32 @@
                   </header>
                   <section class="overview-kpi-grid" aria-label="Ringkasan tunggakan">
                     <article class="overview-kpi overview-kpi-primary">
-                      <span>Sisa tunggakan (Saldo Akhir)</span>
+                      <div class="overview-kpi-top"><span>Sisa tunggakan</span><i data-lucide="wallet" aria-hidden="true"></i></div>
                       <strong id="overviewSaldoAkhir">Rp0</strong>
                       <small id="overviewSaldoAkhirNote">Belum ada data pelanggan</small>
                     </article>
                     <article class="overview-kpi">
-                      <span>IDPEL Tersisa</span>
+                      <div class="overview-kpi-top"><span>IDPEL tersisa</span><i data-lucide="users" aria-hidden="true"></i></div>
                       <strong id="overviewIdpelTersisa">0</strong>
                       <small id="overviewIdpelNote">Dari 0 IDPEL awal</small>
                     </article>
                     <article class="overview-kpi overview-kpi-success">
-                      <span>Sudah lunas (Pelunasan)</span>
+                      <div class="overview-kpi-top"><span>Sudah lunas</span><i data-lucide="badge-check" aria-hidden="true"></i></div>
                       <strong id="overviewPelunasan">Rp0</strong>
                       <small id="overviewPelunasanNote">0 pelanggan selesai</small>
                     </article>
-                    <article class="overview-kpi">
-                      <span>Pencapaian</span>
+                    <article class="overview-kpi overview-kpi-featured">
+                      <div class="overview-kpi-grid-mark" aria-hidden="true"></div>
+                      <div class="overview-kpi-top"><span>Pencapaian</span><i data-lucide="zap" aria-hidden="true"></i></div>
                       <strong id="overviewPencapaian">0%</strong>
                       <div class="overview-progress" aria-hidden="true"><i id="overviewPencapaianBar"></i></div>
+                      <small>Realisasi pelunasan Kogol 0</small>
                     </article>
                   </section>
                   <div class="kogol-dashboard-cards" id="kogolDashboardCards">
                     <div class="kogol-dashboard-empty">Memuat dashboard Kogol...</div>
                   </div>
                 </section>
-
-                <svg class="dashboard-wave-divider" viewBox="0 0 1200 62" preserveAspectRatio="none" aria-hidden="true">
-                  <path d="M0 28Q210 0 430 27T870 22T1200 10V62H0Z" fill="#5cc9a0" opacity=".42" />
-                  <path d="M0 45Q260 13 570 41T1200 30V62H0Z" fill="#0b7c8a" opacity=".18" />
-                </svg>
 
                 <div class="pln-operational-split">
                 <section class="lpb-overview" id="lpbOverviewPanel" aria-labelledby="lpbOverviewTitle">
@@ -290,16 +300,15 @@
                     <button class="overview-text-button" type="button" data-tab="lpb" aria-label="Buka Monitoring LPB">Monitoring LPB</button>
                   </header>
                   <div class="lpb-overview-body">
-                    <div class="lpb-overview-chart" id="lpbOverviewChart" role="img" aria-label="Realisasi LPB belum tersedia"></div>
+                    <div class="lpb-overview-hero">
+                      <div class="lpb-overview-chart" id="lpbOverviewChart" role="img" aria-label="Realisasi LPB belum tersedia"></div>
+                      <small><strong id="lpbOverviewRealization">-</strong> <span id="lpbOverviewRealizationDetail">IDPEL selesai</span></small>
+                    </div>
                     <div class="lpb-overview-facts">
-                      <div><span>Realisasi bersih</span><strong id="lpbOverviewRealization">-</strong><small id="lpbOverviewRealizationDetail">IDPEL selesai</small></div>
                       <div><span>Target bulanan</span><strong id="lpbOverviewTarget">-</strong><small>17 petugas</small></div>
                       <div><span>Sisa target</span><strong id="lpbOverviewRemaining">-</strong><small>IDPEL menuju target</small></div>
+                      <div class="lpb-overview-pace" id="lpbOverviewPace"><span>Progres bulan</span><strong id="lpbOverviewPaceStatus">Menunggu data LPB</strong><small id="lpbOverviewPaceLegend">Target ideal sesuai tanggal data terbaru.</small></div>
                     </div>
-                  </div>
-                  <div class="lpb-overview-pace" id="lpbOverviewPace">
-                    <div><span>Progres bulan ini</span><strong id="lpbOverviewPaceStatus">Menunggu data LPB</strong></div>
-                    <small id="lpbOverviewPaceLegend">Penanda pada lingkaran: target ideal sesuai tanggal data terbaru.</small>
                   </div>
                 </section>
 
@@ -313,15 +322,15 @@
                   </div>
                   <div class="overview-status-list">
                     <div class="overview-status-row">
-                      <i aria-hidden="true"></i>
+                      <i aria-hidden="true">01</i>
                       <div><strong>DIL</strong><span id="overviewDilStatus">Belum tersedia</span></div>
                     </div>
                     <div class="overview-status-row">
-                      <i aria-hidden="true"></i>
+                      <i aria-hidden="true">02</i>
                       <div><strong>Saldo Awal</strong><span id="overviewAwalStatus">Belum tersedia</span></div>
                     </div>
                     <div class="overview-status-row">
-                      <i aria-hidden="true"></i>
+                      <i aria-hidden="true">03</i>
                       <div><strong>Saldo Akhir</strong><span id="overviewAkhirStatus">Belum tersedia</span></div>
                     </div>
                   </div>
@@ -1363,6 +1372,6 @@
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
     <script src="./kogol-dashboard.js?v=20261117-kogol-receipt-v2"></script>
     <script src="./kogol0-detail.js?v=20261106-kogol-v5"></script>
-    <script src="./app.js?v=20261120-pln-corporate-v1"></script>
+    <script src="./app.js?v=20261120-prototype-match-v2"></script>
   </body>
 </html>
