@@ -131,14 +131,6 @@ const els = {
   tableDate: document.querySelector("#tableDate"),
   reportDate: document.querySelector("#reportDate"),
   overviewQuote: document.querySelector("#overviewQuote"),
-  overviewSaldoAkhir: document.querySelector("#overviewSaldoAkhir"),
-  overviewSaldoAkhirNote: document.querySelector("#overviewSaldoAkhirNote"),
-  overviewIdpelTersisa: document.querySelector("#overviewIdpelTersisa"),
-  overviewIdpelNote: document.querySelector("#overviewIdpelNote"),
-  overviewPelunasan: document.querySelector("#overviewPelunasan"),
-  overviewPelunasanNote: document.querySelector("#overviewPelunasanNote"),
-  overviewPencapaian: document.querySelector("#overviewPencapaian"),
-  overviewPencapaianBar: document.querySelector("#overviewPencapaianBar"),
   overviewOfficerList: document.querySelector("#overviewOfficerList"),
   overviewDilStatus: document.querySelector("#overviewDilStatus"),
   overviewAwalStatus: document.querySelector("#overviewAwalStatus"),
@@ -3739,34 +3731,9 @@ function render() {
 }
 
 function renderOverviewDashboard() {
-  if (!els.overviewSaldoAkhir) return;
   debtPerformanceController.syncContext();
   kogolDashboardController.syncContext();
   const petugasMode = state.profile?.role === "petugas";
-  const petugasRows = state.petugasRows || [];
-  const petugasTotal = petugasRows.reduce((sum, row) => sum + Number(row.rptag || 0), 0);
-  const totals = petugasMode
-    ? {
-        awalId: petugasRows.length,
-        akhirId: petugasRows.length,
-        akhirRupiah: petugasTotal,
-        pelunasanPel: 0,
-        pelunasanRupiah: 0,
-        persenTagihan: 0,
-      }
-    : state.totals;
-
-  els.overviewSaldoAkhir.textContent = formatRupiah(totals.akhirRupiah);
-  els.overviewSaldoAkhirNote.textContent = `${formatNumber(totals.akhirId)} pelanggan masih menunggak`;
-  els.overviewIdpelTersisa.textContent = formatNumber(totals.akhirId);
-  els.overviewIdpelNote.textContent = petugasMode
-    ? state.profile?.petugas || "Data petugas"
-    : `Dari ${formatNumber(totals.awalId)} IDPEL awal`;
-  els.overviewPelunasan.textContent = formatRupiah(totals.pelunasanRupiah);
-  els.overviewPelunasanNote.textContent = `${formatNumber(totals.pelunasanPel)} pelanggan selesai`;
-  els.overviewPencapaian.textContent = formatPercent(totals.persenTagihan);
-  els.overviewPencapaianBar.style.width = `${Math.max(0, Math.min(100, totals.persenTagihan || 0))}%`;
-
   renderOverviewOfficerList(petugasMode);
   renderOverviewDataStatus();
 }
