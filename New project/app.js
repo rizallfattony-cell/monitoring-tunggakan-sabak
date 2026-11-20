@@ -6865,6 +6865,14 @@ function renderOverviewDateTime() {
   }).format(now).replace(/\./g, ":");
   if (els.reportDate) els.reportDate.textContent = `${date}   ${time}`;
   if (els.tableDate) els.tableDate.textContent = date.toUpperCase();
+  const folioDay = document.querySelector("#sidebarFolioDay");
+  const folioMonth = document.querySelector("#sidebarFolioMonth");
+  const folioYear = document.querySelector("#sidebarFolioYear");
+  if (folioDay) folioDay.textContent = String(now.getDate()).padStart(2, "0");
+  if (folioMonth) {
+    folioMonth.textContent = new Intl.DateTimeFormat("id-ID", { month: "long" }).format(now);
+  }
+  if (folioYear) folioYear.textContent = String(now.getFullYear());
 }
 
 function renderOverviewMotivation() {

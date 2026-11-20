@@ -4,13 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MONALISA | Monitoring Tunggakan dan Analisis Kinerja</title>
-    <meta name="theme-color" content="#123b5d" />
+    <meta name="theme-color" content="#062b3d" />
     <link rel="icon" type="image/png" href="./monalisa-app-icon.png?v=20261112-logo" />
     <link rel="apple-touch-icon" href="./monalisa-app-icon.png?v=20261112-logo" />
     <link rel="manifest" href="./manifest.webmanifest?v=20261112-monalisa" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&family=Sora:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css?v=20261112-monalisa-logo-v1" />
     <link rel="stylesheet" href="./invoice.css?v=20261024-invoice-tractor-v7" />
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="./kogol0-detail.css?v=20261106-kogol-v5" />
     <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <link rel="stylesheet" href="./dashboard-redesign.css?v=20261113-dashboard-hero-v1" />
+    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261120-pln-corporate-v1" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -71,6 +72,17 @@
 
       <div class="workspace-layout">
         <aside class="side-menu" aria-label="Menu MONALISA">
+          <div class="pln-sidebar-brand">
+            <div class="pln-tricolor" aria-hidden="true"><i></i><i></i><i></i></div>
+            <div class="pln-sidebar-brand-row">
+              <img src="./monalisa-logo-mark.png?v=20261112-logo" alt="" />
+              <div>
+                <strong>MONALISA</strong>
+                <span>Monitoring Tunggakan<br />dan Analisis Kinerja</span>
+              </div>
+            </div>
+            <p><i data-lucide="building-2" aria-hidden="true"></i> PT PLN (Persero) · ULP Sabak</p>
+          </div>
           <div class="side-menu-title">
             <span>Navigasi</span>
             <button class="collapse-menu-button" type="button" aria-label="Tutup menu">&times;</button>
@@ -131,6 +143,11 @@
               </div>
             </section>
           </nav>
+          <div class="pln-sidebar-folio" aria-label="Tanggal laporan hari ini">
+            <span>Laporan Snapshot</span>
+            <strong id="sidebarFolioDay">--</strong>
+            <p><b id="sidebarFolioMonth">Memuat</b><small id="sidebarFolioYear">----</small></p>
+          </div>
           <button class="side-online-button" id="onlineButton" type="button">Online Aktif</button>
         </aside>
 
@@ -157,29 +174,6 @@
                   </div>
                   <p class="overview-quote" id="overviewQuote">Menyiapkan motivasi kerja hari ini...</p>
                 </header>
-
-                <section class="overview-kpi-grid" aria-label="Ringkasan tunggakan">
-                  <article class="overview-kpi overview-kpi-primary">
-                    <span>Sisa tunggakan (Saldo Akhir)</span>
-                    <strong id="overviewSaldoAkhir">Rp0</strong>
-                    <small id="overviewSaldoAkhirNote">Belum ada data pelanggan</small>
-                  </article>
-                  <article class="overview-kpi">
-                    <span>IDPEL Tersisa</span>
-                    <strong id="overviewIdpelTersisa">0</strong>
-                    <small id="overviewIdpelNote">Dari 0 IDPEL awal</small>
-                  </article>
-                  <article class="overview-kpi overview-kpi-success">
-                    <span>Sudah lunas (Pelunasan)</span>
-                    <strong id="overviewPelunasan">Rp0</strong>
-                    <small id="overviewPelunasanNote">0 pelanggan selesai</small>
-                  </article>
-                  <article class="overview-kpi">
-                    <span>Pencapaian</span>
-                    <strong id="overviewPencapaian">0%</strong>
-                    <div class="overview-progress" aria-hidden="true"><i id="overviewPencapaianBar"></i></div>
-                  </article>
-                </section>
 
                 <section class="kogol-dashboard" id="kogolDashboardPanel" aria-labelledby="kogolDashboardTitle">
                   <header class="kogol-dashboard-head">
@@ -253,6 +247,28 @@
                       </svg>
                     </div>
                   </header>
+                  <section class="overview-kpi-grid" aria-label="Ringkasan tunggakan">
+                    <article class="overview-kpi overview-kpi-primary">
+                      <span>Sisa tunggakan (Saldo Akhir)</span>
+                      <strong id="overviewSaldoAkhir">Rp0</strong>
+                      <small id="overviewSaldoAkhirNote">Belum ada data pelanggan</small>
+                    </article>
+                    <article class="overview-kpi">
+                      <span>IDPEL Tersisa</span>
+                      <strong id="overviewIdpelTersisa">0</strong>
+                      <small id="overviewIdpelNote">Dari 0 IDPEL awal</small>
+                    </article>
+                    <article class="overview-kpi overview-kpi-success">
+                      <span>Sudah lunas (Pelunasan)</span>
+                      <strong id="overviewPelunasan">Rp0</strong>
+                      <small id="overviewPelunasanNote">0 pelanggan selesai</small>
+                    </article>
+                    <article class="overview-kpi">
+                      <span>Pencapaian</span>
+                      <strong id="overviewPencapaian">0%</strong>
+                      <div class="overview-progress" aria-hidden="true"><i id="overviewPencapaianBar"></i></div>
+                    </article>
+                  </section>
                   <div class="kogol-dashboard-cards" id="kogolDashboardCards">
                     <div class="kogol-dashboard-empty">Memuat dashboard Kogol...</div>
                   </div>
@@ -263,6 +279,7 @@
                   <path d="M0 45Q260 13 570 41T1200 30V62H0Z" fill="#0b7c8a" opacity=".18" />
                 </svg>
 
+                <div class="pln-operational-split">
                 <section class="lpb-overview" id="lpbOverviewPanel" aria-labelledby="lpbOverviewTitle">
                   <header class="lpb-overview-head">
                     <div>
@@ -286,6 +303,32 @@
                   </div>
                 </section>
 
+                <aside class="overview-data-status">
+                  <div class="overview-section-title">
+                    <div>
+                      <span class="overview-eyebrow">Kesiapan Sistem</span>
+                      <h2>Status Data</h2>
+                      <p>Data Kogol 0 yang digunakan untuk monitoring dan APK.</p>
+                    </div>
+                  </div>
+                  <div class="overview-status-list">
+                    <div class="overview-status-row">
+                      <i aria-hidden="true"></i>
+                      <div><strong>DIL</strong><span id="overviewDilStatus">Belum tersedia</span></div>
+                    </div>
+                    <div class="overview-status-row">
+                      <i aria-hidden="true"></i>
+                      <div><strong>Saldo Awal</strong><span id="overviewAwalStatus">Belum tersedia</span></div>
+                    </div>
+                    <div class="overview-status-row">
+                      <i aria-hidden="true"></i>
+                      <div><strong>Saldo Akhir</strong><span id="overviewAkhirStatus">Belum tersedia</span></div>
+                    </div>
+                  </div>
+                  <button class="button secondary overview-upload-button" type="button" data-tab="upload" data-upload-view="database">Kelola data</button>
+                </aside>
+                </div>
+
                 <div class="overview-dashboard-grid">
                   <section class="overview-performance">
                     <div class="overview-section-title">
@@ -300,29 +343,6 @@
                     </div>
                   </section>
 
-                  <aside class="overview-data-status">
-                    <div class="overview-section-title">
-                      <div>
-                        <h2>Status Data</h2>
-                        <p>Data Kogol 0 yang digunakan untuk monitoring dan APK.</p>
-                      </div>
-                    </div>
-                    <div class="overview-status-list">
-                      <div class="overview-status-row">
-                        <i aria-hidden="true"></i>
-                        <div><strong>DIL</strong><span id="overviewDilStatus">Belum tersedia</span></div>
-                      </div>
-                      <div class="overview-status-row">
-                        <i aria-hidden="true"></i>
-                        <div><strong>Saldo Awal</strong><span id="overviewAwalStatus">Belum tersedia</span></div>
-                      </div>
-                      <div class="overview-status-row">
-                        <i aria-hidden="true"></i>
-                        <div><strong>Saldo Akhir</strong><span id="overviewAkhirStatus">Belum tersedia</span></div>
-                      </div>
-                    </div>
-                    <button class="button secondary overview-upload-button" type="button" data-tab="upload" data-upload-view="database">Kelola data</button>
-                  </aside>
                 </div>
 
                 <section class="performance-dashboard" id="debtPerformancePanel" aria-labelledby="debtPerformanceTitle">
@@ -1343,6 +1363,6 @@
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
     <script src="./kogol-dashboard.js?v=20261117-kogol-receipt-v2"></script>
     <script src="./kogol0-detail.js?v=20261106-kogol-v5"></script>
-    <script src="./app.js?v=20261117-offline-kv-v1"></script>
+    <script src="./app.js?v=20261120-pln-corporate-v1"></script>
   </body>
 </html>
