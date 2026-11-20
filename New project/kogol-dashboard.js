@@ -140,42 +140,64 @@
     const paidDash = Math.round(circumference * paidRatio * 10) / 10;
     const remainingDash = Math.max(0, circumference - paidDash);
     const rate = summary.rate === null ? "-" : formatPercent(summary.rate);
-    return `<svg class="kogol-donut" viewBox="0 0 120 120" role="img" aria-label="${escapeHtml(`${summary.label}: ${rate} lunas`)}">
+    return `<svg class="kogol-donut" viewBox="0 0 120 120" role="img" aria-label="${escapeHtml(`${summary.label}: ${rate} IDPEL lunas`)}">
       <circle class="kogol-donut-track" cx="60" cy="60" r="42"></circle>
       <circle class="kogol-donut-paid" cx="60" cy="60" r="42" pathLength="${circumference}" stroke="${summary.color}" stroke-dasharray="${paidDash} ${remainingDash}" transform="rotate(-90 60 60)"></circle>
       <text x="60" y="56" text-anchor="middle" class="kogol-donut-rate">${escapeHtml(rate)}</text>
-      <text x="60" y="71" text-anchor="middle" class="kogol-donut-caption">lunas</text>
+      <text x="60" y="71" text-anchor="middle" class="kogol-donut-caption">IDPEL Lunas</text>
     </svg>`;
+  }
+
+  function formatPeriod(summary) {
+    if (!summary?.available || !summary.closing) return "Belum ada data";
+    if (!summary.opening) return `Update: ${formatDate(summary.closing.snapshotDate)}`;
+    if (summary.snapshotCount < 2) return `Saldo awal: ${formatDate(summary.opening.snapshotDate)}`;
+    const start = summary.opening.snapshotDate;
+    const end = summary.closing.snapshotDate;
+    if (start.slice(0, 7) === end.slice(0, 7)) {
+      return `Periode: ${start.slice(8, 10)}&ndash;${formatDate(end)}`;
+    }
+    return `Periode: ${formatDate(start)}&ndash;${formatDate(end)}`;
   }
 
   function buildCards(summaries) {
     const totalUnpaid = summaries.reduce((sum, summary) => sum + (summary.available ? summary.unpaidRupiah : 0), 0);
-    return summaries.map((summary) => `
-      <article class="kogol-card${summary.key === "KOGOL_0" ? " kogol-card-openable" : ""}" data-kogol-key="${summary.key}"${summary.key === "KOGOL_0" ? ' role="button" tabindex="0" aria-label="Lihat rincian Kogol 0 per petugas"' : ""}>
+    const latestClosingDate = summaries.reduce((latest, summary) => summary.closing?.snapshotDate > latest ? summary.closing.snapshotDate : latest, "");
+    return summaries.map((summary) => {
+      const stale = Boolean(summary.closing?.snapshotDate && latestClosingDate && summary.closing.snapshotDate < latestClosingDate);
+      const contribution = summary.available && totalUnpaid ? summary.unpaidRupiah * 100 / totalUnpaid : 0;
+      const hasOpening = Boolean(summary.opening);
+      return `
+      <article class="kogol-card${summary.key === "KOGOL_0" ? " kogol-card-openable" : ""}${stale ? " is-stale" : ""}" data-kogol-key="${summary.key}"${summary.key === "KOGOL_0" ? ' role="button" tabindex="0" aria-label="Lihat rincian Kogol 0 per petugas"' : ""}>
         <div class="kogol-card-head">
           <h3>${escapeHtml(summary.label)}</h3>
-          <span class="kogol-snapshot-count">${summary.available ? `${summary.snapshotCount} snapshot` : "Belum upload"}</span>
+          <div class="kogol-card-badges">
+            <span class="kogol-snapshot-count">${summary.available ? `${summary.snapshotCount}x update` : "Belum upload"}</span>
+            ${stale ? `<span class="kogol-stale-badge" title="Update terakhir ${escapeHtml(formatDate(summary.closing.snapshotDate))}; data terbaru unit ${escapeHtml(formatDate(latestClosingDate))}">Data tertinggal</span>` : ""}
+          </div>
         </div>
         <div class="kogol-card-body">
-          ${buildDonut(summary)}
-          <div class="kogol-card-figures">
-            <span>Belum lunas</span>
-            <strong>${summary.available ? formatRupiah(summary.unpaidRupiah) : "-"}</strong>
-            <small>${summary.available ? `${formatNumber(summary.unpaidId)}${summary.opening ? ` dari ${formatNumber(summary.totalId)}` : ""} IDPEL` : "Belum ada saldo akhir"}</small>
-            <small>${summary.rate === null ? "Lunas belum dapat dihitung" : `Lunas ${formatNumber(summary.paidId)} IDPEL - ${formatRupiah(summary.paidRupiah)}`}</small>
+          <div class="kogol-card-summary">
+            ${buildDonut(summary)}
+            <div class="kogol-card-figures">
+              <span class="kogol-primary-label">Sisa Tunggakan</span>
+              <strong class="kogol-primary-value">${summary.available ? formatRupiah(summary.unpaidRupiah) : "-"}</strong>
+            </div>
+          </div>
+          <div class="kogol-breakdown">
+            <div><span>Belum Lunas</span><b>${summary.available ? `${formatNumber(summary.unpaidId)} IDPEL` : "Belum tersedia"}</b></div>
+            <div><span>Sudah Lunas</span><b>${summary.rate === null ? "Belum dihitung" : `${formatNumber(summary.paidId)} IDPEL`} ${summary.rate === null ? "" : `<small>(${formatRupiah(summary.paidRupiah)})</small>`}</b></div>
+            <div><span>Total Saldo Awal</span><b>${hasOpening ? `${formatNumber(summary.totalId)} IDPEL <small>(${formatRupiah(summary.totalRupiah)})</small>` : "Belum tersedia"}</b></div>
           </div>
         </div>
         <div class="kogol-share">
-          <div><span>Porsi tunggakan</span><strong>${summary.available && totalUnpaid ? formatPercent(summary.unpaidRupiah * 100 / totalUnpaid) : "-"}</strong></div>
-          <div class="kogol-share-track" role="progressbar" aria-label="Porsi tunggakan ${escapeHtml(summary.label)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${summary.available && totalUnpaid ? Math.round(summary.unpaidRupiah * 100 / totalUnpaid) : 0}"><i style="width:${summary.available && totalUnpaid ? Math.max(0, Math.min(100, summary.unpaidRupiah * 100 / totalUnpaid)) : 0}%"></i></div>
+          <div><span>Kontribusi thd Total Tunggakan</span><strong>${summary.available && totalUnpaid ? formatPercent(contribution) : "-"}</strong></div>
+          <div class="kogol-share-track" role="progressbar" aria-label="Kontribusi ${escapeHtml(summary.label)} terhadap total tunggakan unit" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${summary.available && totalUnpaid ? Math.round(contribution) : 0}"><i style="width:${summary.available && totalUnpaid ? Math.max(0, Math.min(100, contribution)) : 0}%"></i></div>
         </div>
-        <footer><span>${summary.available
-          ? (!summary.opening ? "Saldo awal belum diunggah. Data akhir belum dapat dihitung sebagai realisasi."
-            : summary.snapshotCount < 2 ? "Saldo awal tersedia; menunggu upload saldo akhir."
-              : `Saldo awal ${formatDate(summary.opening?.snapshotDate)} - data terakhir ${formatDate(summary.closing?.snapshotDate)}`)
-          : "Upload saldo awal dan saldo terbaru untuk melihat pencapaian."}</span>${summary.key === "KOGOL_0" ? '<span class="kogol-card-drill">Rincian petugas <i aria-hidden="true">&rarr;</i></span>' : ""}</footer>
+        <footer><span class="kogol-period">${formatPeriod(summary)}</span>${summary.key === "KOGOL_0" ? '<span class="kogol-card-drill">Rincian petugas <i aria-hidden="true">&rarr;</i></span>' : ""}</footer>
       </article>
-    `).join("");
+    `;
+    }).join("");
   }
 
   function describeError(error) {
@@ -365,5 +387,5 @@
     return { load, saveSnapshots, setMonth, syncContext, reset };
   }
 
-  return { GROUPS, normalizeRows, buildSummary, buildDonut, create, wibMonth, wibDate, validMonth, formatMonth };
+  return { GROUPS, normalizeRows, buildSummary, buildDonut, buildCards, create, wibMonth, wibDate, validMonth, formatMonth };
 });

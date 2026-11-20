@@ -643,6 +643,10 @@ textarea:focus-visible,
   gap: 18px;
 }
 
+.kogol-dashboard::before {
+  display: none;
+}
+
 .kogol-dashboard-head {
   position: relative;
   min-height: 0;
@@ -911,6 +915,7 @@ textarea:focus-visible,
 
 .kogol-card {
   min-width: 0;
+  height: 100%;
   overflow: hidden;
   border: 1px solid var(--pln-line);
   border-radius: var(--pln-card-radius);
@@ -926,12 +931,12 @@ textarea:focus-visible,
 }
 
 .kogol-card-head {
-  min-height: 52px;
+  min-height: 60px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--pln-line);
   background: var(--pln-subtle);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
 }
@@ -954,9 +959,46 @@ textarea:focus-visible,
   white-space: nowrap;
 }
 
+.kogol-card-badges {
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kogol-stale-badge {
+  padding: 3px 7px;
+  border: 1px solid #f5c451;
+  border-radius: 999px;
+  background: #fff7d6;
+  color: #9a5b00;
+  font-size: 9.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.kogol-card.is-stale {
+  border-color: #edca75;
+}
+
+.kogol-card.is-stale .kogol-card-head,
+.kogol-card.is-stale footer {
+  background: #fffbeb;
+}
+
 .kogol-card-body {
-  min-height: 145px;
+  min-height: 244px;
   padding: 18px;
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.kogol-card-summary {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 15px;
@@ -1010,6 +1052,9 @@ textarea:focus-visible,
 .kogol-card-figures {
   min-width: 0;
   flex: 1;
+  display: grid;
+  align-content: center;
+  gap: 4px;
 }
 
 .kogol-card-figures > span {
@@ -1028,16 +1073,57 @@ textarea:focus-visible,
   font-weight: 800;
   line-height: 1.2;
   overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
 }
 
-.kogol-card-figures > small {
-  display: block;
+.kogol-breakdown {
+  min-width: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--pln-line);
+  display: grid;
+}
+
+.kogol-breakdown > div {
+  min-height: 34px;
+  padding: 7px 0;
+  border-bottom: 1px solid #edf1f5;
+  display: grid;
+  grid-template-columns: minmax(82px, 0.8fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.kogol-breakdown > div:last-child {
+  border-bottom: 0;
+}
+
+.kogol-breakdown span {
   color: var(--pln-copy);
-  font-size: 11.5px;
-  line-height: 1.45;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.kogol-breakdown b {
+  min-width: 0;
+  color: var(--pln-navy);
+  font-size: 10.5px;
+  font-weight: 750;
+  line-height: 1.35;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.kogol-breakdown b small {
+  display: block;
+  margin-top: 1px;
+  color: var(--pln-muted);
+  font-size: 9.5px;
+  font-weight: 600;
 }
 
 .kogol-share {
+  margin-top: auto;
   padding: 12px 18px 14px;
   border-top: 1px solid var(--pln-line);
 }
@@ -1053,6 +1139,8 @@ textarea:focus-visible,
 
 .kogol-share > div:first-child span {
   color: var(--pln-copy);
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .kogol-share > div:first-child strong {
@@ -1075,7 +1163,7 @@ textarea:focus-visible,
 }
 
 .kogol-card footer {
-  min-height: 50px;
+  min-height: 52px;
   margin-top: auto;
   padding: 11px 18px;
   border-top: 1px solid var(--pln-line);
@@ -1087,9 +1175,17 @@ textarea:focus-visible,
 }
 
 .kogol-card footer > span:first-child {
+  min-width: 0;
   color: var(--pln-muted);
   font-size: 10.5px;
   line-height: 1.35;
+}
+
+.kogol-period {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .kogol-card-drill {
@@ -1679,7 +1775,7 @@ textarea:focus-visible,
   }
 
   .kogol-card-body {
-    min-height: 132px;
+    min-height: 224px;
   }
 
   .lpb-overview-head,
@@ -1751,6 +1847,11 @@ textarea:focus-visible,
 
   .kogol-card-body {
     align-items: flex-start;
+  }
+
+  .kogol-card-summary,
+  .kogol-breakdown {
+    width: 100%;
   }
 
   .kogol-donut,
