@@ -3,22 +3,6 @@ const DB_NAME = "monitoring-saldo-db";
 const DB_VERSION = 1;
 const CLOUD_STATE_ID = "main";
 const DEBT_UPDATE_SIGNAL_ID = "debt-update-signal";
-const MONALISA_THEME_KEY = "monalisa-theme";
-const PROFESSIONAL_COMMANDS = [
-  { label: "Dashboard", description: "Ringkasan tunggakan dan pelaksanaan LPB", tab: "overview", icon: "layout-dashboard", keywords: "beranda ringkasan kogol lpb" },
-  { label: "Upload Data", description: "DIL dan saldo awal atau akhir", tab: "upload", view: "database", icon: "database", keywords: "unggah excel saldo kogol" },
-  { label: "Upload Stand", description: "Stand meter awal dan akhir", tab: "upload", view: "stand-meter", icon: "gauge", keywords: "meter baca stand", adminOnly: true },
-  { label: "Monitoring Saldo Tunggakan", description: "Daftar performa petugas", tab: "laporan", icon: "table-2", keywords: "laporan saldo petugas" },
-  { label: "Perbandingan Saldo", description: "Bandingkan snapshot dan tanggal", tab: "comparison", icon: "git-compare-arrows", keywords: "komparasi snapshot", adminOnly: true },
-  { label: "Saldo Akhir Rata-rata", description: "Rata-rata saldo dan target", tab: "saldo-rata", icon: "calculator", keywords: "rerata target saldo", adminOnly: true },
-  { label: "Upload Saldo Harian", description: "Pelunasan dan saldo per hari", tab: "pelunasan-harian", icon: "calendar-days", keywords: "harian pelunasan upload", adminOnly: true },
-  { label: "Monitoring LPB", description: "Pelaksanaan lapangan dan target", tab: "lpb", icon: "clipboard-check", keywords: "lapangan target lpb", adminOnly: true },
-  { label: "Status Sinkron Petugas", description: "Aktivitas sinkronisasi aplikasi", tab: "sync-status", icon: "refresh-cw", keywords: "android aplikasi petugas sinkron", adminOnly: true },
-  { label: "Kelola Premium", description: "Akses premium dan pembayaran", tab: "premium", icon: "badge-dollar-sign", keywords: "premium akses bayar", adminOnly: true },
-  { label: "Riwayat Cetak", description: "Cari dan cetak ulang struk", tab: "receipt-history", icon: "history", keywords: "struk print cetak ulang", adminOnly: true },
-  { label: "Cetak Invoice", description: "Buat invoice tunggal atau kolektif", tab: "invoice", icon: "printer", keywords: "invoice tagihan kolektif", adminOnly: true },
-  { label: "Database Online", description: "Simpan dan muat data cloud", tab: "online", icon: "cloud", keywords: "supabase cloud simpan muat", adminOnly: true },
-];
 const SALDO_AVERAGE_FIELDS = [
   { key: "kogol0Berjalan", label: "KOGOL 0 Berjalan" },
   { key: "kogol0Tunggakan", label: "KOGOL 0 Tunggakan" },
@@ -219,12 +203,6 @@ const els = {
   loadCloudButton: document.querySelector("#loadCloudButton"),
   saveCloudButton: document.querySelector("#saveCloudButton"),
   logoutButton: document.querySelector("#logoutButton"),
-  themeToggleButton: document.querySelector("#themeToggleButton"),
-  globalCommandButton: document.querySelector("#globalCommandButton"),
-  globalCommandDialog: document.querySelector("#globalCommandDialog"),
-  globalCommandClose: document.querySelector("#globalCommandClose"),
-  globalCommandInput: document.querySelector("#globalCommandInput"),
-  globalCommandResults: document.querySelector("#globalCommandResults"),
   exportModal: document.querySelector("#exportModal"),
   exportModalTitle: document.querySelector("#exportModalTitle"),
   exportModalSubtitle: document.querySelector("#exportModalSubtitle"),
@@ -385,7 +363,6 @@ async function boot() {
   initializeInvoiceForm();
   resetPremiumForm();
   initializePremiumPaymentMonth();
-  initializeProfessionalUi();
   attachEvents();
   initializeMainMenu();
   window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
@@ -435,14 +412,6 @@ function attachEvents() {
   });
   els.loginButton.addEventListener("click", () => loginOnline("panel"));
   els.logoutButton.addEventListener("click", logoutOnline);
-  els.themeToggleButton?.addEventListener("click", toggleProfessionalTheme);
-  els.globalCommandButton?.addEventListener("click", openGlobalCommand);
-  els.globalCommandClose?.addEventListener("click", closeGlobalCommand);
-  els.globalCommandInput?.addEventListener("input", (event) => renderGlobalCommandResults(event.target.value));
-  els.globalCommandResults?.addEventListener("click", handleGlobalCommandClick);
-  els.globalCommandDialog?.addEventListener("click", (event) => {
-    if (event.target === els.globalCommandDialog) closeGlobalCommand();
-  });
   els.menuToggleButton?.addEventListener("click", toggleMainMenu);
   els.collapseMenuButton?.addEventListener("click", toggleMainMenu);
   els.loadCloudButton.addEventListener("click", loadCloudData);
@@ -538,20 +507,11 @@ function attachEvents() {
     button.addEventListener("click", () => {
       if (button.dataset.tab === "upload") setUploadView(button.dataset.uploadView);
       switchTab(button.dataset.tab);
-      closeMainMenuOnCompactScreen();
     });
   });
   initializeTableMaximizeButtons();
   document.addEventListener("keydown", (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k" && isProfessionalUi()) {
-      event.preventDefault();
-      openGlobalCommand();
-      return;
-    }
-    if (event.key === "Escape") {
-      if (els.globalCommandDialog?.open) closeGlobalCommand();
-      closeMaximizedTable();
-    }
+    if (event.key === "Escape") closeMaximizedTable();
   });
 }
 
@@ -582,97 +542,9 @@ function toggleMainMenu() {
 }
 
 function initializeMainMenu() {
-  if (!els.workspaceLayout || !window.matchMedia("(max-width: 900px)").matches) return;
+  if (!els.workspaceLayout || !window.matchMedia("(max-width: 680px)").matches) return;
   els.workspaceLayout.classList.add("is-menu-collapsed");
   els.menuToggleButton?.setAttribute("aria-expanded", "false");
-}
-
-function closeMainMenuOnCompactScreen() {
-  if (!els.workspaceLayout || !window.matchMedia("(max-width: 900px)").matches) return;
-  els.workspaceLayout.classList.add("is-menu-collapsed");
-  els.menuToggleButton?.setAttribute("aria-expanded", "false");
-}
-
-function isProfessionalUi() {
-  return document.documentElement.dataset.ui === "professional";
-}
-
-function initializeProfessionalUi() {
-  if (!isProfessionalUi()) return;
-  updateProfessionalThemeButton();
-  renderGlobalCommandResults("");
-}
-
-function setProfessionalTheme(theme) {
-  const nextTheme = theme === "dark" ? "dark" : "light";
-  document.documentElement.dataset.theme = nextTheme;
-  try {
-    localStorage.setItem(MONALISA_THEME_KEY, nextTheme);
-  } catch (_) {}
-  updateProfessionalThemeButton();
-}
-
-function toggleProfessionalTheme() {
-  const currentTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
-  setProfessionalTheme(currentTheme === "dark" ? "light" : "dark");
-}
-
-function updateProfessionalThemeButton() {
-  if (!els.themeToggleButton) return;
-  const dark = document.documentElement.dataset.theme === "dark";
-  const label = dark ? "Aktifkan tema terang" : "Aktifkan tema gelap";
-  els.themeToggleButton.setAttribute("aria-label", label);
-  els.themeToggleButton.title = label;
-}
-
-function openGlobalCommand() {
-  if (!isProfessionalUi() || !els.globalCommandDialog) return;
-  renderGlobalCommandResults(els.globalCommandInput?.value || "");
-  if (!els.globalCommandDialog.open) els.globalCommandDialog.showModal();
-  window.setTimeout(() => {
-    els.globalCommandInput?.focus();
-    els.globalCommandInput?.select();
-  }, 0);
-}
-
-function closeGlobalCommand() {
-  if (!els.globalCommandDialog?.open) return;
-  els.globalCommandDialog.close();
-  els.globalCommandButton?.focus();
-}
-
-function availableProfessionalCommands() {
-  const isAdmin = state.profile?.role === "admin";
-  return PROFESSIONAL_COMMANDS.filter((item) => !item.adminOnly || isAdmin);
-}
-
-function renderGlobalCommandResults(query) {
-  if (!els.globalCommandResults) return;
-  const term = cleanText(query).toLowerCase();
-  const commands = availableProfessionalCommands().filter((item) => {
-    if (!term) return true;
-    return `${item.label} ${item.description} ${item.keywords}`.toLowerCase().includes(term);
-  });
-
-  els.globalCommandResults.innerHTML = commands.length
-    ? commands.map((item) => `
-      <button class="global-command-item" type="button" role="option" data-command-tab="${item.tab}"${item.view ? ` data-command-view="${item.view}"` : ""}>
-        <span class="global-command-icon"><i data-lucide="${item.icon}" aria-hidden="true"></i></span>
-        <span class="global-command-copy"><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.description)}</small></span>
-        <i class="global-command-arrow" data-lucide="corner-down-left" aria-hidden="true"></i>
-      </button>
-    `).join("")
-    : '<p class="global-command-empty">Menu tidak ditemukan.</p>';
-  window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
-}
-
-function handleGlobalCommandClick(event) {
-  const button = event.target.closest("[data-command-tab]");
-  if (!button) return;
-  if (button.dataset.commandView) setUploadView(button.dataset.commandView);
-  switchTab(button.dataset.commandTab);
-  closeGlobalCommand();
-  closeMainMenuOnCompactScreen();
 }
 
 function toggleTableMaximize(section) {

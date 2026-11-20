@@ -5,20 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MONALISA | Monitoring Tunggakan dan Analisis Kinerja</title>
     <meta name="theme-color" content="#123b5d" />
-    <script>
-      (() => {
-        const params = new URLSearchParams(window.location.search);
-        const requestedUi = params.get("ui");
-        const ui = requestedUi === "professional" ? "professional" : "legacy";
-        let theme = "light";
-        try {
-          const savedTheme = localStorage.getItem("monalisa-theme");
-          if (savedTheme === "dark" || savedTheme === "light") theme = savedTheme;
-        } catch (_) {}
-        document.documentElement.dataset.ui = ui;
-        document.documentElement.dataset.theme = theme;
-      })();
-    </script>
     <link rel="icon" type="image/png" href="./monalisa-app-icon.png?v=20261112-logo" />
     <link rel="apple-touch-icon" href="./monalisa-app-icon.png?v=20261112-logo" />
     <link rel="manifest" href="./manifest.webmanifest?v=20261112-monalisa" />
@@ -34,7 +20,6 @@
     <link rel="stylesheet" href="./kogol0-detail.css?v=20261106-kogol-v5" />
     <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <link rel="stylesheet" href="./dashboard-redesign.css?v=20261113-dashboard-hero-v1" />
-    <link rel="stylesheet" href="./professional-ui.css?v=20261120-preview-v1" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -43,8 +28,7 @@
     <section class="auth-gate" id="authGate">
       <div class="login-card auth-login-card">
         <div class="login-card-title">
-          <span class="legacy-only" aria-hidden="true">&#9889;</span>
-          <img class="auth-brand-logo professional-only" src="./monalisa-logo-mark.png?v=20261112-logo" alt="" />
+          <span aria-hidden="true">&#9889;</span>
           <strong>Login MONALISA Terpusat</strong>
         </div>
         <div class="online-form">
@@ -74,17 +58,6 @@
         <div class="top-app-context">
           <strong>Monitoring Operasional</strong>
           <span><b id="workspaceTabTitle">Dashboard</b> · ULP Sabak</span>
-        </div>
-        <div class="top-app-tools professional-only">
-          <button class="global-command-trigger" id="globalCommandButton" type="button" aria-haspopup="dialog" aria-controls="globalCommandDialog">
-            <i data-lucide="search" aria-hidden="true"></i>
-            <span>Cari menu</span>
-            <kbd>Ctrl K</kbd>
-          </button>
-          <button class="top-icon-button theme-toggle-button" id="themeToggleButton" type="button" aria-label="Aktifkan tema gelap" title="Ganti tema">
-            <i class="theme-icon-light" data-lucide="moon" aria-hidden="true"></i>
-            <i class="theme-icon-dark" data-lucide="sun" aria-hidden="true"></i>
-          </button>
         </div>
         <div class="top-app-user">
           <span class="user-avatar" aria-hidden="true">AG</span>
@@ -1361,22 +1334,6 @@
       </div>
     </div>
 
-    <dialog class="global-command-dialog professional-only" id="globalCommandDialog" aria-labelledby="globalCommandTitle">
-      <header class="global-command-head">
-        <div>
-          <span class="eyebrow">Navigasi cepat</span>
-          <h2 id="globalCommandTitle">Buka menu MONALISA</h2>
-        </div>
-        <button class="icon-button" id="globalCommandClose" type="button" aria-label="Tutup pencarian menu" title="Tutup"><i data-lucide="x" aria-hidden="true"></i></button>
-      </header>
-      <label class="global-command-search" for="globalCommandInput">
-        <i data-lucide="search" aria-hidden="true"></i>
-        <input id="globalCommandInput" type="search" autocomplete="off" placeholder="Ketik nama menu..." />
-        <kbd>Esc</kbd>
-      </label>
-      <div class="global-command-results" id="globalCommandResults" role="listbox" aria-label="Hasil pencarian menu"></div>
-    </dialog>
-
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <dialog id="receiptHistoryPreview" aria-labelledby="receiptHistoryPreviewTitle">
       <header><h2 id="receiptHistoryPreviewTitle">Struk Asli</h2><button class="icon-button" id="receiptHistoryClosePreview" type="button" aria-label="Tutup preview" title="Tutup"><i data-lucide="x"></i></button></header>
@@ -1386,6 +1343,6 @@
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
     <script src="./kogol-dashboard.js?v=20261117-kogol-receipt-v2"></script>
     <script src="./kogol0-detail.js?v=20261106-kogol-v5"></script>
-    <script src="./app.js?v=20261120-professional-preview-v1"></script>
+    <script src="./app.js?v=20261117-offline-kv-v1"></script>
   </body>
 </html>
