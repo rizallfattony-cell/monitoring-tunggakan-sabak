@@ -413,6 +413,48 @@ fs.mkdirSync(qa, { recursive: true });
       return { tableTop: table.top, tableBottom: table.bottom, controlsTop: controls.top };
     });
     assert.ok(reportLayout.tableTop < reportLayout.controlsTop && reportLayout.tableBottom <= reportLayout.controlsTop, 'Tabel berada di atas kontrol laporan');
+    const stickyHeaderGeometry = await page.evaluate(async () => {
+      const wrap = document.querySelector('[data-tab-panel="laporan"] .table-wrap');
+      const body = document.querySelector('#monitoringTable tbody');
+      window.__monitoringBodyBeforeStickyTest = body.innerHTML;
+      body.innerHTML = Array.from({ length: 36 }, (_, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>PETUGAS ${index + 1}</td>
+          <td>1.000</td>
+          <td>Rp 100.000.000</td>
+          <td>100</td>
+          <td>Rp 10.000.000</td>
+          <td>900</td>
+          <td>Rp 90.000.000</td>
+          <td>90%</td>
+          <td>90%</td>
+        </tr>
+      `).join('');
+      wrap.scrollTop = 120;
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const firstRowCell = document.querySelector('#monitoringTable thead tr:first-child th[colspan]');
+      const secondRowCell = document.querySelector('#monitoringTable thead tr:nth-child(2) th');
+      const firstRect = firstRowCell.getBoundingClientRect();
+      const secondRect = secondRowCell.getBoundingClientRect();
+      const firstBackground = getComputedStyle(firstRowCell).backgroundColor;
+      const secondBackground = getComputedStyle(secondRowCell).backgroundColor;
+      return {
+        gap: secondRect.top - firstRect.bottom,
+        firstBackground,
+        secondBackground,
+      };
+    });
+    assert.ok(Math.abs(stickyHeaderGeometry.gap) <= 1, `Dua baris header sticky harus rapat, gap ${stickyHeaderGeometry.gap}px`);
+    assert.notEqual(stickyHeaderGeometry.firstBackground, 'rgba(0, 0, 0, 0)', 'Header pertama memiliki latar solid');
+    assert.notEqual(stickyHeaderGeometry.secondBackground, 'rgba(0, 0, 0, 0)', 'Header kedua memiliki latar solid');
+    await page.locator('[data-tab-panel="laporan"] .table-wrap').screenshot({ path: path.join(qa, 'monitoring-report-sticky-header.png') });
+    await page.evaluate(() => {
+      const wrap = document.querySelector('[data-tab-panel="laporan"] .table-wrap');
+      wrap.scrollTop = 0;
+      document.querySelector('#monitoringTable tbody').innerHTML = window.__monitoringBodyBeforeStickyTest;
+      delete window.__monitoringBodyBeforeStickyTest;
+    });
     await page.screenshot({ path: path.join(qa, 'monitoring-report-desktop.png'), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.evaluate(() => document.querySelector('.workspace-layout').classList.add('is-menu-collapsed'));

@@ -1426,7 +1426,40 @@ th {
   z-index: 6;
 }
 
-#monitoringTable thead tr:nth-child(2) th,
+#monitoringTable {
+  --monitoring-header-row-height: 36px;
+}
+
+#monitoringTable thead {
+  position: relative;
+  z-index: 7;
+}
+
+#monitoringTable thead tr:first-child,
+#monitoringTable thead tr:nth-child(2) {
+  height: var(--monitoring-header-row-height);
+}
+
+#monitoringTable thead tr:first-child th,
+#monitoringTable thead tr:nth-child(2) th {
+  height: var(--monitoring-header-row-height);
+  padding-top: 0;
+  padding-bottom: 0;
+  background-color: var(--header);
+  background-clip: border-box;
+}
+
+#monitoringTable thead tr:first-child th[rowspan="2"] {
+  height: calc(var(--monitoring-header-row-height) + var(--monitoring-header-row-height));
+  z-index: 7;
+}
+
+#monitoringTable thead tr:nth-child(2) th {
+  top: var(--monitoring-header-row-height);
+  z-index: 5;
+  box-shadow: 0 -1px 0 var(--header);
+}
+
 #dailyTable thead tr:nth-child(2) th {
   top: 35px;
   z-index: 5;
