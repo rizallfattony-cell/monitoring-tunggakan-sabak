@@ -1934,10 +1934,10 @@ async function resetPremiumDevice(userId) {
 function renderPetugasRows(rows) {
   state.petugasRows = rows;
   const totalRupiah = rows.reduce((sum, row) => sum + Number(row.rptag || 0), 0);
-  els.metricAwal.textContent = formatNumber(rows.length);
-  els.metricAkhir.textContent = formatRupiah(totalRupiah);
-  els.metricPelunasan.textContent = state.profile?.petugas || "-";
-  els.metricPersen.textContent = "Petugas";
+  if (els.metricAwal) els.metricAwal.textContent = formatNumber(rows.length);
+  if (els.metricAkhir) els.metricAkhir.textContent = formatRupiah(totalRupiah);
+  if (els.metricPelunasan) els.metricPelunasan.textContent = state.profile?.petugas || "-";
+  if (els.metricPersen) els.metricPersen.textContent = "Petugas";
 
   els.tableFoot.innerHTML = rows.length ? `
     <tr>
@@ -3745,10 +3745,10 @@ function render() {
   els.tableFoot.innerHTML = state.report.length ? renderTotals(state.totals) : "";
   els.exportButton.disabled = state.report.length === 0;
   if (els.exportJpgButton) els.exportJpgButton.disabled = state.report.length === 0;
-  els.metricAwal.textContent = formatRupiah(state.totals.awalRupiah);
-  els.metricAkhir.textContent = formatRupiah(state.totals.akhirRupiah);
-  els.metricPelunasan.textContent = formatRupiah(state.totals.pelunasanRupiah);
-  els.metricPersen.textContent = formatPercent(state.totals.persenTagihan);
+  if (els.metricAwal) els.metricAwal.textContent = formatRupiah(state.totals.awalRupiah);
+  if (els.metricAkhir) els.metricAkhir.textContent = formatRupiah(state.totals.akhirRupiah);
+  if (els.metricPelunasan) els.metricPelunasan.textContent = formatRupiah(state.totals.pelunasanRupiah);
+  if (els.metricPersen) els.metricPersen.textContent = formatPercent(state.totals.persenTagihan);
   renderAnomalies();
   if (state.invoiceMode === "batch") renderInvoiceBatchControls();
 }

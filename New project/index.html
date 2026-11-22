@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="./kogol0-detail.css?v=20261106-kogol-v5" />
     <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <link rel="stylesheet" href="./dashboard-redesign.css?v=20261113-dashboard-hero-v1" />
-    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261122-profile-menu-v5" />
+    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261122-report-layout-v6" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -78,7 +78,7 @@
           <div class="pln-sidebar-brand">
             <div class="pln-tricolor" aria-hidden="true"><i></i><i></i><i></i></div>
             <div class="pln-sidebar-logo-frame">
-              <img class="pln-sidebar-logo" src="./monalisa-sidebar-brand.jpg?v=20261122" alt="MONALISA - Monitoring Tunggakan dan Analisis Kinerja" />
+              <img class="pln-sidebar-logo" src="./monalisa-sidebar-banner.png?v=20261122" alt="MONALISA - Monitoring Tunggakan dan Analisis Kinerja" />
             </div>
           </div>
           <nav class="tree-menu">
@@ -512,48 +512,7 @@
           <div>
             <h2>Tabel Monitoring Tunggakan</h2>
           </div>
-          <div class="section-actions">
-            <button class="button secondary" id="exportJpgButton" type="button">Download JPG</button>
-            <button class="button primary" id="exportButton" type="button">Export Excel</button>
-          </div>
         </div>
-
-        <section class="summary-grid">
-          <article class="metric">
-            <span>Saldo Awal</span>
-            <strong id="metricAwal">Rp0</strong>
-          </article>
-          <article class="metric">
-            <span>Saldo Akhir</span>
-            <strong id="metricAkhir">Rp0</strong>
-          </article>
-          <article class="metric">
-            <span>Pelunasan</span>
-            <strong id="metricPelunasan">Rp0</strong>
-          </article>
-          <article class="metric">
-            <span>Persentase</span>
-            <strong id="metricPersen">0%</strong>
-          </article>
-        </section>
-
-        <section class="toolbar">
-          <div class="field is-hidden">
-            <label for="searchInput">Cari Petugas</label>
-            <input id="searchInput" type="search" placeholder="Nama petugas" autocomplete="off" />
-          </div>
-          <div class="field">
-            <label for="sortSelect">Urutkan</label>
-            <select id="sortSelect">
-              <option value="tagihanDesc">Tagihan terbesar</option>
-              <option value="persenAsc">Persentase terendah</option>
-              <option value="persenDesc" selected>Persentase Tertinggi</option>
-              <option value="awalDesc">Saldo awal terbesar</option>
-              <option value="nameAsc">Nama petugas A-Z</option>
-            </select>
-          </div>
-          <p class="auto-note">Klik Angka Saldo akhir Untuk Export Exel Detail Pelanggan</p>
-        </section>
 
         <section class="table-section">
           <div class="report-heading">
@@ -589,6 +548,30 @@
               </tbody>
               <tfoot id="tableFoot"></tfoot>
             </table>
+          </div>
+        </section>
+
+        <section class="toolbar report-bottom-toolbar" aria-label="Pengaturan dan ekspor laporan">
+          <div class="report-bottom-options">
+            <div class="field is-hidden">
+              <label for="searchInput">Cari Petugas</label>
+              <input id="searchInput" type="search" placeholder="Nama petugas" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="sortSelect">Urutkan berdasarkan</label>
+              <select id="sortSelect">
+                <option value="tagihanDesc">Tagihan terbesar</option>
+                <option value="persenAsc">Persentase terendah</option>
+                <option value="persenDesc" selected>Persentase tertinggi</option>
+                <option value="awalDesc">Saldo awal terbesar</option>
+                <option value="nameAsc">Nama petugas A-Z</option>
+              </select>
+            </div>
+            <p class="auto-note">Klik angka saldo akhir untuk mengekspor detail pelanggan.</p>
+          </div>
+          <div class="section-actions report-bottom-actions">
+            <button class="button secondary" id="exportJpgButton" type="button">Download JPG</button>
+            <button class="button primary" id="exportButton" type="button">Export Excel</button>
           </div>
         </section>
 
@@ -1332,6 +1315,6 @@
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
     <script src="./kogol-dashboard.js?v=20261122-donut-percent-v4"></script>
     <script src="./kogol0-detail.js?v=20261106-kogol-v5"></script>
-    <script src="./app.js?v=20261122-profile-menu-v4"></script>
+    <script src="./app.js?v=20261122-report-layout-v5"></script>
   </body>
 </html>

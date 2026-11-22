@@ -343,8 +343,8 @@ textarea:focus-visible,
 
 .pln-sidebar-brand {
   position: relative;
-  min-height: 84px;
-  padding: 10px 20px 8px;
+  min-height: 88px;
+  padding: 8px 16px 7px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: transparent;
 }
@@ -363,19 +363,43 @@ textarea:focus-visible,
 
 .pln-sidebar-logo-frame {
   width: 100%;
-  height: 66px;
-  overflow: hidden;
+  height: 73px;
   position: relative;
+  display: grid;
+  place-items: center;
 }
 
 .pln-sidebar-logo {
-  width: 280px;
-  max-width: none;
-  height: auto;
-  position: absolute;
-  left: -38px;
-  top: -72px;
+  width: 100%;
+  max-width: 236px;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
   display: block;
+}
+
+.report-bottom-toolbar {
+  margin: 16px 0 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.report-bottom-options {
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.report-bottom-options .auto-note {
+  margin: 0 0 9px;
+}
+
+.report-bottom-actions {
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .tree-menu {
@@ -1742,6 +1766,29 @@ textarea:focus-visible,
 
   .workspace-body {
     padding: 16px 0 30px;
+  }
+
+  .report-bottom-toolbar,
+  .report-bottom-options,
+  .report-bottom-actions {
+    width: 100%;
+  }
+
+  .report-bottom-toolbar,
+  .report-bottom-options {
+    align-items: stretch;
+  }
+
+  .report-bottom-toolbar {
+    display: grid;
+  }
+
+  .report-bottom-actions {
+    margin-left: 0;
+  }
+
+  .report-bottom-actions .button {
+    flex: 1 1 0;
   }
 
   .dashboard-container {

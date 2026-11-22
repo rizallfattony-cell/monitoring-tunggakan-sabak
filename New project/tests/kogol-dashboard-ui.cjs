@@ -398,6 +398,25 @@ fs.mkdirSync(qa, { recursive: true });
     assert.equal(await dataMenu.getAttribute('aria-selected'), 'true');
     assert.equal(await standMenu.getAttribute('aria-selected'), 'false');
     assert.equal(await page.locator('[data-tab-panel="upload"] .upload-panel:visible').count(), 7);
+    await page.evaluate(() => switchTab('laporan'));
+    assert.equal(await page.locator('[data-tab-panel="laporan"] > .summary-grid').count(), 0, 'Kartu ringkasan laporan dihapus');
+    assert.equal(await page.locator('[data-tab-panel="laporan"] .section-head #exportButton').count(), 0, 'Ekspor tidak lagi berada di header');
+    assert.equal(await page.locator('.report-bottom-toolbar #sortSelect').isVisible(), true, 'Urutan tersedia di bawah tabel');
+    assert.equal(await page.locator('.report-bottom-toolbar #exportJpgButton').isVisible(), true, 'Ekspor JPG tersedia di bawah tabel');
+    assert.equal(await page.locator('.report-bottom-toolbar #exportButton').isVisible(), true, 'Ekspor Excel tersedia di bawah tabel');
+    const reportLayout = await page.evaluate(() => {
+      const table = document.querySelector('[data-tab-panel="laporan"] .table-section').getBoundingClientRect();
+      const controls = document.querySelector('.report-bottom-toolbar').getBoundingClientRect();
+      return { tableTop: table.top, tableBottom: table.bottom, controlsTop: controls.top };
+    });
+    assert.ok(reportLayout.tableTop < reportLayout.controlsTop && reportLayout.tableBottom <= reportLayout.controlsTop, 'Tabel berada di atas kontrol laporan');
+    await page.screenshot({ path: path.join(qa, 'monitoring-report-desktop.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(() => document.querySelector('.workspace-layout').classList.add('is-menu-collapsed'));
+    await page.screenshot({ path: path.join(qa, 'monitoring-report-mobile.png'), fullPage: true });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'Laporan monitoring tidak overflow pada mobile');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.evaluate(() => document.querySelector('.workspace-layout').classList.remove('is-menu-collapsed'));
     await standMenu.click();
     await page.evaluate(() => {
       state.profile.role = 'petugas';
