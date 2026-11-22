@@ -195,6 +195,9 @@ const els = {
   loadCloudButton: document.querySelector("#loadCloudButton"),
   saveCloudButton: document.querySelector("#saveCloudButton"),
   logoutButton: document.querySelector("#logoutButton"),
+  topProfile: document.querySelector(".top-profile"),
+  profileMenuButton: document.querySelector("#profileMenuButton"),
+  profileMenu: document.querySelector("#profileMenu"),
   exportModal: document.querySelector("#exportModal"),
   exportModalTitle: document.querySelector("#exportModalTitle"),
   exportModalSubtitle: document.querySelector("#exportModalSubtitle"),
@@ -403,7 +406,11 @@ function attachEvents() {
     if (event.key === "Enter") loginOnline("gate");
   });
   els.loginButton.addEventListener("click", () => loginOnline("panel"));
-  els.logoutButton.addEventListener("click", logoutOnline);
+  els.logoutButton.addEventListener("click", () => {
+    setProfileMenu(false);
+    logoutOnline();
+  });
+  els.profileMenuButton?.addEventListener("click", toggleProfileMenu);
   els.menuToggleButton?.addEventListener("click", toggleMainMenu);
   els.collapseMenuButton?.addEventListener("click", toggleMainMenu);
   els.loadCloudButton.addEventListener("click", loadCloudData);
@@ -502,9 +509,25 @@ function attachEvents() {
     });
   });
   initializeTableMaximizeButtons();
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeMaximizedTable();
+  document.addEventListener("click", (event) => {
+    if (!els.topProfile?.contains(event.target)) setProfileMenu(false);
   });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeMaximizedTable();
+      setProfileMenu(false);
+    }
+  });
+}
+
+function setProfileMenu(open) {
+  if (!els.profileMenu || !els.profileMenuButton) return;
+  els.profileMenu.hidden = !open;
+  els.profileMenuButton.setAttribute("aria-expanded", String(open));
+}
+
+function toggleProfileMenu() {
+  setProfileMenu(els.profileMenu?.hidden ?? true);
 }
 
 function initializeTableMaximizeButtons() {

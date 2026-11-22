@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="./kogol0-detail.css?v=20261106-kogol-v5" />
     <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <link rel="stylesheet" href="./dashboard-redesign.css?v=20261113-dashboard-hero-v1" />
-    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261122-sidebar-logo-v4" />
+    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261122-profile-menu-v5" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -52,20 +52,24 @@
           <button class="top-menu-button" id="menuToggleButton" type="button" aria-label="Buka atau tutup menu" aria-expanded="true"><i data-lucide="menu" aria-hidden="true"></i></button>
           <div class="pln-unit-badge">
             <span class="pln-unit-icon" aria-hidden="true"><i data-lucide="zap"></i></span>
-            <span>Monitoring Operasional</span>
-            <i aria-hidden="true">&bull;</i>
             <strong>PT PLN (Persero)</strong>
             <b>ULP Sabak</b>
             <span id="workspaceTabTitle" hidden>Dashboard</span>
           </div>
         </div>
         <div class="top-app-user">
-          <span class="user-avatar" aria-hidden="true">AG</span>
-          <div class="user-copy">
-            <strong>Admin Ganteng</strong>
-            <span>Administrator</span>
+          <div class="top-profile">
+            <button class="top-profile-trigger" id="profileMenuButton" type="button" aria-label="Buka menu profil" aria-haspopup="menu" aria-expanded="false">
+              <span class="user-avatar" aria-hidden="true">AG</span>
+            </button>
+            <div class="top-profile-menu" id="profileMenu" role="menu" hidden>
+              <div class="top-profile-summary">
+                <strong>Admin Ganteng</strong>
+                <span>Administrator</span>
+              </div>
+              <button class="profile-logout-button" id="logoutButton" type="button" role="menuitem"><i data-lucide="log-out" aria-hidden="true"></i><span>Keluar</span></button>
+            </div>
           </div>
-          <button class="legacy-logout-button" id="logoutButton" type="button" aria-label="Keluar sesi" title="Keluar"><i data-lucide="log-out" aria-hidden="true"></i></button>
         </div>
       </header>
 
@@ -1328,6 +1332,6 @@
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
     <script src="./kogol-dashboard.js?v=20261122-donut-percent-v4"></script>
     <script src="./kogol0-detail.js?v=20261106-kogol-v5"></script>
-    <script src="./app.js?v=20261120-dashboard-no-kpi-v3"></script>
+    <script src="./app.js?v=20261122-profile-menu-v4"></script>
   </body>
 </html>

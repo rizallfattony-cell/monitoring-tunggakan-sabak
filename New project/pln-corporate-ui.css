@@ -217,13 +217,33 @@ textarea:focus-visible,
 
 .top-app-user {
   flex: 0 0 auto;
-  gap: 12px;
+}
+
+.top-profile {
+  position: relative;
+}
+
+.top-profile-trigger {
+  width: 44px;
+  height: 44px;
+  padding: 3px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.top-profile-trigger:hover,
+.top-profile-trigger[aria-expanded="true"] {
+  border-color: var(--pln-cyan);
+  background: var(--pln-cyan-soft);
 }
 
 .top-app-user .user-avatar {
-  order: 2;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border: 2px solid var(--pln-cyan);
   border-radius: 50%;
   background: linear-gradient(135deg, var(--pln-navy), var(--pln-slate));
@@ -236,29 +256,69 @@ textarea:focus-visible,
   place-items: center;
 }
 
-.top-app-user .user-copy {
-  order: 1;
-  text-align: right;
+.top-profile-menu {
+  width: 220px;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 80;
+  padding: 8px;
+  border: 1px solid var(--pln-line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(6, 43, 61, 0.18);
 }
 
-.top-app-user .user-copy strong,
-.top-app-user .user-copy span {
+.top-profile-menu[hidden] {
+  display: none;
+}
+
+.top-profile-summary {
+  padding: 10px 10px 12px;
+  border-bottom: 1px solid var(--pln-line);
+}
+
+.top-profile-summary strong,
+.top-profile-summary span {
   display: block;
 }
 
-.top-app-user .user-copy strong {
+.top-profile-summary strong {
   color: var(--pln-ink);
   font-size: 13px;
 }
 
-.top-app-user .user-copy span {
+.top-profile-summary span {
   margin-top: 2px;
   color: var(--pln-muted);
   font-size: 11px;
 }
 
-.top-app-user .legacy-logout-button {
-  order: 3;
+.profile-logout-button {
+  width: 100%;
+  margin-top: 6px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #b42318;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.profile-logout-button:hover {
+  background: #fff1f0;
+}
+
+.profile-logout-button svg {
+  width: 17px;
+  height: 17px;
 }
 
 .side-menu {
@@ -283,8 +343,8 @@ textarea:focus-visible,
 
 .pln-sidebar-brand {
   position: relative;
-  min-height: 104px;
-  padding: 16px 20px 12px;
+  min-height: 84px;
+  padding: 10px 20px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: transparent;
 }
@@ -303,18 +363,18 @@ textarea:focus-visible,
 
 .pln-sidebar-logo-frame {
   width: 100%;
-  height: 76px;
+  height: 66px;
   overflow: hidden;
   position: relative;
 }
 
 .pln-sidebar-logo {
-  width: 307px;
+  width: 280px;
   max-width: none;
   height: auto;
   position: absolute;
-  left: -48px;
-  top: -80px;
+  left: -38px;
+  top: -72px;
   display: block;
 }
 
