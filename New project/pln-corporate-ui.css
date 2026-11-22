@@ -283,7 +283,8 @@ textarea:focus-visible,
 
 .pln-sidebar-brand {
   position: relative;
-  padding: 24px 20px 18px;
+  min-height: 104px;
+  padding: 16px 20px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: transparent;
 }
@@ -300,57 +301,21 @@ textarea:focus-visible,
 .pln-tricolor i:nth-child(2) { background: var(--pln-cyan); }
 .pln-tricolor i:nth-child(3) { background: var(--pln-red); }
 
-.pln-sidebar-brand-row {
-  display: flex;
-  align-items: center;
-  gap: 13px;
+.pln-sidebar-logo-frame {
+  width: 100%;
+  height: 76px;
+  overflow: hidden;
+  position: relative;
 }
 
-.pln-emblem {
-  width: 44px;
-  height: 44px;
-  flex: 0 0 auto;
-  border: 1px solid rgba(255, 209, 0, 0.35);
-  border-radius: 11px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  display: grid;
-  place-items: center;
-}
-
-.pln-emblem svg {
-  width: 28px;
-  height: 28px;
-}
-
-.pln-sidebar-brand-row > div {
-  min-width: 0;
-}
-
-.pln-sidebar-brand-row strong {
-  color: #fff;
-  font-family: "Plus Jakarta Sans", sans-serif;
-  font-size: 17px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.pln-sidebar-brand-row strong b {
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--pln-yellow);
-  color: var(--pln-navy);
-  font-size: 9px;
-}
-
-.pln-sidebar-brand-row span {
+.pln-sidebar-logo {
+  width: 307px;
+  max-width: none;
+  height: auto;
+  position: absolute;
+  left: -48px;
+  top: -80px;
   display: block;
-  margin-top: 3px;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 10.5px;
-  line-height: 1.3;
 }
 
 .tree-menu {
@@ -578,7 +543,10 @@ textarea:focus-visible,
 }
 
 .tab-panel:not([data-tab-panel="overview"]) {
-  padding: 0;
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 0 32px;
 }
 
 .overview-panel {
@@ -1719,6 +1687,10 @@ textarea:focus-visible,
   .dashboard-container {
     padding-inline: 14px;
     gap: 14px;
+  }
+
+  .tab-panel:not([data-tab-panel="overview"]) {
+    padding-inline: 14px;
   }
 
   .overview-panel,
