@@ -86,10 +86,14 @@ fs.mkdirSync(qa, { recursive: true });
     });
 
     await page.waitForFunction(() => document.querySelectorAll('.kogol-card').length === 4);
+    assert.equal(await page.locator('.tree-index').count(), 0, 'Nomor menu sidebar harus dihapus');
+    assert.equal(await page.locator('.side-menu-title').count(), 0, 'Strip kosong sidebar harus dihapus');
+    assert.equal(await page.locator('.kogol-donut-caption').count(), 0, 'Donut hanya menampilkan persentase');
+    await page.screenshot({ path: path.join(qa, 'sidebar-clean-desktop.png'), fullPage: false });
     assert.equal(await page.locator('.kogol-card').count(), 4);
     assert.equal(await page.locator('.kogol-card svg.kogol-donut').count(), 4);
-    assert.match(await page.locator('[data-kogol-key="KOGOL_0"] .kogol-donut-rate').textContent(), /70%/);
-    assert.match(await page.locator('[data-kogol-key="KOGOL_3_LPJU"] .kogol-donut-rate').textContent(), /75%/);
+    assert.match(await page.locator('[data-kogol-key="KOGOL_0"] .kogol-donut-rate').textContent(), /70\s*%/);
+    assert.match(await page.locator('[data-kogol-key="KOGOL_3_LPJU"] .kogol-donut-rate').textContent(), /75\s*%/);
     assert.match(await page.locator('[data-kogol-key="KOGOL_4"]').innerText(), /Belum Lunas/);
     assert.match(await page.locator('[data-kogol-key="KOGOL_0"] .kogol-card-figures strong').innerText(), /Rp\s*300\.000/);
     assert.match(await page.locator('[data-kogol-key="KOGOL_0"] .kogol-share').innerText(), /65,2%/);

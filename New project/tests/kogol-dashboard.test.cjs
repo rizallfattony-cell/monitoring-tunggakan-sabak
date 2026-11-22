@@ -50,8 +50,8 @@ const openingAddedLater = buildSummary([
 assert.equal(openingAddedLater.paidId, 4);
 assert.equal(openingAddedLater.rate, 40);
 assert.match(buildDonut(kogol0), /<svg/);
-assert.match(buildDonut(kogol0), /75%/);
-assert.match(buildDonut(kogol0), /IDPEL lunas/);
+assert.match(buildDonut(kogol0), /75 %/);
+assert.doesNotMatch(buildDonut(kogol0), /kogol-donut-caption|>IDPEL lunas</);
 assert.match(buildDonut({ available: false }), /Belum ada data/);
 const cards = buildCards(summaries);
 assert.match(cards, /Sisa Tunggakan/);

@@ -140,11 +140,11 @@
     const paidDash = Math.round(circumference * paidRatio * 10) / 10;
     const remainingDash = Math.max(0, circumference - paidDash);
     const rate = summary.rate === null ? "-" : formatPercent(summary.rate);
-    return `<svg class="kogol-donut" viewBox="0 0 120 120" role="img" aria-label="${escapeHtml(`${summary.label}: ${rate} IDPEL lunas`)}">
+    const displayRate = rate === "-" ? rate : rate.replace("%", " %");
+    return `<svg class="kogol-donut" viewBox="0 0 120 120" role="img" aria-label="${escapeHtml(`${summary.label}: ${rate} pelanggan lunas`)}">
       <circle class="kogol-donut-track" cx="60" cy="60" r="42"></circle>
       <circle class="kogol-donut-paid" cx="60" cy="60" r="42" pathLength="${circumference}" stroke-dasharray="${paidDash} ${remainingDash}" transform="rotate(-90 60 60)"></circle>
-      <text x="60" y="56" text-anchor="middle" class="kogol-donut-rate">${escapeHtml(rate)}</text>
-      <text x="60" y="71" text-anchor="middle" class="kogol-donut-caption">IDPEL lunas</text>
+      <text x="60" y="60" dy=".08em" text-anchor="middle" dominant-baseline="middle" class="kogol-donut-rate">${escapeHtml(displayRate)}</text>
     </svg>`;
   }
 
