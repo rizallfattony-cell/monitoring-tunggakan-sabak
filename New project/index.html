@@ -20,13 +20,24 @@
     <link rel="stylesheet" href="./kogol0-detail.css?v=20261106-kogol-v5" />
     <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <link rel="stylesheet" href="./dashboard-redesign.css?v=20261113-dashboard-hero-v1" />
-    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261125-mobile-pin-v9" />
+    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261125-session-loader-v10" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
   </head>
   <body>
-    <section class="auth-gate" id="authGate">
+    <section class="auth-session-loader" id="authSessionLoader" aria-live="polite" aria-label="Memulihkan sesi MONALISA">
+      <div class="auth-session-loader-content">
+        <span class="auth-session-loader-mark" aria-hidden="true"><i data-lucide="zap"></i></span>
+        <div>
+          <strong>MONALISA</strong>
+          <p>Memulihkan sesi...</p>
+        </div>
+        <span class="auth-session-loader-spinner" aria-hidden="true"></span>
+      </div>
+    </section>
+
+    <section class="auth-gate" id="authGate" hidden>
       <div class="login-card auth-login-card">
         <div class="login-card-title">
           <span aria-hidden="true">&#9889;</span>
@@ -1342,6 +1353,6 @@
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
     <script src="./kogol-dashboard.js?v=20261122-donut-percent-v4"></script>
     <script src="./kogol0-detail.js?v=20261106-kogol-v5"></script>
-    <script src="./app.js?v=20261125-mobile-pin-v7"></script>
+    <script src="./app.js?v=20261125-session-loader-v8"></script>
   </body>
 </html>

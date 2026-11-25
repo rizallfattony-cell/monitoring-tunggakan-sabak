@@ -115,6 +115,7 @@ const state = {
 
 const els = {
   appShell: document.querySelector("#appShell"),
+  authSessionLoader: document.querySelector("#authSessionLoader"),
   authGate: document.querySelector("#authGate"),
   gateEmailInput: document.querySelector("#gateEmailInput"),
   gatePasswordInput: document.querySelector("#gatePasswordInput"),
@@ -2636,6 +2637,7 @@ function updateOnlineUi() {
   const online = Boolean(state.user);
   receiptHistoryController.onAuthChange();
   kogolDashboardController.syncContext();
+  if (els.authSessionLoader) els.authSessionLoader.hidden = true;
   if (els.authGate) els.authGate.hidden = online;
   if (els.appShell) els.appShell.hidden = !online;
   if (els.onlineButton) els.onlineButton.textContent = online ? "Online Aktif" : "Login Online";

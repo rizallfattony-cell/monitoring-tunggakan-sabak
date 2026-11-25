@@ -44,6 +44,9 @@ fs.mkdirSync(qa, { recursive: true });
     });
     await page.goto(`http://127.0.0.1:${server.address().port}`);
     await page.waitForFunction(() => window.__kogolReady);
+    assert.equal(await page.locator('#authSessionLoader').isVisible(), true, 'Saat awal web hanya menampilkan pemulihan sesi');
+    assert.equal(await page.locator('#authGate').isHidden(), true, 'Form login tidak berkedip sebelum pemeriksaan sesi selesai');
+    await page.screenshot({ path: path.join(qa, 'auth-session-loader.png'), fullPage: false });
     await page.evaluate(() => {
       const kogolRows = [
         { snapshot_date: '2026-10-01', kogol_key: 'KOGOL_0', saldo_id: 100, saldo_rupiah: 1000000, uploaded_at: '2026-10-01T01:00:00Z' },
@@ -75,9 +78,8 @@ fs.mkdirSync(qa, { recursive: true });
           return { data: { ok: true }, error: null };
         },
       };
-      document.getElementById('authGate').hidden = true;
-      document.getElementById('appShell').hidden = false;
       attachEvents();
+      updateOnlineUi();
       state.kogolDashboard.selectedMonth = '2026-10';
       renderKogolDashboardControls();
       kogolDashboardController.syncContext();
@@ -85,6 +87,9 @@ fs.mkdirSync(qa, { recursive: true });
       kogolDashboardController.load();
     });
 
+    assert.equal(await page.locator('#authSessionLoader').isHidden(), true, 'Loader ditutup setelah sesi dipulihkan');
+    assert.equal(await page.locator('#authGate').isHidden(), true, 'Form login tetap tersembunyi untuk sesi aktif');
+    assert.equal(await page.locator('#appShell').isVisible(), true, 'Dashboard langsung tampil untuk sesi aktif');
     await page.waitForFunction(() => document.querySelectorAll('.kogol-card').length === 4);
     assert.equal(await page.locator('.tree-index').count(), 0, 'Nomor menu sidebar harus dihapus');
     assert.equal(await page.locator('.side-menu-title').count(), 0, 'Strip kosong sidebar harus dihapus');
