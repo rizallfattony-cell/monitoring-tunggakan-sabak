@@ -205,18 +205,28 @@ fs.mkdirSync(qa, { recursive: true });
         ['ADRI', rows.slice(0, 15)], ['AMRIZAL', rows.slice(15)],
       ]);
       state.report = [
+        { petugas: '>41500', awalId: 20, awalRupiah: 20000, akhirId: 19, akhirRupiah: 19800, pelunasanPel: 1, pelunasanRupiah: 200, persenPel: 5, persenTagihan: 1 },
+        { petugas: '<41500-6600', awalId: 20, awalRupiah: 20000, akhirId: 18, akhirRupiah: 19600, pelunasanPel: 2, pelunasanRupiah: 400, persenPel: 10, persenTagihan: 2 },
         { petugas: 'AMRIZAL', awalId: 20, awalRupiah: 250000, akhirId: 15, akhirRupiah: 186000, pelunasanPel: 5, pelunasanRupiah: 64000, persenPel: 25, persenTagihan: 25.6 },
         { petugas: 'ADRI', awalId: 20, awalRupiah: 250000, akhirId: 15, akhirRupiah: 114000, pelunasanPel: 5, pelunasanRupiah: 136000, persenPel: 25, persenTagihan: 54.4 },
+        { petugas: 'DEDI YANTO', awalId: 10, awalRupiah: 100000, akhirId: 4, akhirRupiah: 40000, pelunasanPel: 6, pelunasanRupiah: 60000, persenPel: 60, persenTagihan: 60 },
+        { petugas: 'HASIM', awalId: 10, awalRupiah: 100000, akhirId: 3, akhirRupiah: 30000, pelunasanPel: 7, pelunasanRupiah: 70000, persenPel: 70, persenTagihan: 70 },
+        { petugas: 'SUWARDI', awalId: 10, awalRupiah: 100000, akhirId: 2, akhirRupiah: 20000, pelunasanPel: 8, pelunasanRupiah: 80000, persenPel: 80, persenTagihan: 80 },
+        { petugas: 'ANANG RIDWAN', awalId: 10, awalRupiah: 100000, akhirId: 1, akhirRupiah: 10000, pelunasanPel: 9, pelunasanRupiah: 90000, persenPel: 90, persenTagihan: 90 },
+        { petugas: 'ARBAIN', awalId: 20, awalRupiah: 200000, akhirId: 1, akhirRupiah: 10000, pelunasanPel: 19, pelunasanRupiah: 190000, persenPel: 95, persenTagihan: 95 },
       ];
       state.uploadMeta.akhir = { uploadedAt: '2026-10-20T01:00:00Z' };
     });
     await page.locator('[data-kogol-key="KOGOL_0"]').click();
     await page.waitForFunction(() => document.querySelector('[data-tab-panel="kogol0-detail"]').classList.contains('is-active'));
     assert.match(await page.locator('#kogol0DetailStatus').innerText(), /30 pelanggan cocok/);
-    assert.equal(await page.locator('#kogol0DetailSummary .kogol0-kpi-card').count(), 3);
+    assert.equal(await page.locator('#kogol0DetailSummary').count(), 0, 'Kartu ringkasan atas dihapus');
+    assert.equal(await page.locator('.kogol0-dashboard-button').isVisible(), true, 'Aksi kembali ke dashboard tetap tersedia');
     assert.match(await page.locator('#kogol0DetailFilteredCount').innerText(), /Menampilkan 19 dari 19 petugas/);
     assert.equal(await page.locator('#kogol0DetailTableTitle').innerText(), 'Monitoring Tunggakan per Petugas');
     assert.equal(await page.locator('#kogol0DetailTable tbody tr').count(), 19);
+    assert.equal(await page.locator('#kogol0DetailTable tbody tr.is-low-performer').count(), 5, 'Lima petugas terbawah diberi status merah');
+    assert.equal(await page.locator('#kogol0DetailTable tbody tr.is-low-performer .kogol0-monitoring-name').evaluateAll((nodes) => nodes.some((node) => /^[<>]/.test(node.textContent.trim()))), false, 'Kelompok tarif tidak dihitung sebagai petugas terbawah');
     assert.equal(await page.locator('#kogol0DetailTable thead tr').count(), 2);
     assert.equal(await page.locator('#kogol0DetailTable thead tr').first().locator('th').count(), 7);
     assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('.kogol0-monitoring-name').innerText(), 'AMRIZAL');
@@ -227,6 +237,16 @@ fs.mkdirSync(qa, { recursive: true });
     await page.locator('#kogol0DetailSort').selectOption('nameAsc');
     assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('.kogol0-monitoring-name').innerText(), '<41500-6600');
     await page.locator('#kogol0DetailSort').selectOption('amountDesc');
+    assert.equal(await page.locator('#kogol0DetailExportImage').innerText(), 'Export Image');
+    assert.equal(await page.locator('#kogol0DetailExport').innerText(), 'Export Excel');
+    await page.evaluate(() => {
+      window.XLSX.writeFile = (_workbook, filename) => { window.__excelFilename = filename; };
+      HTMLAnchorElement.prototype.click = function captureDownload() { window.__imageFilename = this.download; };
+    });
+    await page.locator('#kogol0DetailExportImage').click();
+    assert.match(await page.evaluate(() => window.__imageFilename), /\.jpg$/i, 'Ekspor gambar menghasilkan JPG');
+    await page.locator('#kogol0DetailExport').click();
+    assert.match(await page.evaluate(() => window.__excelFilename), /\.xlsx$/i, 'Ekspor tabel menghasilkan XLSX');
     await page.screenshot({ path: path.join(qa, 'kogol0-unified-monitoring-desktop.png'), fullPage: true });
     await page.locator('#kogol0DetailTable .kogol0-open-button[data-preview-officer="AMRIZAL"]').click();
     await page.waitForFunction(() => document.querySelector('#kogol0PreviewDrawer').classList.contains('is-open'));

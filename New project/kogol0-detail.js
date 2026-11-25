@@ -87,6 +87,7 @@
       clearSearch: document.querySelector("#kogol0DetailClearSearch"),
       sort: document.querySelector("#kogol0DetailSort"),
       exportButton: document.querySelector("#kogol0DetailExport"),
+      exportImageButton: document.querySelector("#kogol0DetailExportImage"),
       tableTitle: document.querySelector("#kogol0DetailTableTitle"),
       filteredCount: document.querySelector("#kogol0DetailFilteredCount"),
       summary: document.querySelector("#kogol0DetailSummary"),
@@ -121,6 +122,7 @@
       elements.search.disabled = !enabled;
       elements.sort.disabled = !enabled;
       elements.exportButton.disabled = !enabled;
+      elements.exportImageButton.disabled = !enabled;
     }
 
     function setSortOptions(mode) {
@@ -147,6 +149,7 @@
     }
 
     function renderSummary(cards) {
+      if (!elements.summary) return;
       const allowedTones = new Set(["cyan", "amber", "teal"]);
       elements.summary.innerHTML = cards.map((card) => {
         const tone = allowedTones.has(card.tone) ? card.tone : "cyan";
@@ -231,7 +234,7 @@
       elements.heading.textContent = "Rincian Kogol 0 per Petugas";
       elements.tableTitle.textContent = "Monitoring Tunggakan per Petugas";
       elements.filteredCount.textContent = "Menunggu data rincian";
-      elements.summary.innerHTML = "";
+      if (elements.summary) elements.summary.innerHTML = "";
       elements.table.innerHTML = emptyState("Rincian belum tersedia", message);
       elements.more.hidden = true;
       elements.back.hidden = true;
@@ -312,16 +315,25 @@
       return sortCustomers(filtered);
     }
 
-    function monitoringRowClass(row) {
+    function lowestPerformerNames(rows) {
+      return new Set([...rows]
+        .filter((row) => !/^[<>]/.test(row.name) && row.awalRupiah > 0 && !(row.awalId > 0 && row.akhirId === 0 && row.akhirRupiah === 0))
+        .sort((a, b) => a.persenTagihan - b.persenTagihan || b.akhirRupiah - a.akhirRupiah)
+        .slice(0, 5)
+        .map((row) => row.name));
+    }
+
+    function monitoringRowClass(row, lowPerformers) {
       if (row.awalId > 0 && row.akhirId === 0 && row.akhirRupiah === 0) return "is-complete";
+      if (lowPerformers.has(row.name)) return "is-low-performer";
       if (row.persenTagihan < 60) return "is-priority";
       if (row.persenTagihan < 85) return "is-warning";
       return "is-good";
     }
 
-    function monitoringTableRow(item, index) {
+    function monitoringTableRow(item, index, lowPerformers) {
       const hasCustomers = item.count > 0;
-      return `<tr class="${monitoringRowClass(item)}">
+      return `<tr class="${monitoringRowClass(item, lowPerformers)}">
         <td>${index + 1}</td>
         <td class="kogol0-monitoring-name">${escapeHtml(item.name)}</td>
         <td class="numeric">${formatNumber(item.awalId)}</td>
@@ -351,7 +363,9 @@
       elements.tableTitle.textContent = "Monitoring Tunggakan per Petugas";
       elements.search.placeholder = "Cari nama petugas";
       const filtered = filteredOfficers();
-      const totals = monitoringTotals(monitoringRows());
+      const allRows = monitoringRows();
+      const totals = monitoringTotals(allRows);
+      const lowPerformers = lowestPerformerNames(allRows);
       const activeOfficerCount = officers.filter((item) => item.count > 0).length;
 
       renderSummary([
@@ -361,6 +375,8 @@
       ]);
       elements.filteredCount.textContent = `Menampilkan ${formatNumber(filtered.length)} dari ${formatNumber(officers.length)} petugas`;
       elements.exportButton.disabled = !filtered.length;
+      elements.exportImageButton.disabled = !filtered.length;
+      elements.exportImageButton.title = "Export tabel monitoring ke JPG";
 
       if (!filtered.length) {
         elements.table.innerHTML = emptyState("Petugas tidak ditemukan", "Tidak ada nama petugas yang cocok dengan pencarian Anda.");
@@ -368,7 +384,7 @@
         elements.table.innerHTML = `<div class="kogol0-detail-scroll"><table class="kogol0-officers-table kogol0-monitoring-table">
           <thead><tr><th scope="col" rowspan="2">#</th><th scope="col" rowspan="2">Petugas</th><th scope="col" colspan="2">Saldo Awal</th><th scope="col" colspan="2">Saldo Akhir</th><th scope="col" colspan="2">Pelunasan</th><th scope="col" colspan="2">Persentase</th><th scope="col" rowspan="2" aria-label="Buka pelanggan">Aksi</th></tr>
           <tr><th scope="col" class="numeric">IDPEL</th><th scope="col" class="numeric">Tagihan</th><th scope="col" class="numeric">IDPEL</th><th scope="col" class="numeric">Tagihan</th><th scope="col" class="numeric">IDPEL</th><th scope="col" class="numeric">Tagihan</th><th scope="col" class="numeric">IDPEL</th><th scope="col" class="numeric">Tagihan</th></tr></thead>
-          <tbody>${filtered.map(monitoringTableRow).join("")}</tbody><tfoot>${monitoringTotalRow(totals)}</tfoot>
+          <tbody>${filtered.map((item, index) => monitoringTableRow(item, index, lowPerformers)).join("")}</tbody><tfoot>${monitoringTotalRow(totals)}</tfoot>
         </table></div><footer class="kogol0-monitoring-help">Klik tombol aksi untuk melihat 10 IDPEL dengan tagihan terbesar.</footer>`;
       }
       elements.more.hidden = true;
@@ -398,6 +414,8 @@
       ]);
       elements.filteredCount.textContent = `Menampilkan ${formatNumber(visible.length)} dari ${formatNumber(filtered.length)} hasil`;
       elements.exportButton.disabled = !filtered.length;
+      elements.exportImageButton.disabled = true;
+      elements.exportImageButton.title = "Kembali ke daftar petugas untuk export image";
 
       if (!filtered.length) {
         elements.table.innerHTML = emptyState("Pelanggan tidak ditemukan", "Tidak ada IDPEL, nama, atau alamat yang cocok dengan pencarian Anda.");
@@ -413,23 +431,30 @@
       refreshIcons([elements.table]);
     }
 
-    function csvCell(value) {
-      const text = String(value ?? "");
-      const safe = /^[=+\-@]/.test(text) ? `'${text}` : text;
-      return `"${safe.replace(/"/g, '""')}"`;
+    function slug(value) {
+      return String(value || "data").toLocaleLowerCase("id-ID").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     }
 
-    function downloadCsv(filename, headers, rows) {
-      const content = [headers, ...rows].map((row) => row.map(csvCell).join(";")).join("\r\n");
-      const blob = new Blob(["\ufeff", content], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
+    function writeExcel(filename, sheetName, matrix, widths) {
+      if (!window.XLSX) {
+        alert("Library Excel belum siap. Muat ulang halaman lalu coba lagi.");
+        return;
+      }
+      const worksheet = window.XLSX.utils.aoa_to_sheet(matrix);
+      worksheet["!cols"] = widths.map((wch) => ({ wch }));
+      const headers = matrix[0] || [];
+      const range = window.XLSX.utils.decode_range(worksheet["!ref"] || "A1:A1");
+      for (let row = 1; row <= range.e.r; row += 1) {
+        headers.forEach((header, column) => {
+          const cell = worksheet[window.XLSX.utils.encode_cell({ r: row, c: column })];
+          if (!cell || cell.t !== "n") return;
+          if (/Tagihan$/i.test(String(header))) cell.z = '"Rp" #,##0';
+          if (/Persentase/i.test(String(header))) cell.z = "0%";
+        });
+      }
+      const workbook = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      window.XLSX.writeFile(workbook, filename);
     }
 
     function exportCurrentView() {
@@ -438,16 +463,124 @@
         if (!officer) return;
         const rows = filteredCustomers(officer);
         if (!rows.length) return;
-        downloadCsv(`kogol-0-${officer.name.toLocaleLowerCase("id-ID").replace(/[^a-z0-9]+/g, "-")}.csv`,
-          ["No", "IDPEL", "Pelanggan", "Alamat", "Tarif", "Daya", "Tagihan"],
-          rows.map((row, index) => [index + 1, row.idpel, row.nama, row.alamat || "", row.tarif || "", row.daya || "", number(row.rptag)]));
+        writeExcel(`kogol-0-${slug(officer.name)}-${selectedSummary.closing.snapshotDate}.xlsx`, "Pelanggan",
+          [["No", "IDPEL", "Pelanggan", "Alamat", "Tarif", "Daya", "Tagihan"],
+            ...rows.map((row, index) => [index + 1, row.idpel, row.nama, row.alamat || "", row.tarif || "", row.daya || "", number(row.rptag)])],
+          [7, 18, 28, 42, 12, 12, 18]);
         return;
       }
       const rows = filteredOfficers();
       if (!rows.length) return;
-      downloadCsv(`rincian-kogol-0-${selectedSummary.closing.snapshotDate}.csv`,
-        ["No", "Petugas", "Saldo Awal IDPEL", "Saldo Awal Tagihan", "Saldo Akhir IDPEL", "Saldo Akhir Tagihan", "Pelunasan IDPEL", "Pelunasan Tagihan", "Persentase IDPEL", "Persentase Tagihan"],
-        rows.map((item, index) => [index + 1, item.name, item.awalId, item.awalRupiah, item.akhirId, item.akhirRupiah, item.pelunasanPel, item.pelunasanRupiah, item.persenPel, item.persenTagihan]));
+      const totals = monitoringTotals(monitoringRows());
+      writeExcel(`monitoring-kogol-0-${selectedSummary.closing.snapshotDate}.xlsx`, "Monitoring Kogol 0",
+        [["No", "Petugas", "Saldo Awal IDPEL", "Saldo Awal Tagihan", "Saldo Akhir IDPEL", "Saldo Akhir Tagihan", "Pelunasan IDPEL", "Pelunasan Tagihan", "Persentase IDPEL", "Persentase Tagihan"],
+          ...rows.map((item, index) => [index + 1, item.name, item.awalId, item.awalRupiah, item.akhirId, item.akhirRupiah, item.pelunasanPel, item.pelunasanRupiah, item.persenPel / 100, item.persenTagihan / 100]),
+          ["", "TOTAL", totals.awalId, totals.awalRupiah, totals.akhirId, totals.akhirRupiah, totals.pelunasanPel, totals.pelunasanRupiah, totals.persenPel / 100, totals.persenTagihan / 100]],
+        [7, 28, 16, 20, 16, 20, 16, 20, 18, 18]);
+    }
+
+    function canvasCell(ctx, x, y, width, height, value, options = {}) {
+      ctx.fillStyle = options.fill || "#ffffff";
+      ctx.fillRect(x, y, width, height);
+      ctx.strokeStyle = "#cbd8e1";
+      ctx.strokeRect(x, y, width, height);
+      ctx.fillStyle = options.color || "#102f43";
+      ctx.font = `${options.bold ? 700 : 500} ${options.fontSize || 12}px Arial`;
+      ctx.textBaseline = "middle";
+      ctx.textAlign = options.align || "left";
+      const padding = 9;
+      const textX = options.align === "center" ? x + width / 2 : options.align === "right" ? x + width - padding : x + padding;
+      ctx.fillText(String(value ?? ""), textX, y + height / 2, width - padding * 2);
+    }
+
+    function canvasPercent(ctx, x, y, width, height, value, fill, danger) {
+      canvasCell(ctx, x, y, width, height, "", { fill });
+      const inset = 7;
+      const trackWidth = width - inset * 2;
+      ctx.fillStyle = "#f4f6f8";
+      ctx.fillRect(x + inset, y + 9, trackWidth, height - 18);
+      ctx.fillStyle = danger ? "#ef8d87" : "#70c58c";
+      ctx.fillRect(x + inset, y + 9, trackWidth * Math.max(0, Math.min(100, number(value))) / 100, height - 18);
+      ctx.fillStyle = danger ? "#8f1d18" : "#062b3d";
+      ctx.font = "700 12px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(formatPercent(value), x + width / 2, y + height / 2);
+    }
+
+    function exportCurrentImage() {
+      if (viewMode !== "officers") {
+        alert("Kembali ke daftar petugas untuk mengekspor gambar monitoring.");
+        return;
+      }
+      const rows = filteredOfficers();
+      if (!rows.length) return;
+      const totals = monitoringTotals(monitoringRows());
+      const lowPerformers = lowestPerformerNames(monitoringRows());
+      const columns = [
+        { key: "no", width: 50, align: "center" }, { key: "name", width: 220, align: "left" },
+        { key: "awalId", width: 92, align: "right" }, { key: "awalRupiah", width: 150, align: "right" },
+        { key: "akhirId", width: 92, align: "right" }, { key: "akhirRupiah", width: 150, align: "right" },
+        { key: "pelunasanPel", width: 92, align: "right" }, { key: "pelunasanRupiah", width: 150, align: "right" },
+        { key: "persenPel", width: 120, align: "bar" }, { key: "persenTagihan", width: 120, align: "bar" },
+      ];
+      const margin = 16;
+      const titleHeight = 74;
+      const groupHeight = 34;
+      const headerHeight = 34;
+      const rowHeight = 38;
+      const tableWidth = columns.reduce((sum, column) => sum + column.width, 0);
+      const width = tableWidth + margin * 2;
+      const exportRows = rows.map((row, index) => ({ ...row, no: index + 1 }));
+      exportRows.push({ ...totals, no: "", name: "TOTAL", total: true });
+      const height = titleHeight + groupHeight + headerHeight + exportRows.length * rowHeight + margin;
+      const scale = 2;
+      const canvas = document.createElement("canvas");
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(scale, scale);
+      ctx.fillStyle = "#f4f8fa";
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = "#052f47";
+      ctx.font = "700 22px Arial";
+      ctx.fillText("MONITORING TUNGGAKAN KOGOL 0", margin, 30);
+      ctx.fillStyle = "#587087";
+      ctx.font = "600 13px Arial";
+      ctx.fillText(`Saldo akhir ${selectedSummary.closing.snapshotDate}`, margin, 54);
+      let x = margin;
+      let y = titleHeight;
+      canvasCell(ctx, x, y, columns[0].width, groupHeight + headerHeight, "NO", { fill: "#e8f0f4", bold: true, align: "center" });
+      x += columns[0].width;
+      canvasCell(ctx, x, y, columns[1].width, groupHeight + headerHeight, "PETUGAS", { fill: "#e8f0f4", bold: true, align: "center" });
+      x += columns[1].width;
+      [["SALDO AWAL", 2], ["SALDO AKHIR", 4], ["PELUNASAN", 6], ["PERSENTASE", 8]].forEach(([label, start]) => {
+        const groupWidth = columns[start].width + columns[start + 1].width;
+        canvasCell(ctx, x, y, groupWidth, groupHeight, label, { fill: "#e8f0f4", bold: true, align: "center" });
+        canvasCell(ctx, x, y + groupHeight, columns[start].width, headerHeight, "IDPEL", { fill: "#edf3f6", bold: true, align: "center", fontSize: 11 });
+        canvasCell(ctx, x + columns[start].width, y + groupHeight, columns[start + 1].width, headerHeight, "TAGIHAN", { fill: "#edf3f6", bold: true, align: "center", fontSize: 11 });
+        x += groupWidth;
+      });
+      y += groupHeight + headerHeight;
+      exportRows.forEach((row, index) => {
+        x = margin;
+        const danger = !row.total && lowPerformers.has(row.name);
+        const fill = row.total ? "#dcebf2" : danger ? "#fff1f0" : index % 2 ? "#f8fbfc" : "#ffffff";
+        columns.forEach((column) => {
+          const raw = row[column.key];
+          if (column.align === "bar") canvasPercent(ctx, x, y, column.width, rowHeight, raw, fill, danger);
+          else {
+            const value = /Rupiah$/.test(column.key) ? formatRupiah(raw) : /Id$|Pel$/.test(column.key) ? formatNumber(raw) : raw;
+            canvasCell(ctx, x, y, column.width, rowHeight, value, { fill, align: column.align, bold: row.total || column.key === "name", color: danger ? "#b42318" : "#102f43" });
+          }
+          x += column.width;
+        });
+        y += rowHeight;
+      });
+      const link = document.createElement("a");
+      link.download = `monitoring-kogol-0-${selectedSummary.closing.snapshotDate}.jpg`;
+      link.href = canvas.toDataURL("image/jpeg", 0.94);
+      link.click();
     }
 
     function localRows(summary) {
@@ -541,6 +674,7 @@
       if (selectedOfficer) renderCustomers(); else if (selectedSummary && officers.length) renderOfficers();
     });
     elements.exportButton.addEventListener("click", exportCurrentView);
+    elements.exportImageButton.addEventListener("click", exportCurrentImage);
     elements.more.addEventListener("click", () => { shown += PAGE_SIZE; renderCustomers(); });
 
     function reset() {

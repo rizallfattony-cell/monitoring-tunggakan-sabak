@@ -32,6 +32,11 @@
   margin-bottom: 18px;
 }
 
+.kogol0-detail-header.is-compact {
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
 .kogol0-detail-header h1 {
   margin: 7px 0 5px;
   color: var(--pln-navy, #062b3d);
@@ -359,6 +364,22 @@
   background: #066b60;
 }
 
+.kogol0-detail .kogol0-image-button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding-inline: 14px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.kogol0-detail .kogol0-image-button svg {
+  width: 16px;
+  height: 16px;
+}
+
 .kogol0-detail-toolbar :disabled {
   cursor: not-allowed;
   opacity: 0.52;
@@ -547,6 +568,19 @@
 .kogol0-monitoring-table tbody tr.is-complete td {
   background: #edf9f2;
   color: #0b784c;
+}
+
+.kogol0-monitoring-table tbody tr.is-low-performer td {
+  color: #b42318;
+}
+
+.kogol0-monitoring-table tbody tr.is-low-performer .kogol0-monitoring-name,
+.kogol0-monitoring-table tbody tr.is-low-performer .amount {
+  color: #b42318;
+}
+
+.kogol0-monitoring-table tbody tr.is-low-performer .percent-fill {
+  background: #ef8d87;
 }
 
 .kogol0-monitoring-table .percent-meter {
@@ -1008,7 +1042,7 @@ body.is-kogol0-preview-open {
 
   .kogol0-detail-toolbar-actions {
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) 174px auto;
+    grid-template-columns: minmax(220px, 1fr) 174px auto auto;
   }
 
   .kogol0-detail-search {
@@ -1062,6 +1096,11 @@ body.is-kogol0-preview-open {
     margin-bottom: 14px;
   }
 
+  .kogol0-detail-header.is-compact {
+    align-items: flex-end;
+    margin-bottom: 12px;
+  }
+
   .kogol0-detail-header h1 {
     font-size: 22px;
   }
@@ -1102,6 +1141,10 @@ body.is-kogol0-preview-open {
   }
 
   .kogol0-detail .kogol0-export-button {
+    width: 100%;
+  }
+
+  .kogol0-detail .kogol0-image-button {
     width: 100%;
   }
 

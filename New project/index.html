@@ -441,15 +441,11 @@
 
       <section class="tab-panel" data-tab-panel="kogol0-detail" hidden>
         <section class="kogol0-detail" id="kogol0DetailPanel" aria-labelledby="kogol0DetailHeading">
-          <header class="kogol0-detail-header">
-            <div>
-              <span class="overview-eyebrow">Kolektibilitas / Kogol 0</span>
-              <h1 id="kogol0DetailHeading">Rincian Kogol 0 per Petugas</h1>
-              <p class="kogol0-detail-status"><i data-lucide="calendar-check" aria-hidden="true"></i><span id="kogol0DetailStatus">Pilih Kogol 0 di dashboard untuk melihat rincian.</span></p>
-            </div>
+          <header class="kogol0-detail-header is-compact">
+            <h1 class="sr-only" id="kogol0DetailHeading">Monitoring Kogol 0 per Petugas</h1>
+            <p class="sr-only" id="kogol0DetailStatus">Pilih Kogol 0 di dashboard untuk melihat rincian.</p>
             <button class="button secondary kogol0-dashboard-button" type="button" data-tab="overview"><i data-lucide="arrow-left" aria-hidden="true"></i> Kembali ke Dashboard</button>
           </header>
-          <div class="kogol0-detail-summary" id="kogol0DetailSummary"></div>
           <section class="kogol0-detail-card" aria-labelledby="kogol0DetailTableTitle">
             <div class="kogol0-detail-toolbar">
               <div class="kogol0-detail-toolbar-heading">
@@ -462,7 +458,8 @@
               <div class="kogol0-detail-toolbar-actions">
                 <label class="kogol0-detail-search"><i data-lucide="search" aria-hidden="true"></i><input id="kogol0DetailSearch" type="search" placeholder="Cari petugas" autocomplete="off" aria-label="Cari petugas atau pelanggan" /><button id="kogol0DetailClearSearch" type="button" title="Hapus pencarian" aria-label="Hapus pencarian" hidden><i data-lucide="circle-x" aria-hidden="true"></i></button></label>
                 <label class="kogol0-detail-sort"><span class="sr-only">Urutkan data</span><select id="kogol0DetailSort" aria-label="Urutkan data rincian"><option value="amountDesc">Tagihan tertinggi</option><option value="countDesc">IDPEL terbanyak</option><option value="nameAsc">Nama A-Z</option></select><i data-lucide="arrow-up-down" aria-hidden="true"></i></label>
-                <button class="button primary kogol0-export-button" id="kogol0DetailExport" type="button"><i data-lucide="download" aria-hidden="true"></i> Export CSV</button>
+                <button class="button secondary kogol0-image-button" id="kogol0DetailExportImage" type="button"><i data-lucide="image-down" aria-hidden="true"></i> Export Image</button>
+                <button class="button primary kogol0-export-button" id="kogol0DetailExport" type="button"><i data-lucide="file-spreadsheet" aria-hidden="true"></i> Export Excel</button>
               </div>
             </div>
             <div class="kogol0-detail-table" id="kogol0DetailTable"><div class="kogol0-detail-empty">Pilih Kogol 0 di dashboard untuk melihat rincian.</div></div>
