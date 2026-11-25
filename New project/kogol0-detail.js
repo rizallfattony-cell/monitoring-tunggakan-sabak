@@ -79,6 +79,15 @@
       summary: document.querySelector("#kogol0DetailSummary"),
       table: document.querySelector("#kogol0DetailTable"),
       more: document.querySelector("#kogol0DetailMore"),
+      previewBackdrop: document.querySelector("#kogol0PreviewBackdrop"),
+      previewDrawer: document.querySelector("#kogol0PreviewDrawer"),
+      previewTitle: document.querySelector("#kogol0PreviewTitle"),
+      previewSubtitle: document.querySelector("#kogol0PreviewSubtitle"),
+      previewSummary: document.querySelector("#kogol0PreviewSummary"),
+      previewList: document.querySelector("#kogol0PreviewList"),
+      previewFooterText: document.querySelector("#kogol0PreviewFooterText"),
+      previewClose: document.querySelector("#kogol0PreviewClose"),
+      previewViewAll: document.querySelector("#kogol0PreviewViewAll"),
     };
     if (!elements.panel) return { open: async () => {}, reset: () => {} };
 
@@ -88,6 +97,8 @@
     let shown = PAGE_SIZE;
     let requestId = 0;
     let viewMode = "officers";
+    let previewOfficer = null;
+    let previewTrigger = null;
 
     function refreshIcons(nodes) {
       window.lucide?.createIcons({ nodes: nodes.filter(Boolean) });
@@ -144,6 +155,59 @@
 
     function updateSearchState() {
       elements.clearSearch.hidden = !elements.search.value;
+    }
+
+    function closePreview({ restoreFocus = true } = {}) {
+      if (elements.previewDrawer.hidden) return;
+      elements.previewDrawer.classList.remove("is-open");
+      elements.previewBackdrop.classList.remove("is-open");
+      elements.previewDrawer.hidden = true;
+      elements.previewBackdrop.hidden = true;
+      document.body.classList.remove("is-kogol0-preview-open");
+      if (restoreFocus) previewTrigger?.focus();
+      previewOfficer = null;
+      previewTrigger = null;
+    }
+
+    function openPreview(officerName, trigger) {
+      const officer = officers.find((item) => item.name === officerName);
+      if (!officer) return;
+      const priorityRows = officer.rows.slice(0, 10);
+      const priorityAmount = priorityRows.reduce((total, row) => total + number(row.rptag), 0);
+      previewOfficer = officer.name;
+      previewTrigger = trigger || null;
+      elements.previewTitle.textContent = officer.name;
+      elements.previewSubtitle.textContent = `${formatNumber(officer.count)} IDPEL dengan total ${formatRupiah(officer.amount)}.`;
+      elements.previewSummary.innerHTML = `<article><span>Total IDPEL</span><strong>${formatNumber(officer.count)}</strong><small>Pelanggan menunggak</small></article>
+        <article><span>Total tagihan</span><strong>${formatRupiah(officer.amount)}</strong><small>Akumulasi petugas</small></article>
+        <article><span>Top 10 tagihan</span><strong>${formatRupiah(priorityAmount)}</strong><small>Prioritas tertinggi</small></article>`;
+      elements.previewList.innerHTML = priorityRows.length ? priorityRows.map((row, index) => `<article class="kogol0-preview-item">
+        <span class="kogol0-preview-rank">${index + 1}</span>
+        <div class="kogol0-preview-customer"><strong>${escapeHtml(row.idpel)}</strong><span>${escapeHtml(row.nama || "Nama pelanggan tidak tersedia")}</span><small>${escapeHtml([row.tarif, row.daya].filter(Boolean).join(" / ") || "-")} - ${escapeHtml(row.alamat || "Alamat tidak tersedia")}</small></div>
+        <strong class="kogol0-preview-amount">${formatRupiah(row.rptag)}</strong>
+      </article>`).join("") : `<div class="kogol0-preview-empty"><i data-lucide="circle-check" aria-hidden="true"></i><strong>Tidak ada IDPEL menunggak</strong><span>Petugas ini tidak memiliki tagihan untuk ditampilkan.</span></div>`;
+      elements.previewFooterText.textContent = `Menampilkan ${formatNumber(priorityRows.length)} dari ${formatNumber(officer.count)} IDPEL milik ${officer.name}.`;
+      elements.previewViewAll.disabled = officer.count === 0;
+      elements.previewBackdrop.hidden = false;
+      elements.previewDrawer.hidden = false;
+      document.body.classList.add("is-kogol0-preview-open");
+      requestAnimationFrame(() => {
+        elements.previewBackdrop.classList.add("is-open");
+        elements.previewDrawer.classList.add("is-open");
+      });
+      refreshIcons([elements.previewDrawer]);
+      elements.previewClose.focus();
+    }
+
+    function showAllPreviewRows() {
+      if (!previewOfficer) return;
+      const officerName = previewOfficer;
+      closePreview({ restoreFocus: false });
+      selectedOfficer = officerName;
+      shown = PAGE_SIZE;
+      elements.search.value = "";
+      elements.sort.dataset.mode = "";
+      renderCustomers();
     }
 
     function setMessage(message) {
@@ -212,8 +276,8 @@
       } else {
         elements.table.innerHTML = `<div class="kogol0-detail-scroll"><table class="kogol0-officers-table">
           <thead><tr><th scope="col">#</th><th scope="col">Petugas</th><th scope="col" class="numeric">Sisa IDPEL</th><th scope="col" class="numeric">Sisa tagihan</th><th scope="col" aria-label="Buka pelanggan">Aksi</th></tr></thead>
-          <tbody>${filtered.map((item, index) => `<tr><td>${index + 1}</td><td><button class="kogol0-officer-button" type="button" data-officer="${escapeHtml(item.name)}">${escapeHtml(item.name)}</button></td><td class="numeric">${formatNumber(item.count)}</td><td class="numeric amount">${formatRupiah(item.amount)}</td><td><button class="icon-button kogol0-open-button" type="button" data-officer="${escapeHtml(item.name)}" title="Lihat pelanggan ${escapeHtml(item.name)}" aria-label="Lihat pelanggan ${escapeHtml(item.name)}"><i data-lucide="chevron-right" aria-hidden="true"></i></button></td></tr>`).join("")}</tbody>
-        </table></div>${tableFooter("Klik petugas untuk melihat rincian pelanggan.", filteredIdpel, filteredAmount)}`;
+          <tbody>${filtered.map((item, index) => `<tr><td>${index + 1}</td><td><button class="kogol0-officer-button" type="button" data-preview-officer="${escapeHtml(item.name)}">${escapeHtml(item.name)}</button></td><td class="numeric">${formatNumber(item.count)}</td><td class="numeric amount">${formatRupiah(item.amount)}</td><td><button class="icon-button kogol0-open-button" type="button" data-preview-officer="${escapeHtml(item.name)}" title="Lihat 10 tagihan terbesar ${escapeHtml(item.name)}" aria-label="Lihat 10 tagihan terbesar ${escapeHtml(item.name)}"><i data-lucide="chevron-right" aria-hidden="true"></i></button></td></tr>`).join("")}</tbody>
+        </table></div>${tableFooter("Klik panah untuk melihat 10 IDPEL dengan tagihan terbesar.", filteredIdpel, filteredAmount)}`;
       }
       elements.more.hidden = true;
       updateSearchState();
@@ -353,13 +417,15 @@
     }
 
     elements.table.addEventListener("click", (event) => {
-      const button = event.target.closest("[data-officer]");
+      const button = event.target.closest("[data-preview-officer]");
       if (!button) return;
-      selectedOfficer = button.dataset.officer;
-      shown = PAGE_SIZE;
-      elements.search.value = "";
-      elements.sort.dataset.mode = "";
-      renderCustomers();
+      openPreview(button.dataset.previewOfficer, button);
+    });
+    elements.previewBackdrop.addEventListener("click", () => closePreview());
+    elements.previewClose.addEventListener("click", () => closePreview());
+    elements.previewViewAll.addEventListener("click", showAllPreviewRows);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !elements.previewDrawer.hidden) closePreview();
     });
     elements.back.addEventListener("click", () => {
       selectedOfficer = null;
@@ -394,6 +460,7 @@
       elements.search.value = "";
       elements.sort.dataset.mode = "";
       updateSearchState();
+      closePreview({ restoreFocus: false });
       setMessage("Pilih Kogol 0 di dashboard untuk melihat rincian.");
     }
     return { open, reset };
