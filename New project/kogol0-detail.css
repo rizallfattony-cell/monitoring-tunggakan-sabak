@@ -74,8 +74,7 @@
 }
 
 .kogol0-detail-header .kogol0-dashboard-button svg,
-.kogol0-detail-toolbar .icon-button svg,
-.kogol0-detail-toolbar .button svg {
+.kogol0-detail-utility .button svg {
   width: 16px;
   height: 16px;
 }
@@ -199,14 +198,44 @@
 }
 
 .kogol0-detail-toolbar {
-  min-height: 72px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 14px 18px;
+  padding: 10px 18px;
   border-bottom: 1px solid var(--pln-line, #dce5ee);
   background: #fff;
+}
+
+.kogol0-detail-toolbar.is-title-only {
+  justify-content: flex-start;
+}
+
+.kogol0-detail-utility {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--pln-line, #dce5ee);
+  background: var(--pln-subtle, #f8fafc);
+}
+
+.kogol0-detail-utility .kogol0-back-button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-right: auto;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.kogol0-detail-utility .kogol0-back-button[hidden] {
+  display: none !important;
 }
 
 .kogol0-detail-toolbar-heading,
@@ -237,13 +266,6 @@
   font-size: 10.5px;
   font-weight: 700;
   white-space: nowrap;
-}
-
-.kogol0-detail-toolbar .icon-button {
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
-  border-radius: 8px;
 }
 
 .kogol0-detail-search {
@@ -380,7 +402,7 @@
   height: 16px;
 }
 
-.kogol0-detail-toolbar :disabled {
+.kogol0-detail-utility :disabled {
   cursor: not-allowed;
   opacity: 0.52;
 }
@@ -680,6 +702,108 @@
 
 .kogol0-detail-more-wrap:has(> button[hidden]) {
   display: none;
+}
+
+.kogol0-detail-anomaly {
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid var(--pln-line, #dce5ee);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--pln-shadow, 0 2px 8px rgba(6, 43, 61, 0.06));
+}
+
+.kogol0-detail-anomaly-toggle {
+  width: 100%;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px;
+  border: 0;
+  background: #fff;
+  color: var(--pln-navy, #062b3d);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.kogol0-detail-anomaly-toggle:hover {
+  background: var(--pln-subtle, #f8fafc);
+}
+
+.kogol0-detail-anomaly-toggle > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.kogol0-detail-anomaly-toggle strong {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.kogol0-detail-anomaly-toggle b {
+  min-width: 30px;
+  padding: 3px 8px;
+  border: 1px solid #f1d08b;
+  border-radius: 999px;
+  background: #fff8df;
+  color: #8a5c0a;
+  font-size: 11px;
+  text-align: center;
+}
+
+.kogol0-detail-anomaly-toggle svg {
+  width: 16px;
+  height: 16px;
+  color: #b87700;
+  transition: transform 160ms ease;
+}
+
+.kogol0-detail-anomaly-toggle[aria-expanded="true"] > span:last-child svg {
+  transform: rotate(180deg);
+}
+
+.kogol0-detail-anomaly-body {
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--pln-line, #dce5ee);
+}
+
+.kogol0-detail-anomaly-body[hidden] {
+  display: none !important;
+}
+
+.kogol0-detail-anomaly-list {
+  display: grid;
+  gap: 8px;
+}
+
+.kogol0-detail-anomaly-item {
+  padding: 10px 12px;
+  border-left: 4px solid var(--pln-cyan, #00a2b9);
+  background: var(--pln-subtle, #f8fafc);
+  color: #38566a;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.kogol0-detail-anomaly-item strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--pln-navy, #062b3d);
+  font-size: 12.5px;
+}
+
+.kogol0-detail-anomaly-item.is-warning {
+  border-left-color: #d79a00;
+  background: #fff8df;
+}
+
+.kogol0-detail-anomaly-item.is-clear {
+  border-left-color: #0b936d;
+  background: #edf9f4;
 }
 
 body.is-kogol0-preview-open {
@@ -1030,14 +1154,18 @@ body.is-kogol0-preview-open {
 }
 
 @media (max-width: 1100px) {
-  .kogol0-detail-toolbar {
+  .kogol0-detail-utility {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .kogol0-detail-toolbar-heading,
   .kogol0-detail-toolbar-actions {
     width: 100%;
+  }
+
+  .kogol0-detail-utility .kogol0-back-button {
+    align-self: flex-start;
+    margin-right: 0;
   }
 
   .kogol0-detail-toolbar-actions {
@@ -1125,6 +1253,10 @@ body.is-kogol0-preview-open {
   }
 
   .kogol0-detail-toolbar {
+    padding: 10px 12px;
+  }
+
+  .kogol0-detail-utility {
     padding: 12px;
   }
 

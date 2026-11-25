@@ -447,23 +447,34 @@
             <button class="button secondary kogol0-dashboard-button" type="button" data-tab="overview"><i data-lucide="arrow-left" aria-hidden="true"></i> Kembali ke Dashboard</button>
           </header>
           <section class="kogol0-detail-card" aria-labelledby="kogol0DetailTableTitle">
-            <div class="kogol0-detail-toolbar">
+            <div class="kogol0-detail-toolbar is-title-only">
               <div class="kogol0-detail-toolbar-heading">
-                <button class="icon-button" id="kogol0DetailBack" type="button" title="Kembali ke daftar petugas" aria-label="Kembali ke daftar petugas" hidden><i data-lucide="arrow-left" aria-hidden="true"></i></button>
                 <div>
                   <h2 id="kogol0DetailTableTitle">Daftar Tunggakan Petugas</h2>
                   <span class="kogol0-filtered-badge" id="kogol0DetailFilteredCount">Menunggu data rincian</span>
                 </div>
               </div>
+            </div>
+            <div class="kogol0-detail-table" id="kogol0DetailTable"><div class="kogol0-detail-empty">Pilih Kogol 0 di dashboard untuk melihat rincian.</div></div>
+            <div class="kogol0-detail-more-wrap"><button class="button secondary" id="kogol0DetailMore" type="button" hidden>Tampilkan lagi</button></div>
+            <div class="kogol0-detail-utility">
+              <button class="button secondary kogol0-back-button" id="kogol0DetailBack" type="button" hidden><i data-lucide="arrow-left" aria-hidden="true"></i> Kembali ke Monitoring</button>
               <div class="kogol0-detail-toolbar-actions">
                 <label class="kogol0-detail-search"><i data-lucide="search" aria-hidden="true"></i><input id="kogol0DetailSearch" type="search" placeholder="Cari petugas" autocomplete="off" aria-label="Cari petugas atau pelanggan" /><button id="kogol0DetailClearSearch" type="button" title="Hapus pencarian" aria-label="Hapus pencarian" hidden><i data-lucide="circle-x" aria-hidden="true"></i></button></label>
-                <label class="kogol0-detail-sort"><span class="sr-only">Urutkan data</span><select id="kogol0DetailSort" aria-label="Urutkan data rincian"><option value="amountDesc">Tagihan tertinggi</option><option value="countDesc">IDPEL terbanyak</option><option value="nameAsc">Nama A-Z</option></select><i data-lucide="arrow-up-down" aria-hidden="true"></i></label>
+                <label class="kogol0-detail-sort"><span class="sr-only">Urutkan data</span><select id="kogol0DetailSort" aria-label="Urutkan data rincian"><option value="percentDesc">Pelunasan tertinggi</option><option value="amountDesc">Tagihan tertinggi</option><option value="countDesc">IDPEL terbanyak</option><option value="nameAsc">Nama A-Z</option></select><i data-lucide="arrow-up-down" aria-hidden="true"></i></label>
                 <button class="button secondary kogol0-image-button" id="kogol0DetailExportImage" type="button"><i data-lucide="image-down" aria-hidden="true"></i> Export Image</button>
                 <button class="button primary kogol0-export-button" id="kogol0DetailExport" type="button"><i data-lucide="file-spreadsheet" aria-hidden="true"></i> Export Excel</button>
               </div>
             </div>
-            <div class="kogol0-detail-table" id="kogol0DetailTable"><div class="kogol0-detail-empty">Pilih Kogol 0 di dashboard untuk melihat rincian.</div></div>
-            <div class="kogol0-detail-more-wrap"><button class="button secondary" id="kogol0DetailMore" type="button" hidden>Tampilkan lagi</button></div>
+          </section>
+          <section class="kogol0-detail-anomaly" aria-labelledby="kogol0DetailAnomalyTitle">
+            <button class="kogol0-detail-anomaly-toggle" id="kogol0DetailAnomalyToggle" type="button" aria-expanded="false" aria-controls="kogol0DetailAnomalyBody">
+              <span><i data-lucide="triangle-alert" aria-hidden="true"></i><strong id="kogol0DetailAnomalyTitle">Data Anomali</strong></span>
+              <span><b id="kogol0DetailAnomalyCount">0</b><i data-lucide="chevron-down" aria-hidden="true"></i></span>
+            </button>
+            <div class="kogol0-detail-anomaly-body" id="kogol0DetailAnomalyBody" hidden>
+              <div class="kogol0-detail-anomaly-list" id="kogol0DetailAnomalyList"></div>
+            </div>
           </section>
         </section>
       </section>

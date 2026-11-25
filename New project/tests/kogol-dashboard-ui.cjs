@@ -215,6 +215,7 @@ fs.mkdirSync(qa, { recursive: true });
         { petugas: 'ANANG RIDWAN', awalId: 10, awalRupiah: 100000, akhirId: 1, akhirRupiah: 10000, pelunasanPel: 9, pelunasanRupiah: 90000, persenPel: 90, persenTagihan: 90 },
         { petugas: 'ARBAIN', awalId: 20, awalRupiah: 200000, akhirId: 1, akhirRupiah: 10000, pelunasanPel: 19, pelunasanRupiah: 190000, persenPel: 95, persenTagihan: 95 },
       ];
+      state.anomalies = [{ type: 'Saldo akhir naik', message: 'Contoh petugas: saldo akhir lebih besar dari saldo awal pada IDPEL atau rupiah.' }];
       state.uploadMeta.akhir = { uploadedAt: '2026-10-20T01:00:00Z' };
     });
     await page.locator('[data-kogol-key="KOGOL_0"]').click();
@@ -229,14 +230,27 @@ fs.mkdirSync(qa, { recursive: true });
     assert.equal(await page.locator('#kogol0DetailTable tbody tr.is-low-performer .kogol0-monitoring-name').evaluateAll((nodes) => nodes.some((node) => /^[<>]/.test(node.textContent.trim()))), false, 'Kelompok tarif tidak dihitung sebagai petugas terbawah');
     assert.equal(await page.locator('#kogol0DetailTable thead tr').count(), 2);
     assert.equal(await page.locator('#kogol0DetailTable thead tr').first().locator('th').count(), 7);
-    assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('.kogol0-monitoring-name').innerText(), 'AMRIZAL');
-    assert.match(await page.locator('#kogol0DetailTable tbody tr').first().innerText(), /250\.000.*186\.000.*64\.000.*26%/s);
-    assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('[data-preview-officer="AMRIZAL"]').count(), 1);
+    assert.equal(await page.locator('#kogol0DetailSort').inputValue(), 'percentDesc', 'Urutan awal khusus halaman adalah pelunasan tertinggi');
+    assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('.kogol0-monitoring-name').innerText(), 'ARBAIN');
+    const amrizalRow = page.locator('#kogol0DetailTable tbody tr').filter({ hasText: 'AMRIZAL' }).first();
+    assert.match(await amrizalRow.innerText(), /250\.000.*186\.000.*64\.000.*26%/s);
+    assert.equal(await amrizalRow.locator('[data-preview-officer="AMRIZAL"]').count(), 1);
+    assert.equal(await page.locator('.kogol0-detail-toolbar-heading .icon-button').count(), 0, 'Panah di samping judul monitoring dihapus');
+    const tableAndUtility = await page.evaluate(() => ({
+      tableBottom: document.querySelector('#kogol0DetailTable').getBoundingClientRect().bottom,
+      utilityTop: document.querySelector('.kogol0-detail-utility').getBoundingClientRect().top,
+    }));
+    assert.ok(tableAndUtility.utilityTop >= tableAndUtility.tableBottom, 'Kontrol pencarian dan ekspor berada di bawah tabel');
+    assert.equal(await page.locator('#kogol0DetailAnomalyCount').innerText(), '1');
+    await page.locator('#kogol0DetailAnomalyToggle').click();
+    assert.equal(await page.locator('#kogol0DetailAnomalyBody').isVisible(), true, 'Panel anomali lama tersedia di bawah kontrol');
+    assert.match(await page.locator('#kogol0DetailAnomalyList').innerText(), /Saldo akhir naik.*saldo akhir lebih besar/s);
     assert.match(await page.locator('[data-primary-nav]').innerText(), /Monitoring Kogol 0/);
     assert.equal(await page.locator('[data-primary-nav]').evaluate((element) => element.classList.contains('is-active')), true);
     await page.locator('#kogol0DetailSort').selectOption('nameAsc');
     assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('.kogol0-monitoring-name').innerText(), '<41500-6600');
     await page.locator('#kogol0DetailSort').selectOption('amountDesc');
+    assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('.kogol0-monitoring-name').innerText(), 'AMRIZAL');
     assert.equal(await page.locator('#kogol0DetailExportImage').innerText(), 'Export Image');
     assert.equal(await page.locator('#kogol0DetailExport').innerText(), 'Export Excel');
     await page.evaluate(() => {
@@ -247,6 +261,7 @@ fs.mkdirSync(qa, { recursive: true });
     assert.match(await page.evaluate(() => window.__imageFilename), /\.jpg$/i, 'Ekspor gambar menghasilkan JPG');
     await page.locator('#kogol0DetailExport').click();
     assert.match(await page.evaluate(() => window.__excelFilename), /\.xlsx$/i, 'Ekspor tabel menghasilkan XLSX');
+    await page.locator('#kogol0DetailSort').selectOption('percentDesc');
     await page.screenshot({ path: path.join(qa, 'kogol0-unified-monitoring-desktop.png'), fullPage: true });
     await page.locator('#kogol0DetailTable .kogol0-open-button[data-preview-officer="AMRIZAL"]').click();
     await page.waitForFunction(() => document.querySelector('#kogol0PreviewDrawer').classList.contains('is-open'));

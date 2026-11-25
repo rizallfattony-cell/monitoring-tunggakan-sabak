@@ -93,6 +93,10 @@
       summary: document.querySelector("#kogol0DetailSummary"),
       table: document.querySelector("#kogol0DetailTable"),
       more: document.querySelector("#kogol0DetailMore"),
+      anomalyToggle: document.querySelector("#kogol0DetailAnomalyToggle"),
+      anomalyBody: document.querySelector("#kogol0DetailAnomalyBody"),
+      anomalyList: document.querySelector("#kogol0DetailAnomalyList"),
+      anomalyCount: document.querySelector("#kogol0DetailAnomalyCount"),
       previewBackdrop: document.querySelector("#kogol0PreviewBackdrop"),
       previewDrawer: document.querySelector("#kogol0PreviewDrawer"),
       previewTitle: document.querySelector("#kogol0PreviewTitle"),
@@ -145,7 +149,7 @@
       elements.sort.innerHTML = optionsByMode[mode]
         .map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
       elements.sort.dataset.mode = mode;
-      elements.sort.value = "amountDesc";
+      elements.sort.value = mode === "officers" ? "percentDesc" : "amountDesc";
     }
 
     function renderSummary(cards) {
@@ -162,6 +166,17 @@
         </article>`;
       }).join("");
       refreshIcons([elements.summary]);
+    }
+
+    function renderAnomalies() {
+      if (!elements.anomalyList) return;
+      const anomalies = Array.isArray(getState().anomalies) ? getState().anomalies : [];
+      elements.anomalyCount.textContent = formatNumber(anomalies.length);
+      elements.anomalyList.innerHTML = anomalies.length
+        ? anomalies.slice(0, 250).map((item) => `<div class="kogol0-detail-anomaly-item${item.ignored ? " is-warning" : ""}">
+          <strong>${escapeHtml(item.type)}</strong><span>${escapeHtml(item.message)}</span>
+        </div>`).join("")
+        : `<div class="kogol0-detail-anomaly-item is-clear"><strong>Aman</strong><span>Belum ada anomali terdeteksi.</span></div>`;
     }
 
     function emptyState(title, description) {
@@ -377,6 +392,7 @@
       elements.exportButton.disabled = !filtered.length;
       elements.exportImageButton.disabled = !filtered.length;
       elements.exportImageButton.title = "Export tabel monitoring ke JPG";
+      renderAnomalies();
 
       if (!filtered.length) {
         elements.table.innerHTML = emptyState("Petugas tidak ditemukan", "Tidak ada nama petugas yang cocok dengan pencarian Anda.");
@@ -626,6 +642,7 @@
       elements.heading.textContent = "Rincian Kogol 0 per Petugas";
       elements.back.hidden = true;
       updateSearchState();
+      renderAnomalies();
       if (!summary?.closing) {
         setMessage("Belum ada snapshot Kogol 0 untuk bulan ini.");
         return;
@@ -658,6 +675,11 @@
       elements.sort.dataset.mode = "";
       renderOfficers();
     });
+    elements.anomalyToggle?.addEventListener("click", () => {
+      const expanded = elements.anomalyToggle.getAttribute("aria-expanded") === "true";
+      elements.anomalyToggle.setAttribute("aria-expanded", String(!expanded));
+      elements.anomalyBody.hidden = expanded;
+    });
     elements.search.addEventListener("input", () => {
       shown = PAGE_SIZE;
       updateSearchState();
@@ -686,6 +708,8 @@
       elements.search.value = "";
       elements.sort.dataset.mode = "";
       updateSearchState();
+      if (elements.anomalyToggle) elements.anomalyToggle.setAttribute("aria-expanded", "false");
+      if (elements.anomalyBody) elements.anomalyBody.hidden = true;
       closePreview({ restoreFocus: false });
       setMessage("Pilih Kogol 0 di dashboard untuk melihat rincian.");
     }
