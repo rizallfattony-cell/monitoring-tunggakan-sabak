@@ -204,6 +204,10 @@ fs.mkdirSync(qa, { recursive: true });
       state.remainingByPetugas = new Map([
         ['ADRI', rows.slice(0, 15)], ['AMRIZAL', rows.slice(15)],
       ]);
+      state.report = [
+        { petugas: 'AMRIZAL', awalId: 20, awalRupiah: 250000, akhirId: 15, akhirRupiah: 186000, pelunasanPel: 5, pelunasanRupiah: 64000, persenPel: 25, persenTagihan: 25.6 },
+        { petugas: 'ADRI', awalId: 20, awalRupiah: 250000, akhirId: 15, akhirRupiah: 114000, pelunasanPel: 5, pelunasanRupiah: 136000, persenPel: 25, persenTagihan: 54.4 },
+      ];
       state.uploadMeta.akhir = { uploadedAt: '2026-10-20T01:00:00Z' };
     });
     await page.locator('[data-kogol-key="KOGOL_0"]').click();
@@ -211,26 +215,19 @@ fs.mkdirSync(qa, { recursive: true });
     assert.match(await page.locator('#kogol0DetailStatus').innerText(), /30 pelanggan cocok/);
     assert.equal(await page.locator('#kogol0DetailSummary .kogol0-kpi-card').count(), 3);
     assert.match(await page.locator('#kogol0DetailFilteredCount').innerText(), /Menampilkan 19 dari 19 petugas/);
-    assert.equal(await page.locator('#kogol0DetailTableTitle').innerText(), 'Daftar Tunggakan Petugas');
+    assert.equal(await page.locator('#kogol0DetailTableTitle').innerText(), 'Monitoring Tunggakan per Petugas');
     assert.equal(await page.locator('#kogol0DetailTable tbody tr').count(), 19);
-    assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('[data-preview-officer]').first().innerText(), 'AMRIZAL');
-    assert.equal(await page.locator('#kogol0DetailViewTab').getAttribute('aria-selected'), 'true');
+    assert.equal(await page.locator('#kogol0DetailTable thead tr').count(), 2);
+    assert.equal(await page.locator('#kogol0DetailTable thead tr').first().locator('th').count(), 7);
+    assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('.kogol0-monitoring-name').innerText(), 'AMRIZAL');
+    assert.match(await page.locator('#kogol0DetailTable tbody tr').first().innerText(), /250\.000.*186\.000.*64\.000.*26%/s);
+    assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('[data-preview-officer="AMRIZAL"]').count(), 1);
     assert.match(await page.locator('[data-primary-nav]').innerText(), /Monitoring Kogol 0/);
     assert.equal(await page.locator('[data-primary-nav]').evaluate((element) => element.classList.contains('is-active')), true);
-    await page.locator('#kogol0ReportViewTab').click();
-    await page.waitForFunction(() => document.querySelector('[data-tab-panel="laporan"]').classList.contains('is-active'));
-    assert.equal(await page.locator('#monitoringTable').isVisible(), true);
-    assert.equal(await page.locator('#kogol0ReportViewFromReport').getAttribute('aria-selected'), 'true');
-    assert.equal(await page.locator('[data-primary-nav]').evaluate((element) => element.classList.contains('is-active')), true);
-    await page.screenshot({ path: path.join(qa, 'kogol0-combined-report-desktop.png'), fullPage: true });
-    await page.locator('#kogol0DetailViewFromReport').click();
-    await page.waitForFunction(() => document.querySelector('[data-tab-panel="kogol0-detail"]').classList.contains('is-active'));
-    await page.waitForFunction(() => document.querySelector('#kogol0DetailTableTitle').textContent === 'Daftar Tunggakan Petugas');
-    assert.equal(await page.locator('#kogol0DetailTable tbody tr').count(), 19);
     await page.locator('#kogol0DetailSort').selectOption('nameAsc');
-    assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('[data-preview-officer]').first().innerText(), '<41500-6600');
+    assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('.kogol0-monitoring-name').innerText(), '<41500-6600');
     await page.locator('#kogol0DetailSort').selectOption('amountDesc');
-    await page.screenshot({ path: path.join(qa, 'kogol0-officers-desktop.png'), fullPage: true });
+    await page.screenshot({ path: path.join(qa, 'kogol0-unified-monitoring-desktop.png'), fullPage: true });
     await page.locator('#kogol0DetailTable .kogol0-open-button[data-preview-officer="AMRIZAL"]').click();
     await page.waitForFunction(() => document.querySelector('#kogol0PreviewDrawer').classList.contains('is-open'));
     await page.waitForFunction(() => {
@@ -255,15 +252,8 @@ fs.mkdirSync(qa, { recursive: true });
     await page.screenshot({ path: path.join(qa, 'kogol0-customers-mobile.png'), fullPage: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'Customer table scrolls within mobile viewport');
     await page.locator('#kogol0DetailBack').click();
-    await page.screenshot({ path: path.join(qa, 'kogol0-officers-mobile.png'), fullPage: true });
+    await page.screenshot({ path: path.join(qa, 'kogol0-unified-monitoring-mobile.png'), fullPage: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'Kogol 0 detail fits mobile viewport');
-    await page.locator('#kogol0ReportViewTab').click();
-    await page.waitForFunction(() => document.querySelector('[data-tab-panel="laporan"]').classList.contains('is-active'));
-    await page.screenshot({ path: path.join(qa, 'kogol0-combined-report-mobile.png'), fullPage: true });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'Combined monitoring report fits mobile viewport');
-    await page.locator('#kogol0DetailViewFromReport').click();
-    await page.waitForFunction(() => document.querySelector('[data-tab-panel="kogol0-detail"]').classList.contains('is-active'));
-    await page.waitForFunction(() => document.querySelectorAll('#kogol0DetailTable tbody tr').length === 19);
     await page.locator('#kogol0DetailTable [data-preview-officer="AMRIZAL"]').first().click();
     await page.waitForFunction(() => document.querySelector('#kogol0PreviewDrawer').classList.contains('is-open'));
     await page.waitForFunction(() => {
@@ -477,7 +467,12 @@ fs.mkdirSync(qa, { recursive: true });
     assert.equal(await dataMenu.getAttribute('aria-selected'), 'true');
     assert.equal(await standMenu.getAttribute('aria-selected'), 'false');
     assert.equal(await page.locator('[data-tab-panel="upload"] .upload-panel:visible').count(), 7);
-    await page.evaluate(() => switchTab('laporan'));
+    await page.evaluate(() => {
+      state.profile.role = 'petugas';
+      switchTab('laporan');
+      state.profile.role = 'admin';
+      updateHeaderActions();
+    });
     assert.equal(await page.locator('[data-tab-panel="laporan"] > .section-head').count(), 0, 'Kartu judul laporan dihapus');
     assert.equal(await page.locator('[data-tab-panel="laporan"] > .summary-grid').count(), 0, 'Kartu ringkasan laporan dihapus');
     assert.equal(await page.locator('[data-tab-panel="laporan"] .section-head #exportButton').count(), 0, 'Ekspor tidak lagi berada di header');

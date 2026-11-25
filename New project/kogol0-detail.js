@@ -26,6 +26,19 @@
     }).format(number(value));
   }
 
+  function formatPercent(value) {
+    return `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(number(value))}%`;
+  }
+
+  function percentage(part, total) {
+    return number(total) ? (number(part) * 100) / number(total) : 0;
+  }
+
+  function percentMeter(value) {
+    const width = Math.max(0, Math.min(100, Math.round(number(value))));
+    return `<div class="percent-meter" style="--value:${width}%"><div class="percent-fill"></div><span>${formatPercent(value)}</span></div>`;
+  }
+
   function wibDate(value) {
     if (!value) return "";
     const date = new Date(value);
@@ -115,6 +128,9 @@
       const optionsByMode = {
         officers: [
           ["amountDesc", "Tagihan tertinggi"],
+          ["percentDesc", "Pelunasan tertinggi"],
+          ["percentAsc", "Pelunasan terendah"],
+          ["openingDesc", "Saldo awal terbesar"],
           ["countDesc", "IDPEL terbanyak"],
           ["nameAsc", "Nama A-Z"],
         ],
@@ -213,7 +229,7 @@
     function setMessage(message) {
       elements.status.textContent = message;
       elements.heading.textContent = "Rincian Kogol 0 per Petugas";
-      elements.tableTitle.textContent = "Daftar Tunggakan Petugas";
+      elements.tableTitle.textContent = "Monitoring Tunggakan per Petugas";
       elements.filteredCount.textContent = "Menunggu data rincian";
       elements.summary.innerHTML = "";
       elements.table.innerHTML = emptyState("Rincian belum tersedia", message);
@@ -223,16 +239,64 @@
       refreshIcons([elements.table]);
     }
 
+    function monitoringRows() {
+      const reportMap = new Map((getState().report || []).map((row) => [String(row.petugas || "").trim(), row]));
+      return officers.map((officer) => {
+        const report = reportMap.get(officer.name);
+        const awalId = number(report?.awalId);
+        const awalRupiah = number(report?.awalRupiah);
+        const akhirId = report ? number(report.akhirId) : officer.count;
+        const akhirRupiah = report ? number(report.akhirRupiah) : officer.amount;
+        const pelunasanPel = report ? number(report.pelunasanPel) : Math.max(0, awalId - akhirId);
+        const pelunasanRupiah = report ? number(report.pelunasanRupiah) : Math.max(0, awalRupiah - akhirRupiah);
+        return {
+          ...officer,
+          awalId,
+          awalRupiah,
+          akhirId,
+          akhirRupiah,
+          pelunasanPel,
+          pelunasanRupiah,
+          persenPel: report ? number(report.persenPel) : percentage(pelunasanPel, awalId),
+          persenTagihan: report ? number(report.persenTagihan) : percentage(pelunasanRupiah, awalRupiah),
+        };
+      });
+    }
+
+    function monitoringTotals(rows) {
+      const totals = rows.reduce((acc, row) => {
+        acc.awalId += row.awalId;
+        acc.awalRupiah += row.awalRupiah;
+        acc.akhirId += row.akhirId;
+        acc.akhirRupiah += row.akhirRupiah;
+        acc.pelunasanPel += row.pelunasanPel;
+        acc.pelunasanRupiah += row.pelunasanRupiah;
+        return acc;
+      }, { awalId: 0, awalRupiah: 0, akhirId: 0, akhirRupiah: 0, pelunasanPel: 0, pelunasanRupiah: 0 });
+      totals.persenPel = percentage(totals.pelunasanPel, totals.awalId);
+      totals.persenTagihan = percentage(totals.pelunasanRupiah, totals.awalRupiah);
+      return totals;
+    }
+
     function filteredOfficers() {
       const term = elements.search.value.trim().toLocaleLowerCase("id-ID");
-      const filtered = officers.filter((item) => item.name.toLocaleLowerCase("id-ID").includes(term));
+      const filtered = monitoringRows().filter((item) => item.name.toLocaleLowerCase("id-ID").includes(term));
       if (elements.sort.value === "countDesc") {
-        return filtered.sort((a, b) => b.count - a.count || b.amount - a.amount || a.name.localeCompare(b.name, "id-ID"));
+        return filtered.sort((a, b) => b.akhirId - a.akhirId || b.akhirRupiah - a.akhirRupiah || a.name.localeCompare(b.name, "id-ID"));
+      }
+      if (elements.sort.value === "percentDesc") {
+        return filtered.sort((a, b) => b.persenTagihan - a.persenTagihan || b.akhirRupiah - a.akhirRupiah);
+      }
+      if (elements.sort.value === "percentAsc") {
+        return filtered.sort((a, b) => a.persenTagihan - b.persenTagihan || b.akhirRupiah - a.akhirRupiah);
+      }
+      if (elements.sort.value === "openingDesc") {
+        return filtered.sort((a, b) => b.awalRupiah - a.awalRupiah || b.akhirRupiah - a.akhirRupiah);
       }
       if (elements.sort.value === "nameAsc") {
         return filtered.sort((a, b) => a.name.localeCompare(b.name, "id-ID"));
       }
-      return filtered.sort((a, b) => b.amount - a.amount || b.count - a.count || a.name.localeCompare(b.name, "id-ID"));
+      return filtered.sort((a, b) => b.akhirRupiah - a.akhirRupiah || b.akhirId - a.akhirId || a.name.localeCompare(b.name, "id-ID"));
     }
 
     function filteredCustomers(officer) {
@@ -248,6 +312,34 @@
       return sortCustomers(filtered);
     }
 
+    function monitoringRowClass(row) {
+      if (row.awalId > 0 && row.akhirId === 0 && row.akhirRupiah === 0) return "is-complete";
+      if (row.persenTagihan < 60) return "is-priority";
+      if (row.persenTagihan < 85) return "is-warning";
+      return "is-good";
+    }
+
+    function monitoringTableRow(item, index) {
+      const hasCustomers = item.count > 0;
+      return `<tr class="${monitoringRowClass(item)}">
+        <td>${index + 1}</td>
+        <td class="kogol0-monitoring-name">${escapeHtml(item.name)}</td>
+        <td class="numeric">${formatNumber(item.awalId)}</td>
+        <td class="numeric amount">${formatRupiah(item.awalRupiah)}</td>
+        <td class="numeric">${formatNumber(item.akhirId)}</td>
+        <td class="numeric amount">${formatRupiah(item.akhirRupiah)}</td>
+        <td class="numeric">${formatNumber(item.pelunasanPel)}</td>
+        <td class="numeric amount">${formatRupiah(item.pelunasanRupiah)}</td>
+        <td class="numeric percent-cell">${percentMeter(item.persenPel)}</td>
+        <td class="numeric percent-cell">${percentMeter(item.persenTagihan)}</td>
+        <td><button class="icon-button kogol0-open-button" type="button"${hasCustomers ? ` data-preview-officer="${escapeHtml(item.name)}"` : " disabled"} title="${hasCustomers ? `Lihat 10 tagihan terbesar ${escapeHtml(item.name)}` : "Tidak ada IDPEL menunggak"}" aria-label="${hasCustomers ? `Lihat 10 tagihan terbesar ${escapeHtml(item.name)}` : `Tidak ada IDPEL menunggak untuk ${escapeHtml(item.name)}`}"${hasCustomers ? "" : ' aria-disabled="true"'}><i data-lucide="chevron-right" aria-hidden="true"></i></button></td>
+      </tr>`;
+    }
+
+    function monitoringTotalRow(totals) {
+      return `<tr><td colspan="2">TOTAL</td><td class="numeric">${formatNumber(totals.awalId)}</td><td class="numeric amount">${formatRupiah(totals.awalRupiah)}</td><td class="numeric">${formatNumber(totals.akhirId)}</td><td class="numeric amount">${formatRupiah(totals.akhirRupiah)}</td><td class="numeric">${formatNumber(totals.pelunasanPel)}</td><td class="numeric amount">${formatRupiah(totals.pelunasanRupiah)}</td><td class="numeric percent-cell">${percentMeter(totals.persenPel)}</td><td class="numeric percent-cell">${percentMeter(totals.persenTagihan)}</td><td></td></tr>`;
+    }
+
     function renderOfficers() {
       selectedOfficer = null;
       viewMode = "officers";
@@ -256,12 +348,11 @@
       elements.back.hidden = true;
       elements.heading.textContent = "Rincian Kogol 0 per Petugas";
       elements.status.textContent = `Saldo akhir ${selectedSummary.closing.snapshotDate} - ${formatNumber(selectedSummary.unpaidId)} pelanggan cocok dengan snapshot.`;
-      elements.tableTitle.textContent = "Daftar Tunggakan Petugas";
+      elements.tableTitle.textContent = "Monitoring Tunggakan per Petugas";
       elements.search.placeholder = "Cari nama petugas";
       const filtered = filteredOfficers();
+      const totals = monitoringTotals(monitoringRows());
       const activeOfficerCount = officers.filter((item) => item.count > 0).length;
-      const filteredIdpel = filtered.reduce((total, item) => total + item.count, 0);
-      const filteredAmount = filtered.reduce((total, item) => total + item.amount, 0);
 
       renderSummary([
         { label: "Total IDPEL tersisa", value: formatNumber(selectedSummary.unpaidId), note: "Pelanggan menunggak", icon: "users", noteIcon: "circle", tone: "cyan" },
@@ -274,10 +365,11 @@
       if (!filtered.length) {
         elements.table.innerHTML = emptyState("Petugas tidak ditemukan", "Tidak ada nama petugas yang cocok dengan pencarian Anda.");
       } else {
-        elements.table.innerHTML = `<div class="kogol0-detail-scroll"><table class="kogol0-officers-table">
-          <thead><tr><th scope="col">#</th><th scope="col">Petugas</th><th scope="col" class="numeric">Sisa IDPEL</th><th scope="col" class="numeric">Sisa tagihan</th><th scope="col" aria-label="Buka pelanggan">Aksi</th></tr></thead>
-          <tbody>${filtered.map((item, index) => `<tr><td>${index + 1}</td><td><button class="kogol0-officer-button" type="button" data-preview-officer="${escapeHtml(item.name)}">${escapeHtml(item.name)}</button></td><td class="numeric">${formatNumber(item.count)}</td><td class="numeric amount">${formatRupiah(item.amount)}</td><td><button class="icon-button kogol0-open-button" type="button" data-preview-officer="${escapeHtml(item.name)}" title="Lihat 10 tagihan terbesar ${escapeHtml(item.name)}" aria-label="Lihat 10 tagihan terbesar ${escapeHtml(item.name)}"><i data-lucide="chevron-right" aria-hidden="true"></i></button></td></tr>`).join("")}</tbody>
-        </table></div>${tableFooter("Klik panah untuk melihat 10 IDPEL dengan tagihan terbesar.", filteredIdpel, filteredAmount)}`;
+        elements.table.innerHTML = `<div class="kogol0-detail-scroll"><table class="kogol0-officers-table kogol0-monitoring-table">
+          <thead><tr><th scope="col" rowspan="2">#</th><th scope="col" rowspan="2">Petugas</th><th scope="col" colspan="2">Saldo Awal</th><th scope="col" colspan="2">Saldo Akhir</th><th scope="col" colspan="2">Pelunasan</th><th scope="col" colspan="2">Persentase</th><th scope="col" rowspan="2" aria-label="Buka pelanggan">Aksi</th></tr>
+          <tr><th scope="col" class="numeric">IDPEL</th><th scope="col" class="numeric">Tagihan</th><th scope="col" class="numeric">IDPEL</th><th scope="col" class="numeric">Tagihan</th><th scope="col" class="numeric">IDPEL</th><th scope="col" class="numeric">Tagihan</th><th scope="col" class="numeric">IDPEL</th><th scope="col" class="numeric">Tagihan</th></tr></thead>
+          <tbody>${filtered.map(monitoringTableRow).join("")}</tbody><tfoot>${monitoringTotalRow(totals)}</tfoot>
+        </table></div><footer class="kogol0-monitoring-help">Klik tombol aksi untuk melihat 10 IDPEL dengan tagihan terbesar.</footer>`;
       }
       elements.more.hidden = true;
       updateSearchState();
@@ -354,8 +446,8 @@
       const rows = filteredOfficers();
       if (!rows.length) return;
       downloadCsv(`rincian-kogol-0-${selectedSummary.closing.snapshotDate}.csv`,
-        ["No", "Petugas", "Sisa IDPEL", "Sisa Tagihan"],
-        rows.map((item, index) => [index + 1, item.name, item.count, item.amount]));
+        ["No", "Petugas", "Saldo Awal IDPEL", "Saldo Awal Tagihan", "Saldo Akhir IDPEL", "Saldo Akhir Tagihan", "Pelunasan IDPEL", "Pelunasan Tagihan", "Persentase IDPEL", "Persentase Tagihan"],
+        rows.map((item, index) => [index + 1, item.name, item.awalId, item.awalRupiah, item.akhirId, item.akhirRupiah, item.pelunasanPel, item.pelunasanRupiah, item.persenPel, item.persenTagihan]));
     }
 
     function localRows(summary) {

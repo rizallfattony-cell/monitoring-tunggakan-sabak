@@ -530,9 +530,12 @@ function attachEvents() {
   els.tabButtons.forEach((button) => {
     if (button.hasAttribute("data-tree-toggle")) return;
     button.addEventListener("click", () => {
-      if (button.dataset.tab === "upload") setUploadView(button.dataset.uploadView);
-      switchTab(button.dataset.tab);
-      if (button.dataset.tab === "kogol0-detail") openCurrentKogol0Detail();
+      const requestedTab = button.dataset.tab;
+      if (requestedTab === "upload") setUploadView(button.dataset.uploadView);
+      switchTab(requestedTab);
+      if (requestedTab === "kogol0-detail" || (requestedTab === "laporan" && state.profile?.role === "admin")) {
+        openCurrentKogol0Detail();
+      }
     });
   });
   initializeTableMaximizeButtons();
@@ -615,6 +618,7 @@ function updateMaximizeButton(section, active) {
 
 function switchTab(tabName) {
   if (tabName === "kogol") tabName = "upload";
+  if (tabName === "laporan" && state.profile?.role === "admin") tabName = "kogol0-detail";
   if (!tabName) return;
   if (MOBILE_MENU_TABS.has(tabName) && !state.mobileMenuUnlocked) {
     openMobileMenuLock(tabName);
@@ -2922,7 +2926,10 @@ async function handleUpload(event, kind) {
     if (kind !== "dil") {
       dashboardSaved = await saveKogolSnapshot(snapshotDate, [{ kogolKey: "KOGOL_0", ...summarizeKogolRows(state[kind]) }], file.name, `kogol0${kind}`);
     }
-    if (kind === "akhir") switchTab("laporan");
+    if (kind === "akhir") {
+      switchTab("laporan");
+      if (state.profile?.role === "admin") await openCurrentKogol0Detail();
+    }
     finishProgress(`${label} selesai diproses: ${formatNumber(state[kind].length)} baris.${onlineSaved ? " Data online sudah otomatis tersimpan." : ""}${dashboardSaved ? "" : " Snapshot dashboard belum tersimpan; unggah ulang setelah koneksi pulih."}`);
   } catch (error) {
     failProgress(`Gagal membaca file ${file.name}: ${error.message}`);
@@ -3960,6 +3967,7 @@ function handleOverviewOfficerClick(event) {
     render();
   }
   switchTab("laporan");
+  if (state.profile?.role === "admin") openCurrentKogol0Detail();
 }
 
 function getLowPerformerNames(rows) {
