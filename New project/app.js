@@ -4,6 +4,7 @@ const DB_VERSION = 1;
 const CLOUD_STATE_ID = "main";
 const DEBT_UPDATE_SIGNAL_ID = "debt-update-signal";
 const MOBILE_MENU_TABS = new Set(["sync-status", "premium", "receipt-history", "invoice"]);
+const MOBILE_MENU_PASSWORD_DIGEST = "91d101db5c3b9baec42369bb66a8ae92c35a6e16f8a128e21c1b2e2821fac4c5";
 const SALDO_AVERAGE_FIELDS = [
   { key: "kogol0Berjalan", label: "KOGOL 0 Berjalan" },
   { key: "kogol0Tunggakan", label: "KOGOL 0 Tunggakan" },
@@ -325,7 +326,6 @@ const els = {
   mobileMenuLockIndicator: document.querySelector("#mobileMenuLockIndicator"),
   mobileMenuLockModal: document.querySelector("#mobileMenuLockModal"),
   mobileMenuLockForm: document.querySelector("#mobileMenuLockForm"),
-  mobileMenuLockAccount: document.querySelector("#mobileMenuLockAccount"),
   mobileMenuPasswordInput: document.querySelector("#mobileMenuPasswordInput"),
   mobileMenuLockStatus: document.querySelector("#mobileMenuLockStatus"),
   closeMobileMenuLockButton: document.querySelector("#closeMobileMenuLockButton"),
@@ -666,12 +666,7 @@ function openMobileMenuLock(pendingTab = "") {
     alert("Menu Aplikasi Mobile hanya dapat dibuka oleh admin.");
     return;
   }
-  if (!state.supabaseClient || !state.user?.email) {
-    alert("Sesi admin tidak tersedia. Silakan login ulang.");
-    return;
-  }
   state.mobileMenuPendingTab = MOBILE_MENU_TABS.has(pendingTab) ? pendingTab : "";
-  if (els.mobileMenuLockAccount) els.mobileMenuLockAccount.textContent = state.user.email;
   if (els.mobileMenuLockStatus) els.mobileMenuLockStatus.textContent = "";
   els.mobileMenuPasswordInput.value = "";
   els.mobileMenuLockModal.hidden = false;
@@ -692,34 +687,23 @@ function closeMobileMenuLock() {
 async function verifyMobileMenuPassword(event) {
   event.preventDefault();
   const password = els.mobileMenuPasswordInput?.value || "";
-  const email = state.user?.email || "";
   if (!password) {
-    if (els.mobileMenuLockStatus) els.mobileMenuLockStatus.textContent = "Masukkan password admin.";
+    if (els.mobileMenuLockStatus) els.mobileMenuLockStatus.textContent = "Masukkan password menu.";
     els.mobileMenuPasswordInput?.focus();
     return;
   }
-  if (!state.supabaseClient || !email) {
-    if (els.mobileMenuLockStatus) els.mobileMenuLockStatus.textContent = "Sesi admin tidak tersedia. Silakan login ulang.";
-    return;
-  }
 
-  const originalUserId = state.user?.id || "";
   const pendingTab = state.mobileMenuPendingTab;
   if (els.confirmMobileMenuLockButton) {
     els.confirmMobileMenuLockButton.disabled = true;
     els.confirmMobileMenuLockButton.classList.add("is-loading");
   }
   if (els.mobileMenuPasswordInput) els.mobileMenuPasswordInput.disabled = true;
-  if (els.mobileMenuLockStatus) els.mobileMenuLockStatus.textContent = "Memverifikasi password...";
+  if (els.mobileMenuLockStatus) els.mobileMenuLockStatus.textContent = "Memeriksa password...";
 
   try {
-    const { data, error } = await state.supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    const verifiedUser = data?.user || data?.session?.user || null;
-    if (!verifiedUser || (originalUserId && verifiedUser.id !== originalUserId)) {
-      throw new Error("Akun yang diverifikasi tidak sesuai dengan sesi admin.");
-    }
-    state.user = verifiedUser;
+    const digest = await hashMobileMenuPassword(password);
+    if (digest !== MOBILE_MENU_PASSWORD_DIGEST) throw new Error("INVALID_MOBILE_MENU_PASSWORD");
     state.mobileMenuUnlocked = true;
     updateMobileMenuLockUi();
     closeMobileMenuLock();
@@ -727,11 +711,7 @@ async function verifyMobileMenuPassword(event) {
     els.mobileMenuToggle?.setAttribute("aria-expanded", "true");
     if (pendingTab) switchTab(pendingTab);
   } catch (error) {
-    const detail = describeLoginError(error);
-    const invalidPassword = /invalid login credentials|invalid credentials|email or password/i.test(detail);
-    if (els.mobileMenuLockStatus) {
-      els.mobileMenuLockStatus.textContent = invalidPassword ? "Password salah. Coba lagi." : `Verifikasi gagal: ${detail}`;
-    }
+    if (els.mobileMenuLockStatus) els.mobileMenuLockStatus.textContent = "Password salah. Coba lagi.";
     if (els.mobileMenuPasswordInput) {
       els.mobileMenuPasswordInput.value = "";
       els.mobileMenuPasswordInput.focus();
@@ -743,6 +723,12 @@ async function verifyMobileMenuPassword(event) {
     }
     if (els.mobileMenuPasswordInput) els.mobileMenuPasswordInput.disabled = false;
   }
+}
+
+async function hashMobileMenuPassword(value) {
+  const bytes = new TextEncoder().encode(String(value || ""));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function updateMobileMenuLockUi() {

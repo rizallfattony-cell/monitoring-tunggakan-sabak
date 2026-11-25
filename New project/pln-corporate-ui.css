@@ -551,26 +551,10 @@ body.mobile-menu-lock-open {
   gap: 15px;
 }
 
-.mobile-menu-lock-account {
-  display: grid;
-  gap: 3px;
-  padding: 10px 12px;
-  border: 1px solid #d7e2e9;
-  border-radius: 7px;
-  background: #f7fafc;
-}
-
-.mobile-menu-lock-account span,
 .mobile-menu-lock-field > span {
   color: #617586;
   font-size: 12px;
   font-weight: 600;
-}
-
-.mobile-menu-lock-account strong {
-  overflow-wrap: anywhere;
-  color: var(--pln-navy);
-  font-size: 14px;
 }
 
 .mobile-menu-lock-field {
