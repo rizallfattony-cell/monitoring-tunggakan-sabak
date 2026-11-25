@@ -532,6 +532,7 @@ function attachEvents() {
     button.addEventListener("click", () => {
       if (button.dataset.tab === "upload") setUploadView(button.dataset.uploadView);
       switchTab(button.dataset.tab);
+      if (button.dataset.tab === "kogol0-detail") openCurrentKogol0Detail();
     });
   });
   initializeTableMaximizeButtons();
@@ -621,11 +622,14 @@ function switchTab(tabName) {
   }
   state.activeTab = tabName;
   els.tabButtons.forEach((button) => {
-    const active = button.dataset.tab === tabName
+    const combinedMonitoringNav = button.hasAttribute("data-primary-nav")
+      && ["kogol0-detail", "laporan"].includes(tabName);
+    const active = (button.dataset.tab === tabName || combinedMonitoringNav)
       && (!button.dataset.uploadView || button.dataset.uploadView === state.uploadView);
     const isRepeatedSubMenu = button.classList.contains("tree-child");
     const isOverviewCard = button.classList.contains("overview-card");
-    const shouldHighlight = active && !isOverviewCard && (!isRepeatedSubMenu || document.activeElement === button);
+    const shouldHighlight = active && !isOverviewCard
+      && (!isRepeatedSubMenu || button.hasAttribute("data-primary-nav") || document.activeElement === button);
     button.classList.toggle("is-active", shouldHighlight);
     button.setAttribute("aria-selected", active ? "true" : "false");
   });
@@ -659,6 +663,19 @@ function switchTab(tabName) {
     loadAppRelease();
   }
   updateHeaderActions();
+}
+
+async function openCurrentKogol0Detail() {
+  if (state.profile?.role !== "admin") return;
+  const month = state.kogolDashboard.selectedMonth;
+  let summary = window.SimontokKogolDashboard.buildSummary(kogolSnapshotCache.rows, month)
+    .find((item) => item.key === "KOGOL_0");
+  if (!summary?.closing) {
+    await kogolDashboardController.load({ silent: true, force: true });
+    summary = window.SimontokKogolDashboard.buildSummary(kogolSnapshotCache.rows, month)
+      .find((item) => item.key === "KOGOL_0");
+  }
+  await kogol0DetailController.open(summary);
 }
 
 function openMobileMenuLock(pendingTab = "") {
@@ -771,9 +788,9 @@ function renderUploadView() {
 function tabTitle(tabName) {
   const titles = {
     overview: "Dashboard",
-    "kogol0-detail": "Rincian Kogol 0",
+    "kogol0-detail": "Monitoring Kogol 0",
     upload: state.uploadView === "stand-meter" ? "Upload Stand" : "Upload Data",
-    laporan: "Laporan",
+    laporan: "Monitoring Kogol 0",
     "pelunasan-harian": "Upload Saldo Harian",
     kogol: "Dashboard Kogol",
     comparison: "Perbandingan Saldo Dengan Bulan Lalu",

@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="./receipt-history.css?v=174" />
     <link rel="stylesheet" href="./debt-performance.css?v=20261031-daily-performance-v5" />
     <link rel="stylesheet" href="./kogol-dashboard.css?v=20261106-dashboard-usulan-v1" />
-    <link rel="stylesheet" href="./kogol0-detail.css?v=20261125-kogol-drawer-v7" />
+    <link rel="stylesheet" href="./kogol0-detail.css?v=20261125-combined-monitoring-v8" />
     <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <link rel="stylesheet" href="./dashboard-redesign.css?v=20261113-dashboard-hero-v1" />
     <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261125-session-loader-v10" />
@@ -117,7 +117,7 @@
                 <i class="tree-arrow" data-lucide="chevron-right" aria-hidden="true"></i>
               </button>
               <div class="tree-children">
-                <button class="tree-child" type="button" data-tab="laporan">Monitoring Saldo Tunggakan</button>
+                <button class="tree-child" type="button" data-tab="laporan" data-primary-nav>Monitoring Kogol 0</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="comparison">Perbandingan Saldo Dengan Bulan Lalu</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="saldo-rata">Laporan Saldo Akhir Rata-rata</button>
                 <button class="tree-child admin-only-menu" type="button" data-tab="pelunasan-harian">Upload Saldo Harian</button>
@@ -449,6 +449,10 @@
             </div>
             <button class="button secondary kogol0-dashboard-button" type="button" data-tab="overview"><i data-lucide="arrow-left" aria-hidden="true"></i> Kembali ke Dashboard</button>
           </header>
+          <nav class="kogol0-view-tabs" aria-label="Tampilan Monitoring Kogol 0" role="tablist">
+            <button class="is-active" id="kogol0DetailViewTab" type="button" data-tab="kogol0-detail" role="tab" aria-selected="true"><i data-lucide="users" aria-hidden="true"></i><span>Rincian Petugas</span></button>
+            <button id="kogol0ReportViewTab" type="button" data-tab="laporan" role="tab" aria-selected="false"><i data-lucide="table-properties" aria-hidden="true"></i><span>Monitoring Pelunasan</span></button>
+          </nav>
           <div class="kogol0-detail-summary" id="kogol0DetailSummary"></div>
           <section class="kogol0-detail-card" aria-labelledby="kogol0DetailTableTitle">
             <div class="kogol0-detail-toolbar">
@@ -561,9 +565,21 @@
       </section>
 
       <section class="tab-panel" data-tab-panel="laporan" hidden>
+        <header class="kogol0-combined-header">
+          <div>
+            <span class="overview-eyebrow">Kolektibilitas / Kogol 0</span>
+            <h1>Monitoring Tunggakan Kogol 0</h1>
+            <p>Perbandingan saldo awal, saldo akhir, dan pelunasan setiap petugas.</p>
+          </div>
+          <button class="button secondary" type="button" data-tab="overview"><i data-lucide="arrow-left" aria-hidden="true"></i> Kembali ke Dashboard</button>
+        </header>
+        <nav class="kogol0-view-tabs" aria-label="Tampilan Monitoring Kogol 0" role="tablist">
+          <button class="admin-only-menu" id="kogol0DetailViewFromReport" type="button" data-tab="kogol0-detail" role="tab" aria-selected="false"><i data-lucide="users" aria-hidden="true"></i><span>Rincian Petugas</span></button>
+          <button class="is-active" id="kogol0ReportViewFromReport" type="button" data-tab="laporan" role="tab" aria-selected="true"><i data-lucide="table-properties" aria-hidden="true"></i><span>Monitoring Pelunasan</span></button>
+        </nav>
         <section class="table-section">
           <div class="report-heading">
-            <h2>Laporan Monitoring Saldo Tunggakan</h2>
+            <h2>Perbandingan Petugas</h2>
             <p id="tableDate">-</p>
           </div>
           <div class="table-wrap">
@@ -1391,6 +1407,6 @@
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
     <script src="./kogol-dashboard.js?v=20261122-donut-percent-v4"></script>
     <script src="./kogol0-detail.js?v=20261125-kogol-drawer-v7"></script>
-    <script src="./app.js?v=20261125-session-loader-v8"></script>
+    <script src="./app.js?v=20261125-combined-monitoring-v9"></script>
   </body>
 </html>
