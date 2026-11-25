@@ -97,6 +97,10 @@
       status: document.querySelector("#kogol0DetailStatus"),
       heading: document.querySelector("#kogol0DetailHeading"),
       back: document.querySelector("#kogol0DetailBack"),
+      card: document.querySelector("#kogol0DetailPanel .kogol0-detail-card"),
+      maximize: document.querySelector("#kogol0DetailMaximize"),
+      actions: document.querySelector("#kogol0DetailPanel .kogol0-detail-toolbar-actions"),
+      searchControl: document.querySelector("#kogol0DetailSearchControl"),
       search: document.querySelector("#kogol0DetailSearch"),
       clearSearch: document.querySelector("#kogol0DetailClearSearch"),
       sort: document.querySelector("#kogol0DetailSort"),
@@ -143,6 +147,17 @@
       elements.sort.disabled = !enabled;
       elements.exportButton.disabled = !enabled;
       elements.exportImageButton.disabled = !enabled;
+    }
+
+    function setMaximized(maximized) {
+      const active = Boolean(maximized);
+      elements.card?.classList.toggle("is-maximized", active);
+      document.body.classList.toggle("is-kogol0-maximized", active);
+      if (!elements.maximize) return;
+      elements.maximize.setAttribute("aria-pressed", String(active));
+      elements.maximize.innerHTML = `<i data-lucide="${active ? "minimize-2" : "maximize-2"}" aria-hidden="true"></i><span>${active ? "Tutup Maximize" : "Maximize"}</span>`;
+      elements.maximize.title = active ? "Tutup tampilan tabel penuh" : "Tampilkan tabel memenuhi layar";
+      refreshIcons([elements.maximize]);
     }
 
     function setSortOptions(mode) {
@@ -281,6 +296,8 @@
       elements.table.innerHTML = emptyState("Rincian belum tersedia", message);
       elements.more.hidden = true;
       elements.back.hidden = true;
+      if (elements.searchControl) elements.searchControl.hidden = true;
+      elements.actions?.classList.add("is-officer-mode");
       setControlsEnabled(false);
       refreshIcons([elements.table]);
     }
@@ -402,10 +419,11 @@
       setSortOptions(viewMode);
       setControlsEnabled(true);
       elements.back.hidden = true;
+      if (elements.searchControl) elements.searchControl.hidden = true;
+      elements.actions?.classList.add("is-officer-mode");
       elements.heading.textContent = "Rincian Kogol 0 per Petugas";
       elements.status.textContent = `Saldo akhir ${selectedSummary.closing.snapshotDate} - ${formatNumber(selectedSummary.unpaidId)} pelanggan cocok dengan snapshot.`;
       elements.tableTitle.textContent = "Monitoring Tunggakan per Petugas";
-      elements.search.placeholder = "Cari nama petugas";
       const filtered = filteredOfficers();
       const allRows = monitoringRows();
       const totals = monitoringTotals(allRows);
@@ -420,7 +438,7 @@
       elements.filteredCount.textContent = `Menampilkan ${formatNumber(filtered.length)} dari ${formatNumber(officers.length)} petugas`;
       elements.exportButton.disabled = !filtered.length;
       elements.exportImageButton.disabled = !filtered.length;
-      elements.exportImageButton.title = "Export tabel monitoring ke PNG resolusi tinggi";
+      elements.exportImageButton.title = "Export tabel monitoring ke JPEG resolusi tinggi";
       renderAnomalies();
 
       if (!filtered.length) {
@@ -444,6 +462,8 @@
       setSortOptions(viewMode);
       setControlsEnabled(true);
       elements.back.hidden = false;
+      if (elements.searchControl) elements.searchControl.hidden = false;
+      elements.actions?.classList.remove("is-officer-mode");
       elements.heading.textContent = `Rincian Pelanggan ${officer.name}`;
       elements.status.textContent = `Saldo akhir ${selectedSummary.closing.snapshotDate} - ${formatNumber(officer.count)} pelanggan ditangani ${officer.name}.`;
       elements.tableTitle.textContent = `Daftar Pelanggan ${officer.name}`;
@@ -712,7 +732,13 @@
         closeAnomalyPopup();
         return;
       }
-      if (event.key === "Escape" && !elements.previewDrawer.hidden) closePreview();
+      if (event.key === "Escape" && !elements.previewDrawer.hidden) {
+        closePreview();
+        return;
+      }
+      if (event.key === "Escape" && elements.card?.classList.contains("is-maximized")) {
+        setMaximized(false);
+      }
     });
     elements.back.addEventListener("click", () => {
       selectedOfficer = null;
@@ -737,6 +763,9 @@
     });
     elements.exportButton.addEventListener("click", exportCurrentView);
     elements.exportImageButton.addEventListener("click", exportCurrentImage);
+    elements.maximize?.addEventListener("click", () => {
+      setMaximized(!elements.card?.classList.contains("is-maximized"));
+    });
     elements.more.addEventListener("click", () => { shown += PAGE_SIZE; renderCustomers(); });
 
     function reset() {
@@ -746,6 +775,7 @@
       officers = [];
       viewMode = "officers";
       anomalyPopupDismissed = false;
+      setMaximized(false);
       elements.search.value = "";
       elements.sort.dataset.mode = "";
       updateSearchState();
@@ -754,6 +784,12 @@
       closeAnomalyPopup({ dismissed: false });
       closePreview({ restoreFocus: false });
       setMessage("Pilih Kogol 0 di dashboard untuk melihat rincian.");
+    }
+    const detailTabPanel = elements.panel.closest("[data-tab-panel]");
+    if (detailTabPanel) {
+      new MutationObserver(() => {
+        if (detailTabPanel.hidden) setMaximized(false);
+      }).observe(detailTabPanel, { attributes: true, attributeFilter: ["hidden"] });
     }
     return { open, reset };
   }

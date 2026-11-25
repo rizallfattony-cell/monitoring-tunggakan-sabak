@@ -5,6 +5,9 @@ const CLOUD_STATE_ID = "main";
 const DEBT_UPDATE_SIGNAL_ID = "debt-update-signal";
 const MOBILE_MENU_TABS = new Set(["sync-status", "premium", "receipt-history", "invoice"]);
 const MOBILE_MENU_PASSWORD_DIGEST = "91d101db5c3b9baec42369bb66a8ae92c35a6e16f8a128e21c1b2e2821fac4c5";
+const AUTH_SESSION_LOADER_DURATION_MS = 4000;
+const authSessionLoaderStartedAt = Date.now();
+let authSessionLoaderTimer = null;
 const SALDO_AVERAGE_FIELDS = [
   { key: "kogol0Berjalan", label: "KOGOL 0 Berjalan" },
   { key: "kogol0Tunggakan", label: "KOGOL 0 Tunggakan" },
@@ -2658,7 +2661,7 @@ function updateOnlineUi() {
   const online = Boolean(state.user);
   receiptHistoryController.onAuthChange();
   kogolDashboardController.syncContext();
-  if (els.authSessionLoader) els.authSessionLoader.hidden = true;
+  finishAuthSessionLoader();
   if (els.authGate) els.authGate.hidden = online;
   if (els.appShell) els.appShell.hidden = !online;
   if (els.onlineButton) els.onlineButton.textContent = online ? "Online Aktif" : "Login Online";
@@ -2679,6 +2682,20 @@ function updateOnlineUi() {
   setGateStatus(state.supabaseClient
     ? "Silakan login untuk membuka MONALISA Admin."
     : "Supabase belum dikonfigurasi. Isi supabase-config.js untuk mode online.");
+}
+
+function finishAuthSessionLoader() {
+  if (!els.authSessionLoader || els.authSessionLoader.hidden) return;
+  const remaining = AUTH_SESSION_LOADER_DURATION_MS - (Date.now() - authSessionLoaderStartedAt);
+  clearTimeout(authSessionLoaderTimer);
+  if (remaining <= 0) {
+    els.authSessionLoader.hidden = true;
+    return;
+  }
+  authSessionLoaderTimer = setTimeout(() => {
+    els.authSessionLoader.hidden = true;
+    authSessionLoaderTimer = null;
+  }, remaining);
 }
 
 function setGateStatus(message) {

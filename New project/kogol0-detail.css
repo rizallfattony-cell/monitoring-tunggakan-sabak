@@ -202,6 +202,39 @@
   box-shadow: var(--pln-shadow, 0 2px 8px rgba(6, 43, 61, 0.06));
 }
 
+body.is-kogol0-maximized {
+  overflow: hidden;
+}
+
+.kogol0-detail-card.is-maximized {
+  position: fixed;
+  inset: 12px;
+  z-index: 90;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border-color: #b7cad6;
+  box-shadow: 0 24px 70px rgba(4, 30, 43, 0.28);
+}
+
+.kogol0-detail-card.is-maximized .kogol0-detail-table {
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.kogol0-detail-card.is-maximized .kogol0-detail-scroll {
+  max-height: none;
+  flex: 1 1 auto;
+}
+
+.kogol0-detail-card.is-maximized .kogol0-monitoring-help,
+.kogol0-detail-card.is-maximized .kogol0-table-footer {
+  flex: 0 0 auto;
+}
+
 .kogol0-detail-toolbar {
   min-height: 56px;
   display: flex;
@@ -214,7 +247,23 @@
 }
 
 .kogol0-detail-toolbar.is-title-only {
-  justify-content: flex-start;
+  justify-content: space-between;
+}
+
+.kogol0-maximize-button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.kogol0-maximize-button svg {
+  width: 16px;
+  height: 16px;
 }
 
 .kogol0-detail-utility {
@@ -286,6 +335,10 @@
   background: var(--pln-subtle, #f8fafc);
   color: #607b8d;
   transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.kogol0-detail-search[hidden] {
+  display: none !important;
 }
 
 .kogol0-detail-search > svg {
@@ -1217,12 +1270,23 @@ body.is-kogol0-preview-open {
     grid-template-columns: minmax(220px, 1fr) 174px auto auto;
   }
 
+  .kogol0-detail-toolbar-actions.is-officer-mode {
+    grid-template-columns: 174px auto auto;
+    justify-content: end;
+  }
+
   .kogol0-detail-search {
     width: 100%;
   }
 }
 
 @media (max-width: 760px) {
+  .kogol0-detail-card.is-maximized {
+    inset: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
   .kogol0-anomaly-backdrop {
     align-items: end;
     padding: 10px;
@@ -1333,6 +1397,14 @@ body.is-kogol0-preview-open {
 
   .kogol0-detail-toolbar-actions {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .kogol0-detail-toolbar-actions.is-officer-mode {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .kogol0-detail-toolbar-actions.is-officer-mode .kogol0-detail-sort {
+    grid-column: 1 / -1;
   }
 
   .kogol0-detail-search {

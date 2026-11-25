@@ -17,10 +17,10 @@
     <link rel="stylesheet" href="./receipt-history.css?v=174" />
     <link rel="stylesheet" href="./debt-performance.css?v=20261031-daily-performance-v5" />
     <link rel="stylesheet" href="./kogol-dashboard.css?v=20261106-dashboard-usulan-v1" />
-    <link rel="stylesheet" href="./kogol0-detail.css?v=20261125-kogol-navigation-v10" />
+    <link rel="stylesheet" href="./kogol0-detail.css?v=20261125-maximize-v11" />
     <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <link rel="stylesheet" href="./dashboard-redesign.css?v=20261113-dashboard-hero-v1" />
-    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261125-energy-loader-v11" />
+    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261125-loader-duration-v12" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -473,13 +473,14 @@
                   <span class="kogol0-filtered-badge" id="kogol0DetailFilteredCount">Menunggu data rincian</span>
                 </div>
               </div>
+              <button class="button secondary kogol0-maximize-button" id="kogol0DetailMaximize" type="button" aria-pressed="false"><i data-lucide="maximize-2" aria-hidden="true"></i><span>Maximize</span></button>
             </div>
             <div class="kogol0-detail-table" id="kogol0DetailTable"><div class="kogol0-detail-empty">Pilih Kogol 0 di dashboard untuk melihat rincian.</div></div>
             <div class="kogol0-detail-more-wrap"><button class="button secondary" id="kogol0DetailMore" type="button" hidden>Tampilkan lagi</button></div>
             <div class="kogol0-detail-utility">
               <button class="button secondary kogol0-back-button" id="kogol0DetailBack" type="button" hidden><i data-lucide="arrow-left" aria-hidden="true"></i> Kembali ke Monitoring</button>
               <div class="kogol0-detail-toolbar-actions">
-                <label class="kogol0-detail-search"><i data-lucide="search" aria-hidden="true"></i><input id="kogol0DetailSearch" type="search" placeholder="Cari petugas" autocomplete="off" aria-label="Cari petugas atau pelanggan" /><button id="kogol0DetailClearSearch" type="button" title="Hapus pencarian" aria-label="Hapus pencarian" hidden><i data-lucide="circle-x" aria-hidden="true"></i></button></label>
+                <label class="kogol0-detail-search" id="kogol0DetailSearchControl"><i data-lucide="search" aria-hidden="true"></i><input id="kogol0DetailSearch" type="search" placeholder="Cari pelanggan" autocomplete="off" aria-label="Cari pelanggan" /><button id="kogol0DetailClearSearch" type="button" title="Hapus pencarian" aria-label="Hapus pencarian" hidden><i data-lucide="circle-x" aria-hidden="true"></i></button></label>
                 <label class="kogol0-detail-sort"><span class="sr-only">Urutkan data</span><select id="kogol0DetailSort" aria-label="Urutkan data rincian"><option value="percentDesc">Pelunasan tertinggi</option><option value="amountDesc">Tagihan tertinggi</option><option value="countDesc">IDPEL terbanyak</option><option value="nameAsc">Nama A-Z</option></select><i data-lucide="arrow-up-down" aria-hidden="true"></i></label>
                 <button class="button secondary kogol0-image-button" id="kogol0DetailExportImage" type="button"><i data-lucide="image-down" aria-hidden="true"></i> Export Image HD</button>
                 <button class="button primary kogol0-export-button" id="kogol0DetailExport" type="button"><i data-lucide="file-spreadsheet" aria-hidden="true"></i> Export Excel</button>
@@ -1421,7 +1422,7 @@
     <script src="./receipt-history.js?v=175-monalisa"></script>
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
     <script src="./kogol-dashboard.js?v=20261122-donut-percent-v4"></script>
-    <script src="./kogol0-detail.js?v=20261125-whatsapp-hd-v10"></script>
-    <script src="./app.js?v=20261125-kogol-navigation-v11"></script>
+    <script src="./kogol0-detail.js?v=20261125-maximize-v11"></script>
+    <script src="./app.js?v=20261125-loader-duration-v12"></script>
   </body>
 </html>
