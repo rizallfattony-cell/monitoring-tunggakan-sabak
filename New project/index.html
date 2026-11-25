@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="./receipt-history.css?v=174" />
     <link rel="stylesheet" href="./debt-performance.css?v=20261031-daily-performance-v5" />
     <link rel="stylesheet" href="./kogol-dashboard.css?v=20261106-dashboard-usulan-v1" />
-    <link rel="stylesheet" href="./kogol0-detail.css?v=20261125-unified-table-v9" />
+    <link rel="stylesheet" href="./kogol0-detail.css?v=20261125-kogol-navigation-v10" />
     <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <link rel="stylesheet" href="./dashboard-redesign.css?v=20261113-dashboard-hero-v1" />
     <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261125-session-loader-v10" />
@@ -462,22 +462,26 @@
               <div class="kogol0-detail-toolbar-actions">
                 <label class="kogol0-detail-search"><i data-lucide="search" aria-hidden="true"></i><input id="kogol0DetailSearch" type="search" placeholder="Cari petugas" autocomplete="off" aria-label="Cari petugas atau pelanggan" /><button id="kogol0DetailClearSearch" type="button" title="Hapus pencarian" aria-label="Hapus pencarian" hidden><i data-lucide="circle-x" aria-hidden="true"></i></button></label>
                 <label class="kogol0-detail-sort"><span class="sr-only">Urutkan data</span><select id="kogol0DetailSort" aria-label="Urutkan data rincian"><option value="percentDesc">Pelunasan tertinggi</option><option value="amountDesc">Tagihan tertinggi</option><option value="countDesc">IDPEL terbanyak</option><option value="nameAsc">Nama A-Z</option></select><i data-lucide="arrow-up-down" aria-hidden="true"></i></label>
-                <button class="button secondary kogol0-image-button" id="kogol0DetailExportImage" type="button"><i data-lucide="image-down" aria-hidden="true"></i> Export Image</button>
+                <button class="button secondary kogol0-image-button" id="kogol0DetailExportImage" type="button"><i data-lucide="image-down" aria-hidden="true"></i> Export Image HD</button>
                 <button class="button primary kogol0-export-button" id="kogol0DetailExport" type="button"><i data-lucide="file-spreadsheet" aria-hidden="true"></i> Export Excel</button>
               </div>
             </div>
           </section>
-          <section class="kogol0-detail-anomaly" aria-labelledby="kogol0DetailAnomalyTitle">
-            <button class="kogol0-detail-anomaly-toggle" id="kogol0DetailAnomalyToggle" type="button" aria-expanded="false" aria-controls="kogol0DetailAnomalyBody">
-              <span><i data-lucide="triangle-alert" aria-hidden="true"></i><strong id="kogol0DetailAnomalyTitle">Data Anomali</strong></span>
-              <span><b id="kogol0DetailAnomalyCount">0</b><i data-lucide="chevron-down" aria-hidden="true"></i></span>
-            </button>
-            <div class="kogol0-detail-anomaly-body" id="kogol0DetailAnomalyBody" hidden>
-              <div class="kogol0-detail-anomaly-list" id="kogol0DetailAnomalyList"></div>
-            </div>
-          </section>
         </section>
       </section>
+
+      <div class="kogol0-anomaly-backdrop" id="kogol0DetailAnomalyModal" hidden>
+        <section class="kogol0-anomaly-dialog" role="dialog" aria-modal="true" aria-labelledby="kogol0DetailAnomalyTitle" aria-describedby="kogol0DetailAnomalyDescription">
+          <header>
+            <span class="kogol0-anomaly-icon" aria-hidden="true"><i data-lucide="triangle-alert"></i></span>
+            <div><span id="kogol0DetailAnomalyDescription">Pemeriksaan data monitoring</span><h2 id="kogol0DetailAnomalyTitle">Data Anomali Ditemukan</h2></div>
+            <button class="icon-button" id="kogol0DetailAnomalyClose" type="button" title="Tutup" aria-label="Tutup pemberitahuan anomali"><i data-lucide="x" aria-hidden="true"></i></button>
+          </header>
+          <div class="kogol0-anomaly-summary"><strong id="kogol0DetailAnomalyCount">0</strong><span>Anomali perlu diperiksa. Anda tetap dapat menutup pemberitahuan ini dan melanjutkan pekerjaan.</span></div>
+          <div class="kogol0-detail-anomaly-list" id="kogol0DetailAnomalyList"></div>
+          <footer><button class="button primary" id="kogol0DetailAnomalyDismiss" type="button">Tutup dan Lanjutkan</button></footer>
+        </section>
+      </div>
 
       <div class="kogol0-preview-backdrop" id="kogol0PreviewBackdrop" hidden></div>
       <aside class="kogol0-preview-drawer" id="kogol0PreviewDrawer" role="dialog" aria-modal="true" aria-labelledby="kogol0PreviewTitle" hidden>
@@ -1398,7 +1402,7 @@
     <script src="./receipt-history.js?v=175-monalisa"></script>
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
     <script src="./kogol-dashboard.js?v=20261122-donut-percent-v4"></script>
-    <script src="./kogol0-detail.js?v=20261125-unified-table-v8"></script>
-    <script src="./app.js?v=20261125-unified-table-v10"></script>
+    <script src="./kogol0-detail.js?v=20261125-kogol-navigation-v9"></script>
+    <script src="./app.js?v=20261125-kogol-navigation-v11"></script>
   </body>
 </html>

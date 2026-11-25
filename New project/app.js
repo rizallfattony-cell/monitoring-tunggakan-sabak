@@ -354,7 +354,7 @@ const kogolDashboardController = window.SimontokKogolDashboard.create({
   onOpenGroup: (summary) => {
     if (state.profile?.role !== "admin") return;
     switchTab("kogol0-detail");
-    kogol0DetailController.open(summary);
+    kogol0DetailController.open(summary, { showDashboardBack: true });
   },
   onRecordsChange: (rows, month, loaded) => {
     kogolSnapshotCache = { month, rows, loaded };
@@ -534,7 +534,7 @@ function attachEvents() {
       if (requestedTab === "upload") setUploadView(button.dataset.uploadView);
       switchTab(requestedTab);
       if (requestedTab === "kogol0-detail" || (requestedTab === "laporan" && state.profile?.role === "admin")) {
-        openCurrentKogol0Detail();
+        openCurrentKogol0Detail({ showDashboardBack: false });
       }
     });
   });
@@ -669,7 +669,7 @@ function switchTab(tabName) {
   updateHeaderActions();
 }
 
-async function openCurrentKogol0Detail() {
+async function openCurrentKogol0Detail({ showDashboardBack = false } = {}) {
   if (state.profile?.role !== "admin") return;
   const month = state.kogolDashboard.selectedMonth;
   let summary = window.SimontokKogolDashboard.buildSummary(kogolSnapshotCache.rows, month)
@@ -679,7 +679,7 @@ async function openCurrentKogol0Detail() {
     summary = window.SimontokKogolDashboard.buildSummary(kogolSnapshotCache.rows, month)
       .find((item) => item.key === "KOGOL_0");
   }
-  await kogol0DetailController.open(summary);
+  await kogol0DetailController.open(summary, { showDashboardBack });
 }
 
 function openMobileMenuLock(pendingTab = "") {
@@ -3967,7 +3967,7 @@ function handleOverviewOfficerClick(event) {
     render();
   }
   switchTab("laporan");
-  if (state.profile?.role === "admin") openCurrentKogol0Detail();
+  if (state.profile?.role === "admin") openCurrentKogol0Detail({ showDashboardBack: true });
 }
 
 function getLowPerformerNames(rows) {

@@ -199,6 +199,7 @@ fs.mkdirSync(qa, { recursive: true });
         petugas: index < 15 ? 'ADRI' : 'AMRIZAL',
         idpel: String(143900000000 + index), nama: `Pelanggan ${index}`,
         alamat: `Alamat ${index}`, tarif: 'R1', daya: '900',
+        lembar: '1', kolok: index === 16 ? '01' : index === 15 ? '02' : String(100 + index), koked: `K${String(index).padStart(2, '0')}`,
         rptag: index === 0 ? 100000 : index === 15 ? 172000 : 1000,
       }));
       state.remainingByPetugas = new Map([
@@ -241,24 +242,35 @@ fs.mkdirSync(qa, { recursive: true });
       utilityTop: document.querySelector('.kogol0-detail-utility').getBoundingClientRect().top,
     }));
     assert.ok(tableAndUtility.utilityTop >= tableAndUtility.tableBottom, 'Kontrol pencarian dan ekspor berada di bawah tabel');
+    assert.equal(await page.locator('#kogol0DetailAnomalyModal').isVisible(), true, 'Popup muncul otomatis saat anomali tersedia');
     assert.equal(await page.locator('#kogol0DetailAnomalyCount').innerText(), '1');
-    await page.locator('#kogol0DetailAnomalyToggle').click();
-    assert.equal(await page.locator('#kogol0DetailAnomalyBody').isVisible(), true, 'Panel anomali lama tersedia di bawah kontrol');
     assert.match(await page.locator('#kogol0DetailAnomalyList').innerText(), /Saldo akhir naik.*saldo akhir lebih besar/s);
+    await page.screenshot({ path: path.join(qa, 'kogol0-anomaly-popup-desktop.png'), fullPage: false });
+    await page.locator('#kogol0DetailAnomalyDismiss').click();
+    assert.equal(await page.locator('#kogol0DetailAnomalyModal').isHidden(), true, 'Popup anomali dapat ditutup sambil data diperbaiki');
     assert.match(await page.locator('[data-primary-nav]').innerText(), /Monitoring Kogol 0/);
     assert.equal(await page.locator('[data-primary-nav]').evaluate((element) => element.classList.contains('is-active')), true);
     await page.locator('#kogol0DetailSort').selectOption('nameAsc');
     assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('.kogol0-monitoring-name').innerText(), '<41500-6600');
     await page.locator('#kogol0DetailSort').selectOption('amountDesc');
     assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('.kogol0-monitoring-name').innerText(), 'AMRIZAL');
-    assert.equal(await page.locator('#kogol0DetailExportImage').innerText(), 'Export Image');
+    assert.equal(await page.locator('#kogol0DetailAnomalyModal').isHidden(), true, 'Perubahan urutan tidak membuka ulang popup yang sudah ditutup');
+    assert.equal(await page.locator('#kogol0DetailExportImage').innerText(), 'Export Image HD');
     assert.equal(await page.locator('#kogol0DetailExport').innerText(), 'Export Excel');
     await page.evaluate(() => {
-      window.XLSX.writeFile = (_workbook, filename) => { window.__excelFilename = filename; };
-      HTMLAnchorElement.prototype.click = function captureDownload() { window.__imageFilename = this.download; };
+      window.XLSX.writeFile = (workbook, filename) => {
+        window.__excelFilename = filename;
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        window.__excelMatrix = window.XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+      };
+      HTMLAnchorElement.prototype.click = function captureDownload() {
+        window.__imageFilename = this.download;
+        window.__imageHref = this.href;
+      };
     });
     await page.locator('#kogol0DetailExportImage').click();
-    assert.match(await page.evaluate(() => window.__imageFilename), /\.jpg$/i, 'Ekspor gambar menghasilkan JPG');
+    assert.match(await page.evaluate(() => window.__imageFilename), /-hd\.png$/i, 'Ekspor gambar menghasilkan PNG HD');
+    assert.match(await page.evaluate(() => window.__imageHref), /^data:image\/png/i, 'Ekspor HD memakai format PNG lossless');
     await page.locator('#kogol0DetailExport').click();
     assert.match(await page.evaluate(() => window.__excelFilename), /\.xlsx$/i, 'Ekspor tabel menghasilkan XLSX');
     await page.locator('#kogol0DetailSort').selectOption('percentDesc');
@@ -276,8 +288,13 @@ fs.mkdirSync(qa, { recursive: true });
     assert.match(await page.locator('#kogol0PreviewFooterText').innerText(), /10 dari 15 IDPEL/);
     await page.screenshot({ path: path.join(qa, 'kogol0-preview-desktop.png'), fullPage: true });
     await page.locator('#kogol0PreviewViewAll').click();
-    assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('.customer-name').innerText(), 'Pelanggan 15');
-    assert.match(await page.locator('#kogol0DetailTable tbody tr').first().innerText(), /Rp\s*172\.000/);
+    assert.equal(await page.locator('#kogol0DetailSort').inputValue(), 'exportOrder', 'Lihat semua IDPEL mengikuti urutan export lama');
+    assert.equal(await page.locator('#kogol0DetailTable tbody tr').first().locator('.customer-name').innerText(), 'Pelanggan 16');
+    await page.locator('#kogol0DetailExport').click();
+    assert.match(await page.evaluate(() => window.__excelFilename), /kogol-0-amrizal-.*\.xlsx$/i);
+    const customerExport = await page.evaluate(() => window.__excelMatrix);
+    assert.deepEqual(customerExport[0], ['NO', 'IDPEL', 'NAMA', 'TARIF', 'DAYA', 'ALAMAT', 'LEMBAR', 'KOLOK', 'KOKED', 'RPTAG']);
+    assert.equal(customerExport[1][2], 'Pelanggan 16', 'Baris Excel pertama mengikuti KOLOK/KOKED');
     await page.locator('#kogol0DetailSearch').fill('Pelanggan 16');
     assert.equal(await page.locator('#kogol0DetailTable tbody tr').count(), 1);
     await page.locator('#kogol0DetailSearch').fill('');
@@ -301,7 +318,14 @@ fs.mkdirSync(qa, { recursive: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'Kogol 0 preview drawer fits mobile viewport');
     await page.locator('#kogol0PreviewClose').click();
     await page.setViewportSize({ width: 1440, height: 1100 });
+    await page.evaluate(() => document.querySelector('.workspace-layout').classList.remove('is-menu-collapsed'));
     await page.locator('[data-tab-panel="kogol0-detail"] [data-tab="overview"]').click();
+    await page.locator('[data-primary-nav]').click();
+    await page.waitForFunction(() => document.querySelector('[data-tab-panel="kogol0-detail"]').classList.contains('is-active'));
+    assert.equal(await page.locator('.kogol0-dashboard-button').isHidden(), true, 'Tombol dashboard disembunyikan saat halaman dibuka langsung dari menu Monitoring Kogol 0');
+    assert.equal(await page.locator('#kogol0DetailAnomalyModal').isVisible(), true, 'Popup anomali muncul kembali saat halaman dibuka ulang');
+    await page.locator('#kogol0DetailAnomalyClose').click();
+    await page.evaluate(() => switchTab('overview'));
     await page.evaluate(() => {
       const rows = [...state.remainingByPetugas.values()].flat();
       state.remainingByPetugas = new Map();
@@ -317,6 +341,7 @@ fs.mkdirSync(qa, { recursive: true });
     });
     await page.locator('[data-kogol-key="KOGOL_0"]').click();
     await page.waitForFunction(() => document.querySelector('#kogol0DetailStatus').textContent.includes('30 pelanggan cocok'));
+    if (await page.locator('#kogol0DetailAnomalyModal').isVisible()) await page.locator('#kogol0DetailAnomalyClose').click();
     assert.equal(await page.locator('#kogol0DetailTable tbody tr').count(), 19, 'Online fallback loads officer detail');
     await page.evaluate(async () => {
       const summary = window.SimontokKogolDashboard.buildSummary(window.__kogolRows, '2026-10')[0];
@@ -324,6 +349,7 @@ fs.mkdirSync(qa, { recursive: true });
       await kogol0DetailController.open(summary);
     });
     assert.match(await page.locator('#kogol0DetailStatus').innerText(), /tanggal unggahan lain/i);
+    if (await page.locator('#kogol0DetailAnomalyModal').isVisible()) await page.locator('#kogol0DetailAnomalyClose').click();
     await page.evaluate(() => switchTab('overview'));
 
     const parsed = await page.evaluate(() => parseKogolUploadRows([

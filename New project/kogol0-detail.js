@@ -55,6 +55,18 @@
       || String(a.idpel || "").localeCompare(String(b.idpel || ""), "id-ID", { numeric: true }));
   }
 
+  function compareCode(a, b) {
+    return String(a || "").localeCompare(String(b || ""), "id-ID", {
+      numeric: true, sensitivity: "base",
+    });
+  }
+
+  function sortCustomersForExport(rows) {
+    return [...rows].sort((a, b) => compareCode(a.kolok, b.kolok)
+      || compareCode(a.koked, b.koked)
+      || compareCode(a.idpel, b.idpel));
+  }
+
   function buildOfficers(rows, names) {
     const grouped = new Map((names || []).map((name) => [name, { name, rows: [], amount: 0 }]));
     for (const row of rows) {
@@ -80,6 +92,8 @@
     const getOfficerNames = options.getOfficerNames || (() => []);
     const elements = {
       panel: document.querySelector("#kogol0DetailPanel"),
+      dashboardHeader: document.querySelector("#kogol0DetailPanel .kogol0-detail-header"),
+      dashboardBack: document.querySelector("#kogol0DetailPanel .kogol0-dashboard-button"),
       status: document.querySelector("#kogol0DetailStatus"),
       heading: document.querySelector("#kogol0DetailHeading"),
       back: document.querySelector("#kogol0DetailBack"),
@@ -93,8 +107,9 @@
       summary: document.querySelector("#kogol0DetailSummary"),
       table: document.querySelector("#kogol0DetailTable"),
       more: document.querySelector("#kogol0DetailMore"),
-      anomalyToggle: document.querySelector("#kogol0DetailAnomalyToggle"),
-      anomalyBody: document.querySelector("#kogol0DetailAnomalyBody"),
+      anomalyModal: document.querySelector("#kogol0DetailAnomalyModal"),
+      anomalyClose: document.querySelector("#kogol0DetailAnomalyClose"),
+      anomalyDismiss: document.querySelector("#kogol0DetailAnomalyDismiss"),
       anomalyList: document.querySelector("#kogol0DetailAnomalyList"),
       anomalyCount: document.querySelector("#kogol0DetailAnomalyCount"),
       previewBackdrop: document.querySelector("#kogol0PreviewBackdrop"),
@@ -117,6 +132,7 @@
     let viewMode = "officers";
     let previewOfficer = null;
     let previewTrigger = null;
+    let anomalyPopupDismissed = false;
 
     function refreshIcons(nodes) {
       window.lucide?.createIcons({ nodes: nodes.filter(Boolean) });
@@ -141,6 +157,7 @@
           ["nameAsc", "Nama A-Z"],
         ],
         customers: [
+          ["exportOrder", "Urutan export"],
           ["amountDesc", "Tagihan tertinggi"],
           ["idpelAsc", "IDPEL terkecil"],
           ["nameAsc", "Nama A-Z"],
@@ -149,7 +166,7 @@
       elements.sort.innerHTML = optionsByMode[mode]
         .map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
       elements.sort.dataset.mode = mode;
-      elements.sort.value = mode === "officers" ? "percentDesc" : "amountDesc";
+      elements.sort.value = mode === "officers" ? "percentDesc" : "exportOrder";
     }
 
     function renderSummary(cards) {
@@ -172,11 +189,22 @@
       if (!elements.anomalyList) return;
       const anomalies = Array.isArray(getState().anomalies) ? getState().anomalies : [];
       elements.anomalyCount.textContent = formatNumber(anomalies.length);
-      elements.anomalyList.innerHTML = anomalies.length
-        ? anomalies.slice(0, 250).map((item) => `<div class="kogol0-detail-anomaly-item${item.ignored ? " is-warning" : ""}">
+      elements.anomalyList.innerHTML = anomalies.slice(0, 250).map((item) => `<div class="kogol0-detail-anomaly-item${item.ignored ? " is-warning" : ""}">
           <strong>${escapeHtml(item.type)}</strong><span>${escapeHtml(item.message)}</span>
-        </div>`).join("")
-        : `<div class="kogol0-detail-anomaly-item is-clear"><strong>Aman</strong><span>Belum ada anomali terdeteksi.</span></div>`;
+        </div>`).join("");
+      if (anomalies.length && !anomalyPopupDismissed) {
+        elements.anomalyModal.hidden = false;
+        document.body.classList.add("is-kogol0-anomaly-open");
+        requestAnimationFrame(() => elements.anomalyClose?.focus());
+      } else if (!anomalies.length) {
+        closeAnomalyPopup({ dismissed: false });
+      }
+    }
+
+    function closeAnomalyPopup({ dismissed = true } = {}) {
+      if (dismissed) anomalyPopupDismissed = true;
+      if (elements.anomalyModal) elements.anomalyModal.hidden = true;
+      document.body.classList.remove("is-kogol0-anomaly-open");
     }
 
     function emptyState(title, description) {
@@ -321,6 +349,7 @@
       const term = elements.search.value.trim().toLocaleLowerCase("id-ID");
       const filtered = officer.rows.filter((row) => [row.idpel, row.nama, row.alamat]
         .some((value) => String(value || "").toLocaleLowerCase("id-ID").includes(term)));
+      if (elements.sort.value === "exportOrder") return sortCustomersForExport(filtered);
       if (elements.sort.value === "idpelAsc") {
         return filtered.sort((a, b) => String(a.idpel || "").localeCompare(String(b.idpel || ""), "id-ID", { numeric: true }));
       }
@@ -391,7 +420,7 @@
       elements.filteredCount.textContent = `Menampilkan ${formatNumber(filtered.length)} dari ${formatNumber(officers.length)} petugas`;
       elements.exportButton.disabled = !filtered.length;
       elements.exportImageButton.disabled = !filtered.length;
-      elements.exportImageButton.title = "Export tabel monitoring ke JPG";
+      elements.exportImageButton.title = "Export tabel monitoring ke PNG resolusi tinggi";
       renderAnomalies();
 
       if (!filtered.length) {
@@ -439,7 +468,7 @@
         elements.table.innerHTML = `<div class="kogol0-detail-scroll"><table class="kogol0-customers-table">
           <thead><tr><th scope="col">#</th><th scope="col">IDPEL</th><th scope="col">Pelanggan</th><th scope="col">Alamat</th><th scope="col">Tarif / Daya</th><th scope="col" class="numeric">Tagihan</th></tr></thead>
           <tbody>${visible.map((row, index) => `<tr><td>${index + 1}</td><td class="idpel">${escapeHtml(row.idpel)}</td><td class="customer-name">${escapeHtml(row.nama)}</td><td>${escapeHtml(row.alamat || "-")}</td><td>${escapeHtml([row.tarif, row.daya].filter(Boolean).join(" / ") || "-")}</td><td class="numeric amount">${formatRupiah(row.rptag)}</td></tr>`).join("")}</tbody>
-        </table></div>${tableFooter("Daftar diurutkan sesuai pilihan pada toolbar.", filtered.length, filteredAmount)}`;
+        </table></div>${tableFooter("Urutan default mengikuti KOLOK lalu KOKED seperti file export.", filtered.length, filteredAmount)}`;
       }
       elements.more.hidden = visible.length >= filtered.length;
       if (!elements.more.hidden) elements.more.textContent = `Tampilkan lagi (${formatNumber(filtered.length - visible.length)} tersisa)`;
@@ -464,7 +493,7 @@
         headers.forEach((header, column) => {
           const cell = worksheet[window.XLSX.utils.encode_cell({ r: row, c: column })];
           if (!cell || cell.t !== "n") return;
-          if (/Tagihan$/i.test(String(header))) cell.z = '"Rp" #,##0';
+          if (/Tagihan$|RPTAG$/i.test(String(header))) cell.z = '"Rp" #,##0';
           if (/Persentase/i.test(String(header))) cell.z = "0%";
         });
       }
@@ -480,9 +509,9 @@
         const rows = filteredCustomers(officer);
         if (!rows.length) return;
         writeExcel(`kogol-0-${slug(officer.name)}-${selectedSummary.closing.snapshotDate}.xlsx`, "Pelanggan",
-          [["No", "IDPEL", "Pelanggan", "Alamat", "Tarif", "Daya", "Tagihan"],
-            ...rows.map((row, index) => [index + 1, row.idpel, row.nama, row.alamat || "", row.tarif || "", row.daya || "", number(row.rptag)])],
-          [7, 18, 28, 42, 12, 12, 18]);
+          [["NO", "IDPEL", "NAMA", "TARIF", "DAYA", "ALAMAT", "LEMBAR", "KOLOK", "KOKED", "RPTAG"],
+            ...rows.map((row, index) => [index + 1, row.idpel, row.nama, row.tarif || "", row.daya || "", row.alamat || "", row.lembar || "", row.kolok || "", row.koked || "", number(row.rptag)])],
+          [7, 18, 28, 12, 12, 42, 12, 12, 12, 18]);
         return;
       }
       const rows = filteredOfficers();
@@ -594,8 +623,8 @@
         y += rowHeight;
       });
       const link = document.createElement("a");
-      link.download = `monitoring-kogol-0-${selectedSummary.closing.snapshotDate}.jpg`;
-      link.href = canvas.toDataURL("image/jpeg", 0.94);
+      link.download = `monitoring-kogol-0-${selectedSummary.closing.snapshotDate}-hd.png`;
+      link.href = canvas.toDataURL("image/png");
       link.click();
     }
 
@@ -612,7 +641,7 @@
       const rows = [];
       for (let offset = 0; ; offset += 1000) {
         const { data, error } = await client.from("monitoring_remaining_customers")
-          .select("id,petugas,idpel,nama,tarif,daya,alamat,rptag,uploaded_at")
+          .select("id,petugas,idpel,nama,tarif,daya,alamat,lembar,kolok,koked,rptag,uploaded_at")
           .eq("report_id", "main").order("id", { ascending: true }).range(offset, offset + 999);
         if (error) throw new Error(`Gagal mengambil rincian pelanggan: ${error.message}`);
         const page = data || [];
@@ -628,7 +657,7 @@
       return rows;
     }
 
-    async function open(summary) {
+    async function open(summary, openOptions = {}) {
       const current = ++requestId;
       if (getState().profile?.role !== "admin") {
         setMessage("Rincian Kogol 0 hanya dapat dilihat admin.");
@@ -637,10 +666,14 @@
       selectedSummary = summary;
       selectedOfficer = null;
       viewMode = "officers";
+      anomalyPopupDismissed = false;
       elements.search.value = "";
       elements.sort.dataset.mode = "";
       elements.heading.textContent = "Rincian Kogol 0 per Petugas";
       elements.back.hidden = true;
+      const showDashboardBack = Boolean(openOptions.showDashboardBack);
+      if (elements.dashboardBack) elements.dashboardBack.hidden = !showDashboardBack;
+      if (elements.dashboardHeader) elements.dashboardHeader.hidden = !showDashboardBack;
       updateSearchState();
       renderAnomalies();
       if (!summary?.closing) {
@@ -666,7 +699,16 @@
     elements.previewBackdrop.addEventListener("click", () => closePreview());
     elements.previewClose.addEventListener("click", () => closePreview());
     elements.previewViewAll.addEventListener("click", showAllPreviewRows);
+    elements.anomalyClose?.addEventListener("click", () => closeAnomalyPopup());
+    elements.anomalyDismiss?.addEventListener("click", () => closeAnomalyPopup());
+    elements.anomalyModal?.addEventListener("click", (event) => {
+      if (event.target === elements.anomalyModal) closeAnomalyPopup();
+    });
     document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && elements.anomalyModal && !elements.anomalyModal.hidden) {
+        closeAnomalyPopup();
+        return;
+      }
       if (event.key === "Escape" && !elements.previewDrawer.hidden) closePreview();
     });
     elements.back.addEventListener("click", () => {
@@ -674,11 +716,6 @@
       elements.search.value = "";
       elements.sort.dataset.mode = "";
       renderOfficers();
-    });
-    elements.anomalyToggle?.addEventListener("click", () => {
-      const expanded = elements.anomalyToggle.getAttribute("aria-expanded") === "true";
-      elements.anomalyToggle.setAttribute("aria-expanded", String(!expanded));
-      elements.anomalyBody.hidden = expanded;
     });
     elements.search.addEventListener("input", () => {
       shown = PAGE_SIZE;
@@ -705,16 +742,18 @@
       selectedOfficer = null;
       officers = [];
       viewMode = "officers";
+      anomalyPopupDismissed = false;
       elements.search.value = "";
       elements.sort.dataset.mode = "";
       updateSearchState();
-      if (elements.anomalyToggle) elements.anomalyToggle.setAttribute("aria-expanded", "false");
-      if (elements.anomalyBody) elements.anomalyBody.hidden = true;
+      if (elements.dashboardBack) elements.dashboardBack.hidden = true;
+      if (elements.dashboardHeader) elements.dashboardHeader.hidden = true;
+      closeAnomalyPopup({ dismissed: false });
       closePreview({ restoreFocus: false });
       setMessage("Pilih Kogol 0 di dashboard untuk melihat rincian.");
     }
     return { open, reset };
   }
 
-  return { create, buildOfficers, sortCustomers, matchesSnapshot, wibDate };
+  return { create, buildOfficers, sortCustomers, sortCustomersForExport, matchesSnapshot, wibDate };
 });
