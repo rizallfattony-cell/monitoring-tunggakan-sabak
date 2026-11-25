@@ -579,7 +579,10 @@
       const exportRows = rows.map((row, index) => ({ ...row, no: index + 1 }));
       exportRows.push({ ...totals, no: "", name: "TOTAL", total: true });
       const height = titleHeight + groupHeight + headerHeight + exportRows.length * rowHeight + margin;
-      const scale = 2;
+      // WhatsApp enables its HD option when the source comfortably exceeds
+      // the 2560px delivery target. A 3x JPEG keeps the table sharp and
+      // remains compatible with WhatsApp's media composer.
+      const scale = 3;
       const canvas = document.createElement("canvas");
       canvas.width = width * scale;
       canvas.height = height * scale;
@@ -623,8 +626,8 @@
         y += rowHeight;
       });
       const link = document.createElement("a");
-      link.download = `monitoring-kogol-0-${selectedSummary.closing.snapshotDate}-hd.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.download = `monitoring-kogol-0-${selectedSummary.closing.snapshotDate}-hd.jpg`;
+      link.href = canvas.toDataURL("image/jpeg", 0.96);
       link.click();
     }
 

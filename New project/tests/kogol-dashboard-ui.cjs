@@ -47,6 +47,10 @@ fs.mkdirSync(qa, { recursive: true });
     assert.equal(await page.locator('#authSessionLoader').isVisible(), true, 'Saat awal web hanya menampilkan pemulihan sesi');
     assert.equal(await page.locator('#authGate').isHidden(), true, 'Form login tidak berkedip sebelum pemeriksaan sesi selesai');
     await page.screenshot({ path: path.join(qa, 'auth-session-loader.png'), fullPage: false });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: path.join(qa, 'auth-session-loader-mobile.png'), fullPage: false });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'Loader sesi tidak overflow pada ponsel');
+    await page.setViewportSize({ width: 1440, height: 1100 });
     await page.evaluate(() => {
       const kogolRows = [
         { snapshot_date: '2026-10-01', kogol_key: 'KOGOL_0', saldo_id: 100, saldo_rupiah: 1000000, uploaded_at: '2026-10-01T01:00:00Z' },
@@ -263,14 +267,22 @@ fs.mkdirSync(qa, { recursive: true });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         window.__excelMatrix = window.XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
       };
+      const nativeToDataURL = HTMLCanvasElement.prototype.toDataURL;
+      HTMLCanvasElement.prototype.toDataURL = function captureCanvas(type, quality) {
+        window.__imageCanvas = { width: this.width, height: this.height, type, quality };
+        return nativeToDataURL.call(this, type, quality);
+      };
       HTMLAnchorElement.prototype.click = function captureDownload() {
         window.__imageFilename = this.download;
         window.__imageHref = this.href;
       };
     });
     await page.locator('#kogol0DetailExportImage').click();
-    assert.match(await page.evaluate(() => window.__imageFilename), /-hd\.png$/i, 'Ekspor gambar menghasilkan PNG HD');
-    assert.match(await page.evaluate(() => window.__imageHref), /^data:image\/png/i, 'Ekspor HD memakai format PNG lossless');
+    assert.match(await page.evaluate(() => window.__imageFilename), /-hd\.jpg$/i, 'Ekspor gambar menghasilkan JPEG HD yang kompatibel dengan WhatsApp');
+    assert.match(await page.evaluate(() => window.__imageHref), /^data:image\/jpeg/i, 'Ekspor HD memakai format JPEG');
+    const imageCanvas = await page.evaluate(() => window.__imageCanvas);
+    assert.ok(Math.max(imageCanvas.width, imageCanvas.height) >= 2560, 'Sisi panjang gambar melewati target HD WhatsApp 2560px');
+    assert.equal(imageCanvas.quality, 0.96, 'JPEG menggunakan kualitas tinggi');
     await page.locator('#kogol0DetailExport').click();
     assert.match(await page.evaluate(() => window.__excelFilename), /\.xlsx$/i, 'Ekspor tabel menghasilkan XLSX');
     await page.locator('#kogol0DetailSort').selectOption('percentDesc');

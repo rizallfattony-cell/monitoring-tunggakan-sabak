@@ -20,20 +20,39 @@
     <link rel="stylesheet" href="./kogol0-detail.css?v=20261125-kogol-navigation-v10" />
     <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <link rel="stylesheet" href="./dashboard-redesign.css?v=20261113-dashboard-hero-v1" />
-    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261125-session-loader-v10" />
+    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261125-energy-loader-v11" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
   </head>
   <body>
     <section class="auth-session-loader" id="authSessionLoader" aria-live="polite" aria-label="Memulihkan sesi MONALISA">
+      <div class="auth-session-loader-circuit" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+      </div>
       <div class="auth-session-loader-content">
-        <span class="auth-session-loader-mark" aria-hidden="true"><i data-lucide="zap"></i></span>
-        <div>
-          <strong>MONALISA</strong>
-          <p>Memulihkan sesi...</p>
+        <div class="auth-session-loader-accent" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="auth-session-loader-panel">
+          <div class="auth-session-loader-main">
+            <div class="auth-session-loader-identity">
+              <span class="auth-session-loader-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" role="presentation"><path d="M13.5 2 4.5 13.5h7L10.5 22l9-11.5h-7L13.5 2Z" /></svg>
+              </span>
+              <div class="auth-session-loader-copy">
+                <div><strong>MONALISA</strong><span>Sinkronisasi</span></div>
+                <p>Memulihkan sesi...</p>
+              </div>
+            </div>
+            <span class="auth-session-loader-spinner" aria-hidden="true"><i></i></span>
+          </div>
+          <div class="auth-session-loader-progress">
+            <div>
+              <span><i aria-hidden="true"></i>PT PLN (Persero) &bull; ULP Sabak</span>
+              <strong>Menyiapkan dashboard</strong>
+            </div>
+            <span class="auth-session-loader-track" aria-hidden="true"><i></i></span>
+          </div>
         </div>
-        <span class="auth-session-loader-spinner" aria-hidden="true"></span>
       </div>
     </section>
 
@@ -1402,7 +1421,7 @@
     <script src="./receipt-history.js?v=175-monalisa"></script>
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
     <script src="./kogol-dashboard.js?v=20261122-donut-percent-v4"></script>
-    <script src="./kogol0-detail.js?v=20261125-kogol-navigation-v9"></script>
+    <script src="./kogol0-detail.js?v=20261125-whatsapp-hd-v10"></script>
     <script src="./app.js?v=20261125-kogol-navigation-v11"></script>
   </body>
 </html>
