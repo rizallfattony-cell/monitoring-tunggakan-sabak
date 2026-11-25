@@ -468,8 +468,153 @@ textarea:focus-visible,
   transition: transform 180ms ease;
 }
 
+.tree-parent-meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.tree-lock-indicator {
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(255, 210, 63, 0.38);
+  border-radius: 6px;
+  background: rgba(255, 210, 63, 0.1);
+  color: var(--pln-yellow);
+}
+
+.tree-lock-indicator[hidden] {
+  display: none;
+}
+
+.tree-lock-indicator svg {
+  width: 12px;
+  height: 12px;
+}
+
 .tree-group.is-open .tree-arrow {
   transform: rotate(90deg);
+}
+
+.tree-group.is-locked .tree-parent:hover .tree-lock-indicator {
+  border-color: rgba(255, 210, 63, 0.72);
+  background: rgba(255, 210, 63, 0.16);
+}
+
+body.mobile-menu-lock-open {
+  overflow: hidden;
+}
+
+#mobileMenuLockModal {
+  z-index: 80;
+  background: rgba(3, 29, 43, 0.68);
+  backdrop-filter: blur(3px);
+}
+
+.mobile-menu-lock-modal {
+  width: min(430px, 100%);
+  border: 1px solid #c9d8e2;
+}
+
+.mobile-menu-lock-header {
+  align-items: flex-start;
+  background: #f7fafc;
+}
+
+.mobile-menu-lock-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.mobile-menu-lock-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #e5f4f5;
+  color: var(--pln-cyan-hover);
+}
+
+.mobile-menu-lock-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.mobile-menu-lock-body {
+  display: grid;
+  gap: 15px;
+}
+
+.mobile-menu-lock-account {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid #d7e2e9;
+  border-radius: 7px;
+  background: #f7fafc;
+}
+
+.mobile-menu-lock-account span,
+.mobile-menu-lock-field > span {
+  color: #617586;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mobile-menu-lock-account strong {
+  overflow-wrap: anywhere;
+  color: var(--pln-navy);
+  font-size: 14px;
+}
+
+.mobile-menu-lock-field {
+  display: grid;
+  gap: 7px;
+}
+
+.mobile-menu-lock-field input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #aebfcb;
+  border-radius: 7px;
+  padding: 9px 11px;
+  background: #fff;
+  color: var(--pln-navy);
+}
+
+.mobile-menu-lock-field input:focus {
+  border-color: var(--pln-cyan);
+  outline: 3px solid rgba(0, 162, 185, 0.16);
+}
+
+.mobile-menu-lock-status {
+  min-height: 18px;
+  margin: 0;
+  color: #b42318;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mobile-menu-unlock-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.mobile-menu-unlock-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.mobile-menu-unlock-button.is-loading {
+  cursor: wait;
+  opacity: 0.72;
 }
 
 .tree-parent.is-active .tree-menu-icon {

@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="./kogol0-detail.css?v=20261106-kogol-v5" />
     <link rel="stylesheet" href="./lpb-dashboard.css?v=20261106-dashboard-usulan-v1" />
     <link rel="stylesheet" href="./dashboard-redesign.css?v=20261113-dashboard-hero-v1" />
-    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261122-text-wordmark-v7" />
+    <link rel="stylesheet" href="./pln-corporate-ui.css?v=20261125-mobile-lock-v8" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./supabase-config.js"></script>
@@ -124,11 +124,14 @@
               </div>
             </section>
 
-            <section class="tree-group">
-              <button class="tree-parent" type="button" data-tree-toggle="simontok-app">
+            <section class="tree-group is-locked" data-protected-menu="mobile">
+              <button class="tree-parent" id="mobileMenuToggle" type="button" data-tree-toggle="simontok-app" aria-expanded="false" aria-haspopup="dialog" aria-controls="mobileMenuLockModal">
                 <i class="tree-menu-icon" data-lucide="smartphone" aria-hidden="true"></i>
                 Aplikasi Mobile
-                <i class="tree-arrow" data-lucide="chevron-right" aria-hidden="true"></i>
+                <span class="tree-parent-meta">
+                  <span class="tree-lock-indicator" id="mobileMenuLockIndicator" title="Menu terkunci" aria-hidden="true"><i data-lucide="lock-keyhole"></i></span>
+                  <i class="tree-arrow" data-lucide="chevron-right" aria-hidden="true"></i>
+                </span>
               </button>
               <div class="tree-children">
                 <button class="tree-child admin-only-menu" type="button" data-tab="sync-status">Status Sinkron Petugas</button>
@@ -1301,6 +1304,39 @@
       </div>
     </div>
 
+    <div class="modal-backdrop" id="mobileMenuLockModal" hidden>
+      <form class="modal mobile-menu-lock-modal" id="mobileMenuLockForm" role="dialog" aria-modal="true" aria-labelledby="mobileMenuLockTitle" aria-describedby="mobileMenuLockDescription">
+        <div class="modal-header mobile-menu-lock-header">
+          <div class="mobile-menu-lock-heading">
+            <span class="mobile-menu-lock-icon" aria-hidden="true"><i data-lucide="lock-keyhole"></i></span>
+            <div>
+              <h2 id="mobileMenuLockTitle">Buka Aplikasi Mobile</h2>
+              <p id="mobileMenuLockDescription">Masukkan password akun admin untuk membuka menu ini.</p>
+            </div>
+          </div>
+          <button class="icon-button" id="closeMobileMenuLockButton" type="button" aria-label="Tutup dialog" title="Tutup"><i data-lucide="x" aria-hidden="true"></i></button>
+        </div>
+        <div class="modal-body mobile-menu-lock-body">
+          <div class="mobile-menu-lock-account">
+            <span>Akun yang diverifikasi</span>
+            <strong id="mobileMenuLockAccount">-</strong>
+          </div>
+          <label class="mobile-menu-lock-field" for="mobileMenuPasswordInput">
+            <span>Password admin</span>
+            <input id="mobileMenuPasswordInput" type="password" placeholder="Masukkan password" autocomplete="current-password" required />
+          </label>
+          <p class="mobile-menu-lock-status" id="mobileMenuLockStatus" role="status" aria-live="polite"></p>
+        </div>
+        <div class="modal-actions">
+          <button class="button secondary" id="cancelMobileMenuLockButton" type="button">Batal</button>
+          <button class="button primary mobile-menu-unlock-button" id="confirmMobileMenuLockButton" type="submit">
+            <i data-lucide="unlock-keyhole" aria-hidden="true"></i>
+            Buka menu
+          </button>
+        </div>
+      </form>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <dialog id="receiptHistoryPreview" aria-labelledby="receiptHistoryPreviewTitle">
       <header><h2 id="receiptHistoryPreviewTitle">Struk Asli</h2><button class="icon-button" id="receiptHistoryClosePreview" type="button" aria-label="Tutup preview" title="Tutup"><i data-lucide="x"></i></button></header>
@@ -1310,6 +1346,6 @@
     <script src="./debt-performance.js?v=20261031-daily-performance-v5"></script>
     <script src="./kogol-dashboard.js?v=20261122-donut-percent-v4"></script>
     <script src="./kogol0-detail.js?v=20261106-kogol-v5"></script>
-    <script src="./app.js?v=20261122-report-layout-v5"></script>
+    <script src="./app.js?v=20261125-mobile-lock-v6"></script>
   </body>
 </html>

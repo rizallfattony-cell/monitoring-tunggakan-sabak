@@ -3,6 +3,7 @@ const DB_NAME = "monitoring-saldo-db";
 const DB_VERSION = 1;
 const CLOUD_STATE_ID = "main";
 const DEBT_UPDATE_SIGNAL_ID = "debt-update-signal";
+const MOBILE_MENU_TABS = new Set(["sync-status", "premium", "receipt-history", "invoice"]);
 const SALDO_AVERAGE_FIELDS = [
   { key: "kogol0Berjalan", label: "KOGOL 0 Berjalan" },
   { key: "kogol0Tunggakan", label: "KOGOL 0 Tunggakan" },
@@ -107,6 +108,8 @@ const state = {
   invoiceMode: "single",
   selectedInvoiceIds: new Set(),
   petugasRows: [],
+  mobileMenuUnlocked: false,
+  mobileMenuPendingTab: "",
 };
 
 const els = {
@@ -317,6 +320,17 @@ const els = {
   workspaceLayout: document.querySelector(".workspace-layout"),
   menuToggleButton: document.querySelector("#menuToggleButton"),
   collapseMenuButton: document.querySelector(".collapse-menu-button"),
+  mobileMenuGroup: document.querySelector('[data-protected-menu="mobile"]'),
+  mobileMenuToggle: document.querySelector("#mobileMenuToggle"),
+  mobileMenuLockIndicator: document.querySelector("#mobileMenuLockIndicator"),
+  mobileMenuLockModal: document.querySelector("#mobileMenuLockModal"),
+  mobileMenuLockForm: document.querySelector("#mobileMenuLockForm"),
+  mobileMenuLockAccount: document.querySelector("#mobileMenuLockAccount"),
+  mobileMenuPasswordInput: document.querySelector("#mobileMenuPasswordInput"),
+  mobileMenuLockStatus: document.querySelector("#mobileMenuLockStatus"),
+  closeMobileMenuLockButton: document.querySelector("#closeMobileMenuLockButton"),
+  cancelMobileMenuLockButton: document.querySelector("#cancelMobileMenuLockButton"),
+  confirmMobileMenuLockButton: document.querySelector("#confirmMobileMenuLockButton"),
   treeToggleButtons: [...document.querySelectorAll("[data-tree-toggle]")],
   adminOnlyMenus: [...document.querySelectorAll(".admin-only-menu")],
   tabButtons: [...document.querySelectorAll("[data-tab]")],
@@ -489,6 +503,12 @@ function attachEvents() {
   els.clearInvoiceCustomersButton?.addEventListener("click", clearInvoiceCustomerSelection);
   els.refreshSyncStatusButton?.addEventListener("click", loadSyncStatus);
   els.saveAppReleaseButton?.addEventListener("click", saveAppRelease);
+  els.mobileMenuLockForm?.addEventListener("submit", verifyMobileMenuPassword);
+  els.closeMobileMenuLockButton?.addEventListener("click", closeMobileMenuLock);
+  els.cancelMobileMenuLockButton?.addEventListener("click", closeMobileMenuLock);
+  els.mobileMenuLockModal?.addEventListener("click", (event) => {
+    if (event.target === els.mobileMenuLockModal) closeMobileMenuLock();
+  });
   els.invoiceIdpel?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -497,8 +517,13 @@ function attachEvents() {
   });
   els.treeToggleButtons.forEach((button) => {
     button.addEventListener("click", () => {
+      if (button === els.mobileMenuToggle && !state.mobileMenuUnlocked) {
+        openMobileMenuLock();
+        return;
+      }
       const group = button.closest(".tree-group");
       group?.classList.toggle("is-open");
+      button.setAttribute("aria-expanded", String(Boolean(group?.classList.contains("is-open"))));
     });
   });
   els.tabButtons.forEach((button) => {
@@ -514,6 +539,7 @@ function attachEvents() {
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      if (!els.mobileMenuLockModal?.hidden) closeMobileMenuLock();
       closeMaximizedTable();
       setProfileMenu(false);
     }
@@ -588,6 +614,10 @@ function updateMaximizeButton(section, active) {
 function switchTab(tabName) {
   if (tabName === "kogol") tabName = "upload";
   if (!tabName) return;
+  if (MOBILE_MENU_TABS.has(tabName) && !state.mobileMenuUnlocked) {
+    openMobileMenuLock(tabName);
+    return;
+  }
   state.activeTab = tabName;
   els.tabButtons.forEach((button) => {
     const active = button.dataset.tab === tabName
@@ -628,6 +658,107 @@ function switchTab(tabName) {
     loadAppRelease();
   }
   updateHeaderActions();
+}
+
+function openMobileMenuLock(pendingTab = "") {
+  if (!els.mobileMenuLockModal || !els.mobileMenuPasswordInput) return;
+  if (state.profile?.role !== "admin") {
+    alert("Menu Aplikasi Mobile hanya dapat dibuka oleh admin.");
+    return;
+  }
+  if (!state.supabaseClient || !state.user?.email) {
+    alert("Sesi admin tidak tersedia. Silakan login ulang.");
+    return;
+  }
+  state.mobileMenuPendingTab = MOBILE_MENU_TABS.has(pendingTab) ? pendingTab : "";
+  if (els.mobileMenuLockAccount) els.mobileMenuLockAccount.textContent = state.user.email;
+  if (els.mobileMenuLockStatus) els.mobileMenuLockStatus.textContent = "";
+  els.mobileMenuPasswordInput.value = "";
+  els.mobileMenuLockModal.hidden = false;
+  document.body.classList.add("mobile-menu-lock-open");
+  requestAnimationFrame(() => els.mobileMenuPasswordInput?.focus());
+}
+
+function closeMobileMenuLock() {
+  if (!els.mobileMenuLockModal) return;
+  els.mobileMenuLockModal.hidden = true;
+  document.body.classList.remove("mobile-menu-lock-open");
+  state.mobileMenuPendingTab = "";
+  if (els.mobileMenuPasswordInput) els.mobileMenuPasswordInput.value = "";
+  if (els.mobileMenuLockStatus) els.mobileMenuLockStatus.textContent = "";
+  els.mobileMenuToggle?.focus();
+}
+
+async function verifyMobileMenuPassword(event) {
+  event.preventDefault();
+  const password = els.mobileMenuPasswordInput?.value || "";
+  const email = state.user?.email || "";
+  if (!password) {
+    if (els.mobileMenuLockStatus) els.mobileMenuLockStatus.textContent = "Masukkan password admin.";
+    els.mobileMenuPasswordInput?.focus();
+    return;
+  }
+  if (!state.supabaseClient || !email) {
+    if (els.mobileMenuLockStatus) els.mobileMenuLockStatus.textContent = "Sesi admin tidak tersedia. Silakan login ulang.";
+    return;
+  }
+
+  const originalUserId = state.user?.id || "";
+  const pendingTab = state.mobileMenuPendingTab;
+  if (els.confirmMobileMenuLockButton) {
+    els.confirmMobileMenuLockButton.disabled = true;
+    els.confirmMobileMenuLockButton.classList.add("is-loading");
+  }
+  if (els.mobileMenuPasswordInput) els.mobileMenuPasswordInput.disabled = true;
+  if (els.mobileMenuLockStatus) els.mobileMenuLockStatus.textContent = "Memverifikasi password...";
+
+  try {
+    const { data, error } = await state.supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    const verifiedUser = data?.user || data?.session?.user || null;
+    if (!verifiedUser || (originalUserId && verifiedUser.id !== originalUserId)) {
+      throw new Error("Akun yang diverifikasi tidak sesuai dengan sesi admin.");
+    }
+    state.user = verifiedUser;
+    state.mobileMenuUnlocked = true;
+    updateMobileMenuLockUi();
+    closeMobileMenuLock();
+    els.mobileMenuGroup?.classList.add("is-open");
+    els.mobileMenuToggle?.setAttribute("aria-expanded", "true");
+    if (pendingTab) switchTab(pendingTab);
+  } catch (error) {
+    const detail = describeLoginError(error);
+    const invalidPassword = /invalid login credentials|invalid credentials|email or password/i.test(detail);
+    if (els.mobileMenuLockStatus) {
+      els.mobileMenuLockStatus.textContent = invalidPassword ? "Password salah. Coba lagi." : `Verifikasi gagal: ${detail}`;
+    }
+    if (els.mobileMenuPasswordInput) {
+      els.mobileMenuPasswordInput.value = "";
+      els.mobileMenuPasswordInput.focus();
+    }
+  } finally {
+    if (els.confirmMobileMenuLockButton) {
+      els.confirmMobileMenuLockButton.disabled = false;
+      els.confirmMobileMenuLockButton.classList.remove("is-loading");
+    }
+    if (els.mobileMenuPasswordInput) els.mobileMenuPasswordInput.disabled = false;
+  }
+}
+
+function updateMobileMenuLockUi() {
+  const unlocked = Boolean(state.mobileMenuUnlocked);
+  els.mobileMenuGroup?.classList.toggle("is-locked", !unlocked);
+  if (els.mobileMenuLockIndicator) els.mobileMenuLockIndicator.hidden = unlocked;
+  els.mobileMenuToggle?.setAttribute("aria-haspopup", unlocked ? "false" : "dialog");
+}
+
+function resetMobileMenuLock() {
+  state.mobileMenuUnlocked = false;
+  state.mobileMenuPendingTab = "";
+  els.mobileMenuGroup?.classList.remove("is-open");
+  els.mobileMenuToggle?.setAttribute("aria-expanded", "false");
+  updateMobileMenuLockUi();
+  if (els.mobileMenuLockModal && !els.mobileMenuLockModal.hidden) closeMobileMenuLock();
 }
 
 function setUploadView(viewName) {
@@ -1267,6 +1398,7 @@ function describeSupabaseError(error) {
 async function logoutOnline() {
   if (!state.supabaseClient) return;
   await state.supabaseClient.auth.signOut();
+  resetMobileMenuLock();
   state.user = null;
   state.profile = null;
   receiptHistoryController.reset();

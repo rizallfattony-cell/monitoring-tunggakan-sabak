@@ -56,9 +56,18 @@ fs.mkdirSync(qa, { recursive: true });
       ];
       window.__kogolRows = kogolRows;
       window.__kogolRpcCalls = [];
-      state.user = { id: 'admin-test' };
+      state.user = { id: 'admin-test', email: 'admin@monalisa.test' };
       state.profile = { role: 'admin', petugas: 'ADMIN' };
       state.supabaseClient = {
+        auth: {
+          signInWithPassword: async ({ email, password }) => {
+            window.__mobileUnlockAttempt = { email, password };
+            if (email === 'admin@monalisa.test' && password === 'admin-rahasia') {
+              return { data: { user: { id: 'admin-test', email } }, error: null };
+            }
+            return { data: null, error: { message: 'Invalid login credentials' } };
+          },
+        },
         from: (table) => {
           let start = '';
           let end = '';
@@ -100,6 +109,30 @@ fs.mkdirSync(qa, { recursive: true });
     await page.screenshot({ path: path.join(qa, 'profile-menu-desktop.png'), fullPage: false });
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#profileMenu').isHidden(), true, 'Escape menutup menu profil');
+    const mobileMenuGroup = page.locator('[data-protected-menu="mobile"]');
+    assert.equal(await mobileMenuGroup.getAttribute('class'), 'tree-group is-locked', 'Menu Aplikasi Mobile terkunci saat halaman dibuka');
+    assert.equal(await page.locator('#mobileMenuLockIndicator').isVisible(), true, 'Ikon kunci tampil pada menu Aplikasi Mobile');
+    await page.locator('#mobileMenuToggle').click();
+    assert.equal(await page.locator('#mobileMenuLockModal').isVisible(), true, 'Klik menu terkunci membuka dialog password');
+    assert.equal(await mobileMenuGroup.evaluate((element) => element.classList.contains('is-open')), false, 'Submenu belum terbuka sebelum verifikasi');
+    assert.equal(await page.locator('#mobileMenuLockAccount').innerText(), 'admin@monalisa.test');
+    await page.screenshot({ path: path.join(qa, 'mobile-menu-lock-dialog.png'), fullPage: false });
+    await page.locator('#mobileMenuPasswordInput').fill('password-salah');
+    await page.locator('#mobileMenuLockForm').evaluate((form) => form.requestSubmit());
+    await page.waitForFunction(() => /Password salah/i.test(document.querySelector('#mobileMenuLockStatus').textContent));
+    assert.equal(await mobileMenuGroup.evaluate((element) => element.classList.contains('is-open')), false, 'Password salah tidak membuka submenu');
+    await page.evaluate(() => switchTab('invoice'));
+    assert.equal(await page.locator('[data-tab-panel="invoice"]').isHidden(), true, 'Akses langsung ke halaman terlindungi tetap diblokir');
+    assert.equal(await page.locator('#mobileMenuLockModal').isVisible(), true, 'Akses langsung tetap meminta password');
+    await page.locator('#mobileMenuPasswordInput').fill('admin-rahasia');
+    await page.locator('#mobileMenuLockForm').evaluate((form) => form.requestSubmit());
+    await page.waitForFunction(() => document.querySelector('#mobileMenuLockModal').hidden);
+    assert.equal(await page.evaluate(() => state.mobileMenuUnlocked), true, 'Password benar membuka menu untuk sesi halaman');
+    assert.equal(await mobileMenuGroup.evaluate((element) => element.classList.contains('is-open')), true, 'Submenu terbuka setelah verifikasi');
+    assert.equal(await page.locator('#mobileMenuLockIndicator').isHidden(), true, 'Ikon kunci disembunyikan setelah verifikasi');
+    assert.equal(await page.locator('[data-tab-panel="invoice"]').isVisible(), true, 'Halaman tujuan dibuka setelah verifikasi berhasil');
+    assert.deepEqual(await page.evaluate(() => window.__mobileUnlockAttempt), { email: 'admin@monalisa.test', password: 'admin-rahasia' });
+    await page.evaluate(() => switchTab('overview'));
     await page.screenshot({ path: path.join(qa, 'sidebar-clean-desktop.png'), fullPage: false });
     assert.equal(await page.locator('.kogol-card').count(), 4);
     assert.equal(await page.locator('.kogol-card svg.kogol-donut').count(), 4);
