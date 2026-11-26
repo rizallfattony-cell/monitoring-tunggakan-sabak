@@ -1901,9 +1901,13 @@ tfoot td {
 
 .premium-admin-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
+}
+
+.premium-admin-layout > * {
+  min-width: 0;
 }
 
 .premium-access-form,
@@ -1914,9 +1918,40 @@ tfoot td {
 }
 
 .premium-access-form {
+  width: 100%;
+  min-width: 0;
   display: grid;
   gap: 15px;
-  padding: 20px;
+  padding: 18px;
+  overflow: hidden;
+}
+
+.premium-access-form > *,
+.premium-access-form .field,
+.premium-form-heading > div {
+  min-width: 0;
+}
+
+.premium-access-form .field > span {
+  color: #263e52;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.premium-access-form .field input,
+.premium-access-form .field select,
+.premium-access-form .field textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.premium-access-form .field select {
+  overflow: hidden;
+  padding-right: 34px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .premium-form-heading,
@@ -1925,6 +1960,20 @@ tfoot td {
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
+}
+
+.premium-form-heading .icon-button {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  align-self: flex-start;
+  border-color: #c6d3dc;
+  background: #f8fafc;
+}
+
+.premium-form-heading .icon-button svg {
+  width: 17px;
+  height: 17px;
 }
 
 .premium-form-heading h3,
@@ -1949,21 +1998,27 @@ tfoot td {
   padding: 9px 10px;
   color: #172b43;
   font: inherit;
+  line-height: 1.4;
 }
 
 .premium-date-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.premium-date-grid input {
+  font-size: 13px;
 }
 
 .premium-duration-options {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
 }
 
 .premium-duration-options button {
+  min-width: 0;
   min-height: 32px;
   border: 1px solid #b9c9d4;
   border-radius: 5px;
@@ -1992,7 +2047,9 @@ tfoot td {
 }
 
 .premium-save-button {
+  min-height: 42px;
   width: 100%;
+  justify-content: center;
 }
 
 .premium-monitoring-panel {
@@ -2347,6 +2404,7 @@ tfoot td {
   .premium-form-status,
   .premium-save-button,
   .premium-duration-options,
+  .premium-date-grid,
   .premium-access-form > .field:last-of-type {
     grid-column: 1 / -1;
   }
@@ -2364,6 +2422,10 @@ tfoot td {
   .premium-access-form > *,
   .premium-access-form > .field:last-of-type {
     grid-column: auto;
+  }
+
+  .premium-date-grid {
+    grid-template-columns: 1fr;
   }
 
   .premium-monitoring-toolbar,

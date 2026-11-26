@@ -654,7 +654,10 @@ function switchTab(tabName) {
   if (tabName === "upload") renderUploadView();
   if (tabName === "comparison") renderComparisonMonitoring();
   if (tabName === "lpb") renderLpbMonitoring();
-  if (tabName === "premium") loadPremiumAdminData();
+  if (tabName === "premium") {
+    resetPremiumMonitoringFilters();
+    loadPremiumAdminData();
+  }
   if (tabName === "receipt-history") receiptHistoryController.load();
   if (tabName === "overview") {
     renderLpbOverview();
@@ -1658,6 +1661,22 @@ function initializePremiumPaymentMonth() {
 
 async function loadPremiumAdminData() {
   await Promise.all([loadPremiumUsers(), loadPremiumPayments()]);
+}
+
+function resetPremiumMonitoringFilters() {
+  if (els.premiumSearchInput) els.premiumSearchInput.value = "";
+  if (els.premiumStatusFilter) els.premiumStatusFilter.value = "all";
+
+  const clearDelayedAutofill = () => {
+    if (state.activeTab !== "premium" || !els.premiumSearchInput) return;
+    if (document.activeElement === els.premiumSearchInput || !els.premiumSearchInput.value) return;
+    els.premiumSearchInput.value = "";
+    renderPremiumUsers();
+  };
+
+  requestAnimationFrame(clearDelayedAutofill);
+  setTimeout(clearDelayedAutofill, 250);
+  setTimeout(clearDelayedAutofill, 1000);
 }
 
 async function loadPremiumPayments() {

@@ -133,6 +133,53 @@ fs.mkdirSync(qa, { recursive: true });
     assert.equal(await mobileMenuGroup.evaluate((element) => element.classList.contains('is-open')), true, 'Submenu terbuka setelah verifikasi');
     assert.equal(await page.locator('#mobileMenuLockIndicator').isHidden(), true, 'Ikon kunci disembunyikan setelah verifikasi');
     assert.equal(await page.locator('[data-tab-panel="invoice"]').isVisible(), true, 'Halaman tujuan dibuka setelah verifikasi berhasil');
+    await page.evaluate(() => {
+      state.activeTab = 'premium';
+      els.premiumSearchInput.value = 'rizalfattony@gmail.com';
+      els.premiumStatusFilter.value = 'expired';
+      resetPremiumMonitoringFilters();
+    });
+    assert.equal(await page.locator('#premiumSearchInput').inputValue(), '', 'Filter pencarian premium dibersihkan saat halaman dibuka');
+    assert.equal(await page.locator('#premiumStatusFilter').inputValue(), 'all', 'Status premium kembali menampilkan semua pengguna');
+    await page.evaluate(() => {
+      document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
+        const active = panel.dataset.tabPanel === 'premium';
+        panel.hidden = !active;
+        panel.classList.toggle('is-active', active);
+      });
+      els.premiumUserSelect.innerHTML = '<option value="rahul" selected>RAHUL FARISTA R. (14390.RAHUL)</option>';
+      els.premiumPackageSelect.value = 'SIMONTOK_PREMIUM';
+      els.premiumStartDate.value = '2026-11-20';
+      els.premiumEndDate.value = '2026-12-23';
+      els.premiumAdminNote.value = 'Bukti pembayaran diterima melalui WhatsApp';
+    });
+    const premiumFormBounds = await page.evaluate(() => {
+      const bounds = (selector) => {
+        const rect = document.querySelector(selector).getBoundingClientRect();
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width };
+      };
+      return {
+        form: bounds('#premiumAccessForm'),
+        monitoring: bounds('.premium-monitoring-panel'),
+        reset: bounds('#resetPremiumFormButton'),
+        user: bounds('#premiumUserSelect'),
+        package: bounds('#premiumPackageSelect'),
+        startDate: bounds('#premiumStartDate'),
+        endDate: bounds('#premiumEndDate'),
+        note: bounds('#premiumAdminNote'),
+        save: bounds('#savePremiumAccessButton'),
+      };
+    });
+    for (const key of ['reset', 'user', 'package', 'startDate', 'endDate', 'note', 'save']) {
+      assert.ok(premiumFormBounds[key].left >= premiumFormBounds.form.left, `${key} tidak melewati sisi kiri kartu premium`);
+      assert.ok(premiumFormBounds[key].right <= premiumFormBounds.form.right, `${key} tidak melewati sisi kanan kartu premium`);
+    }
+    assert.ok(premiumFormBounds.form.right < premiumFormBounds.monitoring.left, 'Kartu pengaturan tidak menimpa panel monitoring premium');
+    await page.screenshot({ path: path.join(qa, 'premium-form-layout-desktop.png'), fullPage: false });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'Form premium tidak overflow pada ponsel');
+    await page.screenshot({ path: path.join(qa, 'premium-form-layout-mobile.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 1100 });
     await page.evaluate(() => switchTab('overview'));
     await page.screenshot({ path: path.join(qa, 'sidebar-clean-desktop.png'), fullPage: false });
     assert.equal(await page.locator('.kogol-card').count(), 4);
