@@ -180,6 +180,52 @@ fs.mkdirSync(qa, { recursive: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'Form premium tidak overflow pada ponsel');
     await page.screenshot({ path: path.join(qa, 'premium-form-layout-mobile.png'), fullPage: true });
     await page.setViewportSize({ width: 1440, height: 1100 });
+    await page.evaluate(() => {
+      state.activeTab = 'sync-status';
+      document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
+        const active = panel.dataset.tabPanel === 'sync-status';
+        panel.hidden = !active;
+        panel.classList.toggle('is-active', active);
+      });
+      els.latestAppVersionInput.value = '1.7.8';
+      els.minimumAppVersionInput.value = '1.7.8';
+      els.appDownloadUrlInput.value = 'https://monalisa-superweb.vercel.app/MONALISA-latest.apk';
+      els.forceAppUpdateInput.checked = true;
+      els.appReleaseStatus.textContent = 'Update wajib aktif. Terakhir diubah 26 Nov 2026, 10.33.';
+      state.syncStatusRows = [{
+        petugas: 'ADRI', username: '14390.ADRI', notification_status: 'sent',
+        notification_sent_at: '2026-11-26T01:31:00Z', synced_at: '2026-11-26T01:31:00Z',
+        app_version: '1.7.8', last_seen_at: '2026-11-26T02:45:00Z',
+      }];
+      renderSyncStatus();
+    });
+    assert.equal(await page.locator('[data-tab-panel="sync-status"] > .section-head').count(), 0, 'Header Status Sinkron lama dihapus');
+    assert.equal(await page.locator('#syncStatusSummary').count(), 0, 'Kartu Ringkasan Perangkat lama dihapus');
+    assert.equal(await page.locator('#refreshSyncStatusButton').isVisible(), true, 'Aksi refresh tetap tersedia di header tabel');
+    const syncReleaseBounds = await page.evaluate(() => {
+      const rect = (selector) => {
+        const value = document.querySelector(selector).getBoundingClientRect();
+        return { left: value.left, right: value.right, top: value.top, bottom: value.bottom };
+      };
+      return {
+        panel: rect('.app-release-panel'),
+        latest: rect('#latestAppVersionInput'),
+        minimum: rect('#minimumAppVersionInput'),
+        url: rect('#appDownloadUrlInput'),
+        force: rect('.app-release-force'),
+        status: rect('#appReleaseStatus'),
+        save: rect('#saveAppReleaseButton'),
+        table: rect('.sync-status-table-section'),
+        overflow: document.querySelector('.app-release-panel').scrollWidth > document.querySelector('.app-release-panel').clientWidth,
+      };
+    });
+    for (const key of ['latest', 'minimum', 'url', 'force', 'status', 'save']) {
+      assert.ok(syncReleaseBounds[key].left >= syncReleaseBounds.panel.left, `${key} tidak melewati sisi kiri panel versi`);
+      assert.ok(syncReleaseBounds[key].right <= syncReleaseBounds.panel.right, `${key} tidak melewati sisi kanan panel versi`);
+    }
+    assert.equal(syncReleaseBounds.overflow, false, 'Panel versi tidak overflow');
+    assert.ok(syncReleaseBounds.panel.bottom < syncReleaseBounds.table.top, 'Panel versi tersusun rapi di atas tabel');
+    await page.screenshot({ path: path.join(qa, 'sync-status-release-layout-desktop.png'), fullPage: false });
     await page.evaluate(() => switchTab('overview'));
     await page.screenshot({ path: path.join(qa, 'sidebar-clean-desktop.png'), fullPage: false });
     assert.equal(await page.locator('.kogol-card').count(), 4);

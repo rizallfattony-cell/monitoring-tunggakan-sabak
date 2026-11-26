@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&family=Sora:wght@600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261126-premium-form-v2" />
+    <link rel="stylesheet" href="./styles.css?v=20261126-sync-release-v3" />
     <link rel="stylesheet" href="./invoice.css?v=20261024-invoice-tractor-v7" />
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
     <link rel="stylesheet" href="./receipt-history.css?v=174" />
@@ -953,48 +953,48 @@
       </section>
 
       <section class="tab-panel" data-tab-panel="sync-status" hidden>
-        <div class="section-head">
-          <div>
-            <h2>Status Sinkron Petugas</h2>
-            <p>Pantau pengiriman notifikasi, versi aplikasi, dan waktu pembaruan data setiap petugas.</p>
-          </div>
-          <div class="section-actions">
-            <button class="button secondary" id="refreshSyncStatusButton" type="button">Refresh Status</button>
-          </div>
-        </div>
-
-        <section class="online-panel">
-          <div>
-            <h2>Ringkasan Perangkat</h2>
-            <p id="syncStatusSummary">Belum memuat status perangkat.</p>
-          </div>
-        </section>
-
-        <section class="online-panel">
-          <div>
-            <h2>Versi Wajib APK</h2>
+        <section class="app-release-panel" aria-labelledby="appReleaseHeading">
+          <div class="app-release-heading">
+            <span>Pengaturan aplikasi</span>
+            <h2 id="appReleaseHeading">Versi Wajib APK</h2>
             <p>Aktifkan setelah APK terbaru selesai di-deploy agar pengguna lama tetap memiliki jalur unduhan.</p>
           </div>
-          <div class="online-form">
-            <label for="latestAppVersionInput">Versi terbaru:</label>
-            <input id="latestAppVersionInput" type="text" placeholder="1.6.0" />
-            <label for="minimumAppVersionInput">Versi minimum:</label>
-            <input id="minimumAppVersionInput" type="text" placeholder="1.6.0" />
-            <label for="appDownloadUrlInput">URL APK:</label>
-            <input id="appDownloadUrlInput" type="url" placeholder="https://.../MONALISA-latest.apk" />
-            <label for="forceAppUpdateInput">Update wajib:</label>
-            <input id="forceAppUpdateInput" type="checkbox" />
-            <div class="login-button-row">
-              <button class="button primary" id="saveAppReleaseButton" type="button">Simpan Versi</button>
-            </div>
-            <p class="auto-note" id="appReleaseStatus">Memuat pengaturan versi...</p>
+          <div class="app-release-form">
+            <label class="app-release-field" for="latestAppVersionInput">
+              <span>Versi terbaru</span>
+              <input id="latestAppVersionInput" type="text" placeholder="1.6.0" inputmode="numeric" />
+            </label>
+            <label class="app-release-field" for="minimumAppVersionInput">
+              <span>Versi minimum</span>
+              <input id="minimumAppVersionInput" type="text" placeholder="1.6.0" inputmode="numeric" />
+            </label>
+            <label class="app-release-field app-release-url" for="appDownloadUrlInput">
+              <span>URL APK</span>
+              <input id="appDownloadUrlInput" type="url" placeholder="https://.../MONALISA-latest.apk" />
+            </label>
+            <label class="app-release-force" for="forceAppUpdateInput">
+              <input id="forceAppUpdateInput" type="checkbox" />
+              <span>
+                <strong>Wajibkan update</strong>
+                <small>Kunci APK di bawah versi minimum</small>
+              </span>
+            </label>
+          </div>
+          <div class="app-release-footer">
+            <p class="auto-note app-release-status" id="appReleaseStatus">Memuat pengaturan versi...</p>
+            <button class="button primary app-release-save" id="saveAppReleaseButton" type="button"><i data-lucide="save" aria-hidden="true"></i> Simpan Versi</button>
           </div>
         </section>
 
-        <section class="table-section">
-          <div class="report-heading">
-            <h2>Status Pembaruan Data Tunggakan</h2>
-            <p id="syncStatusUpdatedAt">-</p>
+        <section class="table-section sync-status-table-section">
+          <div class="report-heading sync-status-report-heading">
+            <div>
+              <h2>Status Pembaruan Data Tunggakan</h2>
+              <p id="syncStatusUpdatedAt">-</p>
+            </div>
+            <div class="table-heading-actions">
+              <button class="button secondary" id="refreshSyncStatusButton" type="button"><i data-lucide="refresh-cw" aria-hidden="true"></i> Refresh Status</button>
+            </div>
           </div>
           <div class="table-wrap">
             <table id="syncStatusTable">
