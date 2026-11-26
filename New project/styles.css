@@ -2028,15 +2028,6 @@ tfoot td {
   color: #172b43;
 }
 
-.premium-page-head {
-  align-items: center;
-  margin-bottom: 20px;
-  border-bottom: 0;
-  padding: 0;
-  background: transparent;
-}
-
-.premium-page-head .button,
 .premium-save-button {
   display: inline-flex;
   align-items: center;
@@ -2044,60 +2035,9 @@ tfoot td {
   gap: 8px;
 }
 
-.premium-page-head .button svg,
 .premium-save-button svg {
   width: 17px;
   height: 17px;
-}
-
-.premium-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 20px;
-}
-
-.premium-summary-grid article {
-  min-height: 112px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  border: 1px solid #d5e0e8;
-  border-top: 3px solid #18466e;
-  border-radius: 7px;
-  padding: 17px 18px;
-  background: #fff;
-}
-
-.premium-summary-grid article:nth-child(2) {
-  border-top-color: #df9b00;
-}
-
-.premium-summary-grid article:nth-child(3) {
-  border-top-color: #c9530b;
-}
-
-.premium-summary-grid article:nth-child(4) {
-  border-top-color: #7b8b98;
-}
-
-.premium-summary-grid span {
-  color: #526678;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.premium-summary-grid strong {
-  margin-top: 5px;
-  color: #142b44;
-  font-size: 28px;
-  line-height: 1;
-}
-
-.premium-summary-grid small {
-  margin-top: 6px;
-  color: #758594;
-  font-size: 11px;
 }
 
 .premium-admin-layout {
@@ -2298,6 +2238,19 @@ tfoot td {
 .premium-filter-controls select {
   min-height: 38px;
   min-width: 145px;
+}
+
+.premium-refresh-button {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-color: #b9cad6;
+  color: #244762;
+}
+
+.premium-refresh-button svg {
+  width: 16px;
+  height: 16px;
 }
 
 .premium-table-wrap {
@@ -2612,10 +2565,6 @@ tfoot td {
 }
 
 @media (max-width: 760px) {
-  .premium-summary-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .premium-access-form {
     grid-template-columns: 1fr;
   }
@@ -2639,6 +2588,10 @@ tfoot td {
   .premium-filter-controls select {
     width: 100%;
     min-width: 0;
+  }
+
+  .premium-refresh-button {
+    justify-self: end;
   }
 
   .premium-payment-toolbar {

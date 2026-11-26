@@ -153,6 +153,9 @@ fs.mkdirSync(qa, { recursive: true });
       els.premiumEndDate.value = '2026-12-23';
       els.premiumAdminNote.value = 'Bukti pembayaran diterima melalui WhatsApp';
     });
+    assert.equal(await page.locator('.premium-page-head').count(), 0, 'Header Kelola Pengguna Premium dihapus');
+    assert.equal(await page.locator('.premium-summary-grid').count(), 0, 'Kartu ringkasan Premium dihapus');
+    assert.equal(await page.locator('#refreshPremiumUsersButton').isVisible(), true, 'Aksi refresh tetap tersedia di toolbar monitoring');
     const premiumFormBounds = await page.evaluate(() => {
       const bounds = (selector) => {
         const rect = document.querySelector(selector).getBoundingClientRect();
@@ -168,12 +171,15 @@ fs.mkdirSync(qa, { recursive: true });
         endDate: bounds('#premiumEndDate'),
         note: bounds('#premiumAdminNote'),
         save: bounds('#savePremiumAccessButton'),
+        refresh: bounds('#refreshPremiumUsersButton'),
       };
     });
     for (const key of ['reset', 'user', 'package', 'startDate', 'endDate', 'note', 'save']) {
       assert.ok(premiumFormBounds[key].left >= premiumFormBounds.form.left, `${key} tidak melewati sisi kiri kartu premium`);
       assert.ok(premiumFormBounds[key].right <= premiumFormBounds.form.right, `${key} tidak melewati sisi kanan kartu premium`);
     }
+    assert.ok(premiumFormBounds.refresh.left >= premiumFormBounds.monitoring.left, 'Tombol refresh berada di dalam panel monitoring');
+    assert.ok(premiumFormBounds.refresh.right <= premiumFormBounds.monitoring.right, 'Tombol refresh tidak melewati panel monitoring');
     assert.ok(premiumFormBounds.form.right < premiumFormBounds.monitoring.left, 'Kartu pengaturan tidak menimpa panel monitoring premium');
     await page.screenshot({ path: path.join(qa, 'premium-form-layout-desktop.png'), fullPage: false });
     await page.setViewportSize({ width: 390, height: 844 });

@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&family=Sora:wght@600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261126-sync-release-v3" />
+    <link rel="stylesheet" href="./styles.css?v=20261126-premium-clean-v4" />
     <link rel="stylesheet" href="./invoice.css?v=20261024-invoice-tractor-v7" />
     <link rel="stylesheet" href="./lpb.css?v=20261016-lpb-v2" />
     <link rel="stylesheet" href="./receipt-history.css?v=174" />
@@ -1055,25 +1055,6 @@
 
       <section class="tab-panel" data-tab-panel="premium" hidden>
         <div class="premium-admin-page">
-          <div class="section-head premium-page-head">
-            <div>
-              <p class="eyebrow">MONALISA MOBILE</p>
-              <h2>Kelola Pengguna Premium</h2>
-              <p>Aktifkan premium setelah bukti pembayaran diterima manual. Tentukan paket dan masa aktif langsung dari web.</p>
-            </div>
-            <button class="button secondary" id="refreshPremiumUsersButton" type="button">
-              <i data-lucide="refresh-cw" aria-hidden="true"></i>
-              Refresh
-            </button>
-          </div>
-
-          <section class="premium-summary-grid" aria-label="Ringkasan pengguna premium">
-            <article><span>Premium aktif</span><strong id="premiumActiveCount">0</strong><small>pengguna</small></article>
-            <article><span>Segera berakhir</span><strong id="premiumExpiringCount">0</strong><small>7 hari ke depan</small></article>
-            <article><span>Kedaluwarsa</span><strong id="premiumExpiredCount">0</strong><small>perlu ditinjau</small></article>
-            <article><span>Belum premium</span><strong id="premiumInactiveCount">0</strong><small>pengguna</small></article>
-          </section>
-
           <div class="premium-admin-layout">
             <form class="premium-access-form" id="premiumAccessForm">
               <div class="premium-form-heading">
@@ -1148,6 +1129,9 @@
                     <option value="expired">Kedaluwarsa</option>
                     <option value="inactive">Belum premium</option>
                   </select>
+                  <button class="icon-button premium-refresh-button" id="refreshPremiumUsersButton" type="button" title="Muat ulang data premium" aria-label="Muat ulang data premium">
+                    <i data-lucide="refresh-cw" aria-hidden="true"></i>
+                  </button>
                 </div>
               </div>
               <div class="premium-table-wrap">
