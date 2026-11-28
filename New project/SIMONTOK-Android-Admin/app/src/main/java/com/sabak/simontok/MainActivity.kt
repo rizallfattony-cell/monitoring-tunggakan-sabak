@@ -163,6 +163,7 @@ private sealed class AppVersionState {
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_Simontok)
         super.onCreate(savedInstanceState)
         createNotificationChannels()
         requestBluetoothPermissions()
@@ -265,7 +266,7 @@ private fun AppVersionGate(api: SupabaseApi, content: @Composable () -> Unit) {
     }
 
     when (val current = state) {
-        AppVersionState.Checking -> LoadingScreen()
+        AppVersionState.Checking -> EnergyLoadingScreen(checkingVersion = true)
         AppVersionState.Allowed -> content()
         is AppVersionState.Required -> ForceUpdateScreen(
             release = current.release,
@@ -519,7 +520,7 @@ private fun SimontokApp(
     }
 
     when (val currentState = screenState) {
-        ScreenState.Loading -> LoadingScreen()
+        ScreenState.Loading -> EnergyLoadingScreen(checkingVersion = false)
         ScreenState.Login -> LoginScreen(error = null, onLogin = { username, password ->
             screenState = ScreenState.Loading
             api.login(username, password) { result ->
@@ -782,18 +783,6 @@ private fun loadLoginCacheWithRetry(
         }
     }
     throw lastError ?: IOException("Data petugas belum dapat dimuat.")
-}
-
-@Composable
-private fun LoadingScreen() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppBg),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator(color = BrightTeal)
-    }
 }
 
 @Composable

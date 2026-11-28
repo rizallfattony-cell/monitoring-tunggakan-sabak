@@ -6,4 +6,7 @@
         <item name="android:statusBarColor">@color/simontok_primary</item>
         <item name="android:navigationBarColor">@color/simontok_bg</item>
     </style>
+    <style name="Theme.Simontok.Launch" parent="@style/Theme.Simontok">
+        <item name="android:windowBackground">@drawable/energy_launch</item>
+    </style>
 </resources>

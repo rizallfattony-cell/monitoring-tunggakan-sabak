@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.Simontok.Launch" parent="@style/Theme.Simontok">
+        <item name="android:windowSplashScreenBackground">#F0F8FC</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/energy_emblem</item>
+    </style>
+</resources>
